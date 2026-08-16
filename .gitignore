@@ -1,0 +1,74 @@
+# Environment and secrets (keep examples)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+.npm/
+.pnpm-store/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+*.egg-info/
+
+# Go
+bin/
+vendor/
+*.test
+*.out
+coverage.out
+
+# Builds and caches
+build/
+dist/
+target/
+.cache/
+tmp/
+temp/
+
+# Test coverage
+coverage/
+.coverage
+.coverage.*
+htmlcov/
+lcov.info
+
+# Logs
+logs/
+*.log
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+*.swp
+*.swo
+*~
+
+# Operating systems
+.DS_Store
+Thumbs.db
+Desktop.ini
+
