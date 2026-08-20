@@ -62,3 +62,30 @@ Commits e pushes diretos na `main` são proibidos após a inicialização do rep
 
 Nunca versione senhas, tokens, chaves, credenciais ou arquivos `.env`. Use arquivos `.env.example` apenas com nomes de variáveis e valores fictícios seguros.
 
+## Execução Local e Ambiente
+
+### Configuração Automática
+
+Execute o script correspondente na raiz do repositório:
+
+- Windows (PowerShell):
+.\setup.ps1
+(Se o PowerShell bloquear a execução, rode antes: Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass)
+
+- Linux / macOS (Terminal):
+chmod +x setup.sh && ./setup.sh
+
+O script instala automaticamente o Node.js 22 LTS, Python 3.11 e configura as dependências do Back-end e Front-end.
+
+### Rodando o Projeto
+
+- Back-end (FastAPI):
+cd Back-end
+source venv/bin/activate (no Linux/macOS) ou .\venv\Scripts\Activate.ps1 (no Windows)
+uvicorn main:app --reload
+Documentação Swagger: http://127.0.0.1:8000/docs
+
+- Front-end (Next.js):
+cd Front-end
+npm run dev
+Aplicação Web: http://localhost:3000
