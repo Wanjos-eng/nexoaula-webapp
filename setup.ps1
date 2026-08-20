@@ -1,49 +1,55 @@
 $ErrorActionPreference = "Stop"
 
-Write-Host "==================================================" -ForegroundColor Cyan
-Write-Host "   Instalando Ambiente nexoAula (Windows)" -ForegroundColor Cyan
-Write-Host "==================================================" -ForegroundColor Cyan
+Write-Host "=== [Setup nexoAula] Iniciando verificação e configuração do ambiente ===" -ForegroundColor Cyan
 
-if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
-    Write-Host "`n[1/4] Instalando Python 3.11..." -ForegroundColor Yellow
-    winget install --id Python.Python.3.11 --silent --accept-package-agreements --accept-source-agreements
+# 1. Verificar/Instalar Python 3.11
+Write-Host "--> Verificando Python 3.11..." -ForegroundColor Yellow
+if (-not (Get-Command python -ErrorAction SilentlyContinue) -or ((python --version 2>&1) -notmatch "3\.11")) {
+    Write-Host "--> Instalando Python 3.11 via winget..." -ForegroundColor Green
+    winget install -e --id Python.Python.3.11 --accept-package-agreements --accept-source-agreements
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 } else {
-    Write-Host "`n[1/4] Python já instalado." -ForegroundColor Green
+    Write-Host "--> Python 3.11 já instalado." -ForegroundColor Green
 }
 
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    Write-Host "`n[2/4] Instalando Node.js 20 LTS..." -ForegroundColor Yellow
-    winget install --id OpenJS.NodeJS.LTS --silent --accept-package-agreements --accept-source-agreements
+# 2. Verificar/Instalar Node.js 22 LTS
+Write-Host "--> Verificando Node.js 22 LTS..." -ForegroundColor Yellow
+if (-not (Get-Command node -ErrorAction SilentlyContinue) -or ((node -v).Split('.')[0].Replace('v','') -lt 22)) {
+    Write-Host "--> Instalando Node.js LTS via winget..." -ForegroundColor Green
+    winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 } else {
-    Write-Host "`n[2/4] Node.js já instalado." -ForegroundColor Green
+    Write-Host "--> Node.js 22 LTS já instalado ($(node -v))." -ForegroundColor Green
 }
 
-Write-Host "`n[3/4] Configurando Back-end (FastAPI)..." -ForegroundColor Yellow
-Set-Location -Path "Back-end"
-if (-not (Test-Path "venv")) {
-    python -m venv venv
+# 3. Configuração do Back-end
+Write-Host "--> Configurando ambiente do Back-end..." -ForegroundColor Yellow
+if (Test-Path "Back-end") {
+    Set-Location "Back-end"
+    if (-not (Test-Path "venv")) {
+        python -m venv venv
+    }
+    .\venv\Scripts\Activate.ps1
+    python -m pip install --upgrade pip
+    if (Test-Path "requirements.txt") {
+        pip install -r requirements.txt
+    }
+    deactivate
+    Set-Location ..
+} else {
+    Write-Warning "Diretório Back-end não encontrado."
 }
-& ".\venv\Scripts\Activate.ps1"
-python -m pip install --upgrade pip
-if (Test-Path "requirements.txt") {
-    pip install -r requirements.txt
-}
-deactivate
-Set-Location -Path ".."
 
-Write-Host "`n[4/4] Configurando Front-end (Next.js)..." -ForegroundColor Yellow
-Set-Location -Path "Front-end"
-if (Test-Path "package.json") {
-    if (Test-Path "package-lock.json") {
-        npm ci
-    } else {
+# 4. Configuração do Front-end
+Write-Host "--> Configurando dependências do Front-end..." -ForegroundColor Yellow
+if (Test-Path "Front-end") {
+    Set-Location "Front-end"
+    if (Test-Path "package.json") {
         npm install
     }
+    Set-Location ..
+} else {
+    Write-Warning "Diretório Front-end não encontrado."
 }
-Set-Location -Path ".."
 
-Write-Host "`n==================================================" -ForegroundColor Green
-Write-Host "   Ambiente configurado com sucesso!" -ForegroundColor Green
-Write-Host "==================================================" -ForegroundColor Green
+Write-Host "=== [Setup nexoAula] Ambiente configurado com sucesso! ===" -ForegroundColor Cyan

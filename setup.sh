@@ -1,47 +1,61 @@
 #!/usr/bin/env bash
+
 set -e
 
-echo "=================================================="
-echo "   Instalando Ambiente nexoAula (Linux)"
-echo "=================================================="
+echo "=== [Setup nexoAula] Iniciando verificação e configuração do ambiente ==="
 
-echo -e "\n[1/4] Atualizando pacotes do sistema..."
-sudo apt update -y && sudo apt install -y curl git software-properties-common build-essential
+# 1. Atualizar repositórios do sistema
+echo "--> Atualizando lista de pacotes..."
+sudo apt-get update -y
 
-echo -e "\n[2/4] Verificando/Instalando Python 3 e venv..."
-sudo apt install -y python3 python3-venv python3-pip
-
-echo -e "\n[3/4] Verificando/Instalando Node.js 20 LTS..."
-if ! command -v node >/dev/null 2>&1 || [ "$(node -v | cut -d '.' -f 1)" != "v20" ]; then
-    echo "Configurando repositório Node.js 20.x..."
-    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-    sudo apt install -y nodejs
+# 2. Verificar/Instalar Python 3.11 e venv
+if ! command -v python3.11 &> /dev/null; then
+    echo "--> Python 3.11 não encontrado. Instalando..."
+    sudo apt-get install -y software-properties-common
+    sudo add-apt-repository -y ppa:deadsnakes/ppa
+    sudo apt-get update -y
+    sudo apt-get install -y python3.11 python3.11-venv python3.11-dev
+else
+    echo "--> Python 3.11 já instalado."
 fi
 
-echo -e "\n[4/4] Configurando Back-end (FastAPI)..."
-cd Back-end
-if [ ! -d "venv" ]; then
-    python3 -m venv venv
+# 3. Verificar/Instalar Node.js 22 LTS e NPM
+if ! command -v node &> /dev/null || [[ $(node -v | cut -d'.' -f1 | tr -d 'v') -lt 22 ]]; then
+    echo "--> Instalando/Atualizando Node.js para a versão 22 LTS..."
+    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+else
+    echo "--> Node.js 22 LTS já instalado ($(node -v))."
 fi
-source venv/bin/activate
-pip install --upgrade pip
-if [ -f "requirements.txt" ]; then
-    pip install -r requirements.txt
-fi
-deactivate
-cd ..
 
-echo -e "\n[5/5] Configurando Front-end (Next.js)..."
-cd Front-end
-if [ -f "package.json" ]; then
-    if [ -f "package-lock.json" ]; then
-        npm ci
-    else
+# 4. Configuração do Back-end
+echo "--> Configurando ambiente do Back-end..."
+if [ -d "Back-end" ]; then
+    cd Back-end
+    if [ ! -d "venv" ]; then
+        python3.11 -m venv venv
+    fi
+    source venv/bin/activate
+    pip install --upgrade pip
+    if [ -f "requirements.txt" ]; then
+        pip install -r requirements.txt
+    fi
+    deactivate
+    cd ..
+else
+    echo "Aviso: Diretório Back-end não encontrado."
+fi
+
+# 5. Configuração do Front-end
+echo "--> Configurando dependências do Front-end..."
+if [ -d "Front-end" ]; then
+    cd Front-end
+    if [ -f "package.json" ]; then
         npm install
     fi
+    cd ..
+else
+    echo "Aviso: Diretório Front-end não encontrado."
 fi
-cd ..
 
-echo -e "\n=================================================="
-echo "   Ambiente configurado com sucesso!"
-echo "=================================================="
+echo "=== [Setup nexoAula] Ambiente configurado com sucesso! ==="
