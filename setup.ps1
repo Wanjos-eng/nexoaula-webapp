@@ -12,14 +12,24 @@ if (-not (Get-Command python -ErrorAction SilentlyContinue) -or ((python --versi
     Write-Host "--> Python 3.11 já instalado." -ForegroundColor Green
 }
 
-# 2. Verificar/Instalar Node.js 22 LTS
-Write-Host "--> Verificando Node.js 22 LTS..." -ForegroundColor Yellow
-if (-not (Get-Command node -ErrorAction SilentlyContinue) -or ((node -v).Split('.')[0].Replace('v','') -lt 22)) {
+# 2. Verificar/Instalar Node.js 22.13 LTS ou Node.js 24+
+Write-Host "--> Verificando Node.js 22.13 LTS ou Node.js 24+..." -ForegroundColor Yellow
+$nodeVersion = if (Get-Command node -ErrorAction SilentlyContinue) {
+    [version]((node -v).Trim().TrimStart('v'))
+} else {
+    $null
+}
+$nodeIsCompatible = $null -ne $nodeVersion -and (
+    ($nodeVersion.Major -eq 22 -and $nodeVersion -ge [version]"22.13.0") -or
+    $nodeVersion.Major -ge 24
+)
+
+if (-not $nodeIsCompatible) {
     Write-Host "--> Instalando Node.js LTS via winget..." -ForegroundColor Green
     winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 } else {
-    Write-Host "--> Node.js 22 LTS já instalado ($(node -v))." -ForegroundColor Green
+    Write-Host "--> Node.js compatível já instalado ($(node -v))." -ForegroundColor Green
 }
 
 # 3. Configuração do Back-end
@@ -42,14 +52,23 @@ if (Test-Path "Back-end") {
 
 # 4. Configuração do Front-end
 Write-Host "--> Configurando dependências do Front-end..." -ForegroundColor Yellow
-if (Test-Path "Front-end") {
-    Set-Location "Front-end"
-    if (Test-Path "package.json") {
-        npm install
+if (Test-Path "apps/web/package.json") {
+    Push-Location "apps/web"
+    try {
+        if (Test-Path "package-lock.json") {
+            npm ci
+        } else {
+            npm install
+        }
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "Falha ao instalar as dependências do frontend."
+        }
+    } finally {
+        Pop-Location
     }
-    Set-Location ..
 } else {
-    Write-Warning "Diretório Front-end não encontrado."
+    Write-Warning "Aplicação frontend não encontrada em apps/web."
 }
 
 Write-Host "=== [Setup nexoAula] Ambiente configurado com sucesso! ===" -ForegroundColor Cyan
