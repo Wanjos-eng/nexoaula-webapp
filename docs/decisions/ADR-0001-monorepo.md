@@ -1,7 +1,7 @@
 # ADR-0001: Organização inicial em monorepositório
 
-- **Status:** Aceita
-- **Data:** 2026-08-16
+- **Status:** Pendente
+- **Data:** 2026-08-27
 
 ## Contexto
 
@@ -11,7 +11,7 @@ O nexoAula é desenvolvido por uma equipe pequena, em um projeto acadêmico com 
 
 Manter frontend, backend, documentação e componentes compartilhados em um único monorepositório. O frontend será desenvolvido com Next.js, o backend com FastAPI, o banco de dados será PostgreSQL e a organização interna seguirá uma arquitetura modular/em camadas.
 
-A importação do plano de ensino em PDF foi adiada para a Sprint 2 ou 3 e poderá ser avaliada como recurso premium. A decisão sobre monorepositório poderá ser revisada se surgir uma necessidade técnica real.
+A importação do plano de ensino em PDF (US11) e o plano premium (US14) foram **movidos para o backlog futuro** e não fazem parte do escopo do MVP atual, priorizando o fluxo de autenticação, perfil com disponibilidade, criação de grupos e solicitação de entrada. A decisão poderá ser reavaliada em sprints futuras, caso haja tempo e viabilidade técnica.
 
 ## Benefícios
 

@@ -1,32 +1,49 @@
-# NexoAula - Backend 🚀
+# nexoAula / EstudaJunto
 
-Este é o repositório do backend do NexoAula, desenvolvido com **FastAPI**. Ele fornece a API e a lógica de negócios, com persistência de dados em PostgreSQL e gerenciamento de migrações via Alembic.
+> Plataforma para formação de grupos de estudo baseados em compatibilidade de disciplina e horário.
 
-## 🛠️ Tecnologias Utilizadas
+## Visão do Produto
+Para estudantes universitários que precisam organizar os estudos e encontrar colegas com objetivos e horários compatíveis, o **nexoAula** é um WebApp que conecta alunos através de grupos de estudo vinculados a disciplinas específicas, permitindo o acompanhamento de cronograma e progresso pessoal.
 
-* **Framework:** [FastAPI](https://fastapi.tiangolo.com/)
-* **Servidor ASGI:** Uvicorn
-* **ORM:** SQLAlchemy
-* **Migrações de Banco:** Alembic
-* **Banco de Dados:** PostgreSQL (via psycopg2)
-* **Autenticação/Segurança:** JWT (python-jose), bcrypt, passlib
+## Estrutura do Monorepo
+/
+├── Back-end/
+├── apps/
+│ └── web/ 
+├── docs/ 
+├── shared/ 
+├── alembic/
+└── README.md 
 
----
 
-## ⚙️ Pré-requisitos
+## Stack Tecnológica
+| Camada | Tecnologia |
+| :--- | :--- |
+| Frontend | Next.js (React) |
+| Backend | FastAPI (Python) |
+| Banco de Dados | PostgreSQL |
+| Documentação | Swagger/OpenAPI + ADRs |
 
-Antes de começar, certifique-se de ter instalado em sua máquina:
-* [Python 3.10+](https://www.python.org/downloads/)
-* [PostgreSQL](https://www.postgresql.org/download/)
-* [Git](https://git-scm.com/)
+## Como executar o projeto (local)
 
----
+**Backend:**
+```bash 
+cd Back-end
+python -m venv venv
+source venv/bin/activate  # No Windows use: .\venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
 
-## 🚀 Como executar o projeto localmente
 
-Siga o passo a passo abaixo para rodar o ambiente de desenvolvimento.
+**Frontend:**
+```bash 
+cd apps/web
+npm install
+npm run dev
+```
 
-### 1. Clone o repositório
-```bash
-git clone [https://github.com/Wanjos-eng/nexoaula-webapp.git](https://github.com/Wanjos-eng/nexoaula-webapp.git)
-cd nexoaula-webapp/Back-end
+**Links Úteis:**
+
+[Quadro do Projeto (GitHub Projects)] (https://github.com/users/Wanjos-eng/projects/7/views/1)
+
