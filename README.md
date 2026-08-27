@@ -26,15 +26,17 @@ Para estudantes universitários que precisam organizar os estudos e encontrar co
 
 ## Como executar o projeto (local)
 
-**Backend:** 
-```bash
+**Backend:**
+```bash 
 cd Back-end
 python -m venv venv
 source venv/bin/activate  # No Windows use: .\venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload
 
+
 **Frontend:**
+```bash
 cd apps/web
 npm install
 npm run dev
