@@ -33,10 +33,17 @@ python -m venv venv
 source venv/bin/activate  # No Windows use: .\venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload
+```
 
 
 **Frontend:**
-```bash
+```bash 
 cd apps/web
 npm install
 npm run dev
+```
+
+**Links Úteis:**
+
+[Quadro do Projeto (GitHub Projects)] (https://github.com/users/Wanjos-eng/projects/7/views/1)
+
