@@ -19,13 +19,20 @@ else
     echo "--> Python 3.11 já instalado."
 fi
 
-# 3. Verificar/Instalar Node.js 22 LTS e NPM
-if ! command -v node &> /dev/null || [[ $(node -v | cut -d'.' -f1 | tr -d 'v') -lt 22 ]]; then
+# 3. Verificar/Instalar Node.js 22.13 LTS ou Node.js 24+ e NPM
+node_is_compatible() {
+    command -v node &> /dev/null && node -e '
+        const [major, minor] = process.versions.node.split(".").map(Number);
+        process.exit((major === 22 && minor >= 13) || major >= 24 ? 0 : 1);
+    '
+}
+
+if ! node_is_compatible; then
     echo "--> Instalando/Atualizando Node.js para a versão 22 LTS..."
     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
     sudo apt-get install -y nodejs
 else
-    echo "--> Node.js 22 LTS já instalado ($(node -v))."
+    echo "--> Node.js compatível já instalado ($(node -v))."
 fi
 
 # 4. Configuração do Back-end
@@ -48,14 +55,17 @@ fi
 
 # 5. Configuração do Front-end
 echo "--> Configurando dependências do Front-end..."
-if [ -d "Front-end" ]; then
-    cd Front-end
-    if [ -f "package.json" ]; then
-        npm install
-    fi
-    cd ..
+if [ -f "apps/web/package.json" ]; then
+    (
+        cd apps/web
+        if [ -f "package-lock.json" ]; then
+            npm ci
+        else
+            npm install
+        fi
+    )
 else
-    echo "Aviso: Diretório Front-end não encontrado."
+    echo "Aviso: Aplicação frontend não encontrada em apps/web."
 fi
 
 echo "=== [Setup nexoAula] Ambiente configurado com sucesso! ==="
