@@ -4,6 +4,9 @@
 !.env.example
 !.env.*.example
 
+#Back
+.env
+
 # Node.js / Next.js
 node_modules/
 .next/
