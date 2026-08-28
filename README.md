@@ -6,14 +6,16 @@
 Para estudantes universitários que precisam organizar os estudos e encontrar colegas com objetivos e horários compatíveis, o **nexoAula** é um WebApp que conecta alunos através de grupos de estudo vinculados a disciplinas específicas, permitindo o acompanhamento de cronograma e progresso pessoal.
 
 ## Estrutura do Monorepo
+
+```text
 /
 ├── Back-end/
-├── apps/
-│ └── web/ 
-├── docs/ 
-├── shared/ 
+├── Front-end/
+├── docs/
+├── shared/
 ├── alembic/
-└── README.md 
+└── README.md
+```
 
 
 ## Stack Tecnológica
@@ -38,12 +40,12 @@ uvicorn main:app --reload
 
 **Frontend:**
 ```bash 
-cd apps/web
-npm install
+cd Front-end
+npm ci
 npm run dev
 ```
 
 **Links Úteis:**
 
-[Quadro do Projeto (GitHub Projects)] (https://github.com/users/Wanjos-eng/projects/7/views/1)
+[Quadro do Projeto (GitHub Projects)](https://github.com/users/Wanjos-eng/projects/7/views/1)
 
