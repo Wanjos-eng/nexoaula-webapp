@@ -1,0 +1,161 @@
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(360px, 40%) 1fr;
+  background: var(--color-surface);
+}
+
+.brandPanel {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 64px 64px 40px;
+  overflow: hidden;
+  color: white;
+  background:
+    radial-gradient(circle at 4% 96%, rgb(2 140 76 / 16%), transparent 34%),
+    var(--color-graphite);
+}
+
+.desktopLogo {
+  width: 208px;
+  height: auto;
+  object-fit: contain;
+}
+
+.pitch {
+  z-index: 1;
+  width: min(100%, 440px);
+  margin: auto 0;
+}
+
+.pitch h1 {
+  max-width: 430px;
+  margin-bottom: 20px;
+  color: white;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.pitch .titleMedium {
+  max-width: 360px;
+  font-size: 1.75rem;
+  line-height: 1.25;
+}
+
+.pitch .titleLarge {
+  font-size: 2.25rem;
+  line-height: 1.2;
+}
+
+.pitchStart {
+  margin: 64px 0 auto;
+}
+
+.pitch:not(.pitchStart) {
+  transform: translateY(14px);
+}
+
+.pitch > p {
+  max-width: 430px;
+  margin-bottom: 36px;
+  color: rgb(255 255 255 / 74%);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+.pitch ul {
+  display: grid;
+  gap: 20px;
+  list-style: none;
+}
+
+.pitch li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  color: rgb(255 255 255 / 90%);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.pitch li svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #00a55a;
+}
+
+.decoration {
+  position: absolute;
+  right: -62px;
+  bottom: 8px;
+  width: 340px;
+  height: 340px;
+  color: rgb(255 255 255 / 4%);
+  pointer-events: none;
+}
+
+.copyright {
+  z-index: 1;
+  color: rgb(255 255 255 / 42%);
+  font-size: 0.75rem;
+}
+
+.formPanel {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 40px;
+  background: var(--color-surface);
+}
+
+.formContainer {
+  width: min(100%, 440px);
+}
+
+.mobileLogo {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .shell {
+    display: block;
+  }
+
+  .brandPanel {
+    display: none;
+  }
+
+  .formPanel {
+    min-height: 100vh;
+    align-content: center;
+    justify-items: stretch;
+    gap: 36px;
+    padding: 28px 20px 40px;
+    background:
+      linear-gradient(180deg, var(--color-surface-soft) 0, transparent 190px),
+      var(--color-surface);
+  }
+
+  .mobileLogo {
+    display: block;
+    width: min(100%, 440px);
+    margin: 0 auto;
+  }
+
+  .mobileLogo img {
+    width: 154px;
+    height: auto;
+  }
+
+  .formContainer {
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 1400px) {
+  .pitch .titleMedium {
+    max-width: 430px;
+  }
+}

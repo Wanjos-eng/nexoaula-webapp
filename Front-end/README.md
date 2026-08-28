@@ -1,8 +1,8 @@
 # Frontend do nexoAula
 
 Aplicação web do nexoAula construída com Next.js, TypeScript e App Router.
-Este setup contém somente a fundação técnica; jornadas de produto serão
-implementadas em Issues próprias.
+A interface atual é um protótipo navegável com dados simulados; ela ainda não
+possui autenticação real nem integração com o FastAPI.
 
 ## Requisitos
 
@@ -53,13 +53,21 @@ npm run start
 
 O servidor de desenvolvimento fica disponível em `http://localhost:3000`.
 
-## Estrutura inicial
+## Rotas disponíveis
+
+- `/login` — acesso simulado com validação de campos;
+- `/cadastro` — criação simulada de conta;
+- `/inicio` — dashboard acadêmico com disciplinas, aulas e grupo de estudo;
+- `/` — redireciona para `/login`.
+
+## Estrutura
 
 ```text
 src/
 ├── app/                # Rotas, layouts e páginas do App Router
 ├── components/
 │   ├── layout/         # Estruturas visuais compartilhadas
+│   ├── auth/           # Formulários compartilhados de acesso
 │   └── ui/             # Componentes básicos reutilizáveis
 ├── lib/
 │   └── api/            # Cliente HTTP e contratos de integração futuros
@@ -68,3 +76,10 @@ src/
 ```
 
 Não crie módulos de roadmap antes de existir uma Issue aprovada para eles.
+
+## Estado dos mocks
+
+As ações visíveis que dependem de backend comunicam seu caráter simulado. Os
+dados do dashboard ficam temporariamente junto da página para facilitar a
+apresentação e deverão migrar para fixtures e contratos de API nas Issues de
+integração correspondentes.
