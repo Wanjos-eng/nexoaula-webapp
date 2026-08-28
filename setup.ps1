@@ -52,8 +52,8 @@ if (Test-Path "Back-end") {
 
 # 4. Configuração do Front-end
 Write-Host "--> Configurando dependências do Front-end..." -ForegroundColor Yellow
-if (Test-Path "apps/web/package.json") {
-    Push-Location "apps/web"
+if (Test-Path "Front-end/package.json") {
+    Push-Location "Front-end"
     try {
         if (Test-Path "package-lock.json") {
             npm ci
@@ -68,7 +68,7 @@ if (Test-Path "apps/web/package.json") {
         Pop-Location
     }
 } else {
-    Write-Warning "Aplicação frontend não encontrada em apps/web."
+    Write-Warning "Aplicação frontend não encontrada em Front-end."
 }
 
 Write-Host "=== [Setup nexoAula] Ambiente configurado com sucesso! ===" -ForegroundColor Cyan

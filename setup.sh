@@ -55,9 +55,9 @@ fi
 
 # 5. Configuração do Front-end
 echo "--> Configurando dependências do Front-end..."
-if [ -f "apps/web/package.json" ]; then
+if [ -f "Front-end/package.json" ]; then
     (
-        cd apps/web
+        cd Front-end
         if [ -f "package-lock.json" ]; then
             npm ci
         else
@@ -65,7 +65,7 @@ if [ -f "apps/web/package.json" ]; then
         fi
     )
 else
-    echo "Aviso: Aplicação frontend não encontrada em apps/web."
+    echo "Aviso: Aplicação frontend não encontrada em Front-end."
 fi
 
 echo "=== [Setup nexoAula] Ambiente configurado com sucesso! ==="

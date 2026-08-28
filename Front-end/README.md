@@ -24,7 +24,7 @@ Na raiz do monorepositório, execute o script correspondente ao sistema:
 Também é possível instalar apenas o frontend:
 
 ```bash
-cd apps/web
+cd Front-end
 npm ci
 ```
 
