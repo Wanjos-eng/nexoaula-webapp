@@ -105,6 +105,39 @@ Validação pós-correção:
 
 final result: passed
 
+### Iteração 8 — canvas de plataforma sem moldura externa (aprovada)
+
+Feedback visual recebido: a aplicação estava parecendo um SaaS de painéis encaixotados, não uma plataforma acadêmica atrativa. A fonte `f18af107-5249-4e3e-9415-874f63cab769/pasted-text.txt` usa um canvas contínuo para a comunidade, com navegação, conversa e contexto ocupando a tela; a implementação ainda prendia essas regiões em um cartão arredondado com altura artificial.
+
+Problemas encontrados:
+
+- [P1] `.layout` tinha borda, raio e sombra externos, transformando a comunidade em uma moldura dentro de outra moldura;
+- [P1] a altura limitada a 640 px deixava um vazio grande abaixo do chat e fazia o composer parecer deslocado;
+- [P2] as colunas não comunicavam claramente que eram regiões permanentes da plataforma.
+
+Correções aplicadas:
+
+- comunidade passou a usar canvas contínuo, sem borda/raio/sombra no agrupador principal;
+- o layout ocupa o espaço vertical disponível (`calc(100vh - 190px)`), mantendo canais, conversa e contexto alinhados até o fim da viewport;
+- separadores sutis e fundos tonais diferenciam navegação, chat e contexto sem criar cartões aninhados;
+- em mobile, o layout permanece contínuo e usa a faixa horizontal de assuntos, sem moldura externa;
+- o calendário mantém cartões apenas onde eles ajudam a agrupar agenda mensal e detalhes do dia, seguindo a referência recebida.
+
+Validação pós-correção:
+
+- comunidade em 1265 × 800 não apresenta mais o cartão externo nem o vazio inferior; composer permanece ancorado no fim da área de conversa;
+- comunidade em 390 × 844 mantém leitura, navegação de assuntos e rolagem sem overflow horizontal;
+- calendário em 1265 × 800 mantém título e agenda como primeira hierarquia, sem topbar duplicado;
+- aba nova carregou sem erros de console; lint, typecheck, testes (6/6) e build passaram.
+
+Evidências salvas e inspecionadas:
+
+- `tmp/design-qa-issue-13/community-platform-desktop.png` — 1265 × 800;
+- `tmp/design-qa-issue-13/community-platform-mobile.png` — 390 × 844;
+- `tmp/design-qa-issue-13/calendar-platform-desktop.png` — 1265 × 800.
+
+final result: passed
+
 ### Iteração 7 — adaptação às referências de comunidade e calendário (aprovada)
 
 Fontes visuais recebidas nesta revisão:
