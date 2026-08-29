@@ -1,37 +1,98 @@
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
-}
-
-html {
-  height: 100%;
-}
-
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --color-graphite: #1f2630;
+  --color-graphite-muted: #5b6573;
+  --color-green: #027a42;
+  --color-green-hover: #016738;
+  --color-green-brand: #028c4c;
+  --color-amber: #fd9e00;
+  --color-amber-dark: #7a4e00;
+  --color-background: #f7f8f7;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #eef3f0;
+  --color-surface-soft: #e9f0e7;
+  --color-border: #d8e0dc;
+  --color-text: #171d18;
+  --color-text-muted: #5b6573;
+  --color-error: #b42318;
+  --color-warning-surface: #fff3d6;
+  --shadow-focus: 0 0 0 3px rgb(253 158 0 / 28%);
+  --shadow-card: 0 8px 24px rgb(31 38 48 / 5%);
 }
 
 * {
   box-sizing: border-box;
-  padding: 0;
   margin: 0;
+  padding: 0;
+}
+
+html {
+  min-height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--color-text);
+  background: var(--color-background);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  cursor: pointer;
 }
 
 a {
   color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-amber);
+  outline-offset: 3px;
+}
+
+::selection {
+  color: white;
+  background: var(--color-green);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
