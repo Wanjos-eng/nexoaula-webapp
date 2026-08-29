@@ -12,6 +12,13 @@ No repositório `Wanjos-eng/nexoaula-webapp`, configure:
 1. Um **Actions secret** chamado `VERCEL_TOKEN` com um token da conta Vercel.
 2. Uma **Actions variable** chamada `VERCEL_SCOPE` com o escopo da equipe Vercel
    (`weslenengineer-6627`).
+3. Uma **Actions variable** chamada `VERCEL_PROJECT_ID` com o ID ou slug do
+   projeto Vercel conectado ao repositório GitHub.
+
+Na primeira configuração da Vercel, importe `Wanjos-eng/nexoaula-webapp`,
+selecione `Front-end` como Root Directory e confirme o framework Next.js. O
+workflow não cria projetos por nome nem pode adivinhar um ID; isso evita que um
+PR publique acidentalmente em outro projeto.
 
 O token nunca deve ser commitado, colocado em `vercel.json`, em arquivos `.env`
 ou exposto nos logs.
@@ -23,8 +30,8 @@ confiável.
 
 ## Escopo do deploy
 
-O comando é executado dentro de `Front-end/` e usa o projeto Vercel
-`nexoaula-webapp-demo`. A implantação é de Preview; produção não é alterada
+O comando é executado dentro de `Front-end/` e usa o projeto indicado por
+`VERCEL_PROJECT_ID`. A implantação é de Preview; produção não é alterada
 automaticamente.
 
 Previews podem exigir login quando a proteção de deployments da Vercel estiver

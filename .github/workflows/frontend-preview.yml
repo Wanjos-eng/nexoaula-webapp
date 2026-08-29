@@ -55,14 +55,15 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_SCOPE: ${{ vars.VERCEL_SCOPE }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
         run: |
-          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_SCOPE" ]; then
-            echo "::error::Configure the VERCEL_TOKEN repository secret and VERCEL_SCOPE repository variable before running this workflow."
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_SCOPE" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "::error::Configure VERCEL_TOKEN (secret), VERCEL_SCOPE (variable) and VERCEL_PROJECT_ID (variable) before running this workflow."
             exit 1
           fi
 
           npm install --global vercel@59.3.0
-          deployment_url="$(vercel deploy --yes --scope="$VERCEL_SCOPE" --name=nexoaula-webapp-demo --token="$VERCEL_TOKEN" | grep -Eo 'https://[^[:space:]]+\.vercel\.app' | tail -n 1)"
+          deployment_url="$(vercel deploy --yes --scope="$VERCEL_SCOPE" --project="$VERCEL_PROJECT_ID" --token="$VERCEL_TOKEN" | grep -Eo 'https://[^[:space:]]+\.vercel\.app' | tail -n 1)"
 
           if [ -z "$deployment_url" ]; then
             echo "::error::Vercel did not return a preview URL."
