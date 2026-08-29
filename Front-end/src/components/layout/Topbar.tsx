@@ -3,8 +3,7 @@
 import { Bell, List, MagnifyingGlass, UserPlus } from "@phosphor-icons/react";
 import type { FormEvent, RefObject } from "react";
 import { useState } from "react";
-
-import { Button } from "@/components/ui/Button";
+import Link from "next/link";
 
 import styles from "./AppShell.module.css";
 
@@ -69,17 +68,14 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
         >
           <Bell aria-hidden size={21} />
         </button>
-        <Button
+        <Link
           aria-label="Criar grupo"
           className={styles.createGroupButton}
-          icon={<UserPlus aria-hidden size={18} weight="bold" />}
-          onClick={() =>
-            setFeedback("O fluxo de criação de grupo será implementado em uma issue específica.")
-          }
-          type="button"
+          href="/grupos/novo"
         >
-          Criar grupo
-        </Button>
+          <UserPlus aria-hidden size={18} weight="bold" />
+          <span>Criar grupo</span>
+        </Link>
       </div>
       <p aria-live="polite" className={styles.topbarFeedback} role="status">
         {feedback}

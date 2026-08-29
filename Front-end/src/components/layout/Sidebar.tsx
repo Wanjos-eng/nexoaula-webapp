@@ -26,7 +26,7 @@ const navigation = [
   { href: "/inicio", icon: House, label: "Início" },
   { href: "/inicio#disciplinas", icon: BookOpenText, label: "Disciplinas" },
   { href: "/inicio#calendario", icon: CalendarDots, label: "Calendário" },
-  { href: "/inicio#grupos", icon: UsersThree, label: "Grupos" },
+  { href: "/grupos", icon: UsersThree, label: "Grupos" },
   { href: "/inicio#progresso", icon: ChartLineUp, label: "Progresso" },
 ];
 
@@ -69,7 +69,7 @@ export function Sidebar({ closeButtonRef, isOpen, onClose }: SidebarProps) {
 
         <nav className={styles.navList}>
           {navigation.map(({ href, icon: NavIcon, label }, index) => {
-            const isActive = index === 0 && pathname === "/inicio";
+            const isActive = index === 0 ? pathname === "/inicio" : label === "Grupos" ? pathname.startsWith("/grupos") : false;
 
             return (
               <Link

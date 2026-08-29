@@ -7,6 +7,8 @@
 - Verdade visual de início: `C:\Users\wesle\.codex\attachments\2c003925-5e18-431a-822a-a3cece897ab4\pasted-text.txt`
 - Identidade oficial: `C:\Users\wesle\Downloads\NexoAula_Logo_Kit_v1.zip`
 - Implementação: `http://localhost:3000/login`, `http://localhost:3000/cadastro` e `http://localhost:3000/inicio`
+- Referências adicionais: `C:\Users\wesle\.codex\attachments\23be5b1b-fbd0-499b-9be3-c49076e9bd79\pasted-text.txt` (criação), `40c42756-6bbb-4c95-9319-a0506a1bf5fb` (acesso), `320b6e83-b72c-4a04-aaa4-6002c0601904` (revisão), `0b300581-4ab7-4eea-a1eb-b260922853b4` (sucesso) e `56a0b8eb-c6e1-4995-856c-cf9389b2f10f`/`18bd3bad-6f7f-4c5f-9754-33f790b23340` (comunidade).
+- Implementação adicional: `http://localhost:3000/grupos`, `http://localhost:3000/grupos/novo` e `http://localhost:3000/grupos/comunidade-msd-c8`
 
 ## Evidências e normalização
 
@@ -18,6 +20,9 @@
 | Início mobile | não havia captura móvel autônoma no material | `C:\Users\wesle\Documents\Codex\2026-08-16\quero-criar-e-configurar-um-reposit\tmp\design-qa-issue-13\implementation-inicio-mobile.jpg` — 375 × 811 px | 390 × 844; área útil desconta barras nativas | 1,0 |
 | Menu mobile aberto | comportamento especificado na Issue #13 | `C:\Users\wesle\Documents\Codex\2026-08-16\quero-criar-e-configurar-um-reposit\tmp\design-qa-issue-13\implementation-menu-mobile.jpg` — 390 × 843 px | 390 × 844 | 1,0 |
 | Cadastro mobile | comportamento responsivo derivado do HTML de referência | `C:\Users\wesle\Documents\Codex\2026-08-16\quero-criar-e-configurar-um-reposit\tmp\design-qa-issue-13\implementation-cadastro-mobile.jpg` — 375 × 811 px | 390 × 844; área útil desconta barras nativas | 1,0 |
+| Criação de grupo desktop | `tmp/screen-references-2/01-criar-grupo.html` — captura IAB emitida em 1265 × 800 px | `http://localhost:3000/grupos/novo` — captura IAB emitida em 1265 × 800 px | 1265 × 800 | 1,0 |
+| Comunidade desktop | `tmp/screen-references-2/05-comunidade.html` — captura IAB emitida em 1265 × 800 px | `http://localhost:3000/grupos/comunidade-msd-c8` — captura IAB emitida em 1265 × 800 px | 1265 × 800 | 1,0 |
+| Comunidade mobile | `tmp/screen-references-2/06-comunidade-mobile.html` — referência responsiva | `http://localhost:3000/grupos/comunidade-msd-c8` — captura IAB emitida em 390 × 844 px | 390 × 844 | 1,0 |
 
 As imagens foram capturadas no mesmo navegador, tema claro e estado inicial. As diferenças de 15 × 9 px no início desktop e de 15 × 8 px no cadastro correspondem às barras nativas presentes somente nas páginas roláveis; a comparação considerou o conteúdo útil e não registrou falsos desvios por esse recorte.
 
@@ -35,6 +40,8 @@ As imagens foram capturadas no mesmo navegador, tema claro e estado inicial. As 
 - Dashboard: sidebar e topbar possuem exatamente 288 px e 127 px em ambos os alvos. O primeiro cartão da implementação ocupa `x=320`, `y=168`, `699 × 290 px`, preservando a composição e a densidade do cartão de referência.
 - Mobile: nenhum overflow horizontal foi detectado em 390 px. O drawer cobre 84% da largura, mantém o fundo bloqueado, recebe foco ao abrir, fecha com Escape e devolve o foco ao acionador.
 - Controles: campos têm rótulos, erros associados e foco âmbar; senha alterna visibilidade; navegação, busca simulada, notificações e CTA de grupo comunicam seus estados.
+- Fluxo de grupos: as três etapas têm progressão, edição de dados, seleção público/privado, limite, regras, revisão e confirmação. A comunidade permite trocar assunto, marcar interesse no encontro e publicar mensagem simulada.
+- Monetização: as telas não bloqueiam recursos acadêmicos nem introduzem cobrança, anúncios ou pagamentos. A decisão futura de monetizar o ecossistema de tutores permanece fora do caminho principal, como definido no plano.
 
 ## Histórico de iterações
 
@@ -54,6 +61,18 @@ Correções aplicadas:
 ### Iteração 2 — aprovada
 
 As novas capturas confirmaram as dimensões acima, ausência de sobreposição e equivalência da composição. Não restaram diferenças P0, P1 ou P2.
+
+### Iteração 3 — aprovada (fluxo de grupos)
+
+- [P3] O shell atual mantém a saudação e a barra superior também nas telas de grupo; o HTML de referência usa uma moldura mais compacta. A diferença é intencional para manter a navegação compartilhada da Issue #13.
+- [P3] A referência da comunidade usa uma coluna interna para canais; a implementação expõe os mesmos canais como chips responsivos, preservando a leitura e evitando uma terceira coluna estreita em mobile.
+
+Correções aplicadas:
+
+- CTA “Criar grupo” do topbar passou a abrir a rota real `/grupos/novo`;
+- rotas `/grupos`, `/grupos/novo` e `/grupos/comunidade-msd-c8` foram adicionadas com navegação e estados simulados;
+- emoji de confirmação foram substituídos por ícones da biblioteca Phosphor para manter consistência de acessibilidade e identidade visual;
+- layout mobile testado em 390 × 844 px e console verificado sem erros.
 
 ## Diferenças intencionais aceitas
 

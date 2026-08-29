@@ -203,6 +203,26 @@
   gap: 12px;
 }
 
+.createGroupButton {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  color: white;
+  background: var(--color-green);
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  transition: background-color 150ms ease;
+}
+
+.createGroupButton:hover {
+  color: white;
+  background: var(--color-green-hover);
+}
+
 .search {
   position: relative;
   width: min(23vw, 320px);
