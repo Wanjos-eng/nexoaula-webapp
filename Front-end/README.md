@@ -53,6 +53,20 @@ npm run start
 
 O servidor de desenvolvimento fica disponível em `http://localhost:3000`.
 
+## Imagem Docker
+
+O frontend também pode ser executado como uma imagem independente, sem
+backend ou banco de dados. O `Dockerfile` usa Node.js 22.13.0, gera o bundle
+`standalone` do Next.js e inicia o servidor na porta 3000:
+
+```bash
+docker build -t nexoaula-web-demo ./Front-end
+docker run --rm -p 3000:3000 nexoaula-web-demo
+```
+
+O deploy da demonstração usa o build nativo do Next.js na Vercel. A imagem
+Docker permanece como alternativa para ambientes compatíveis com containers.
+
 ## Rotas disponíveis
 
 - `/login` — acesso simulado com validação de campos;
