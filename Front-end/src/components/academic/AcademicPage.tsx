@@ -82,7 +82,7 @@ function DisciplineTile({ discipline, onUnavailable }: { discipline: Discipline;
     <div className={styles.tileActions}>{discipline.available ? <><Link className={styles.outlineButton} href="/disciplinas/modelagem-simulacao">Ver notas</Link><Link className={styles.primaryButton} href="/disciplinas/modelagem-simulacao">Abrir disciplina</Link></> : <><button className={styles.outlineButton} onClick={onUnavailable} type="button">Ver notas</button><button className={styles.primaryButton} onClick={onUnavailable} type="button">Abrir disciplina</button></>}</div>
   </>;
 
-  return <article aria-labelledby={`discipline-${discipline.name}`} className={styles.disciplineTile}>{tileContent}</article>;
+  return <article aria-labelledby={`discipline-${discipline.progress}`} className={styles.disciplineTile}>{tileContent}</article>;
 }
 
 function CalendarView() {
