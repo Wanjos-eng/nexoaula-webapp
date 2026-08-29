@@ -58,6 +58,14 @@ O servidor de desenvolvimento fica disponível em `http://localhost:3000`.
 - `/login` — acesso simulado com validação de campos;
 - `/cadastro` — criação simulada de conta;
 - `/inicio` — dashboard acadêmico com disciplinas, aulas e grupo de estudo;
+- `/disciplinas` — lista de disciplinas e turmas em andamento;
+- `/disciplinas/modelagem-simulacao` — detalhe da disciplina com ementa, materiais, notas e atividades;
+- `/calendario` — calendário mensal com aulas, encontros e entregas;
+- `/grupos` — visão de grupos próprios e descoberta de comunidades abertas;
+- `/grupos/comunidade-msd-c8` — conversa da comunidade com canais, encontros e participantes;
+- `/grupos/novo` — fluxo simulado de criação de grupo;
+- `/perfil` — perfil acadêmico e preferências;
+- `/progresso` — acompanhamento resumido do progresso;
 - `/` — redireciona para `/login`.
 
 ## Estrutura

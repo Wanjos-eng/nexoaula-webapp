@@ -7,3 +7,45 @@
 @media(max-width:700px){.modalBackdrop{padding:14px}.modal{padding:18px}.participantRow{grid-template-columns:34px minmax(0,1fr)}.participantRow button{grid-column:2;justify-self:start}.manageList button{padding-block:12px}}
 .page{width:100%;max-width:none;min-height:calc(100vh - 16px);padding:0 0 20px}.layout{height:calc(100vh - 190px);min-height:540px;margin-top:20px;border:0;border-radius:0;box-shadow:none;background:transparent}.channelSidebar{background:var(--color-surface-soft)}.chatPanel{border-left:1px solid var(--color-border);border-right:1px solid var(--color-border)}.infoSidebar{background:var(--color-surface-subtle)}
 @media(max-width:700px){.page{min-height:0;padding-bottom:16px}.layout{height:auto;min-height:0;margin-top:16px}.chatPanel{border-left:0;border-right:0;border-bottom:1px solid var(--color-border)}}
+
+/* Mobile chat follows the compact, conversation-first composition from the Figma reference. */
+.mobileHeader{display:none}
+@media(max-width:700px){
+  .page{min-height:100dvh;padding:0;background:var(--color-surface)}
+  .mobileHeader{display:flex;align-items:center;gap:10px;min-height:64px;padding:10px 14px;border-bottom:1px solid var(--color-border);background:var(--color-surface)}
+  .mobileBack,.mobileManage{width:36px;height:36px;display:grid;place-items:center;flex:0 0 auto;color:var(--color-text);background:transparent;border:0;border-radius:8px}
+  .mobileBack:hover,.mobileManage:hover{background:var(--color-surface-subtle);color:var(--color-green)}
+  .mobileIdentity{display:flex;align-items:center;gap:9px;min-width:0;flex:1}
+  .mobileGroupIcon{width:31px;height:31px;display:grid;place-items:center;flex:0 0 auto;color:var(--color-green);background:var(--color-surface-soft);border-radius:8px}
+  .mobileIdentity>div{display:grid;gap:2px;min-width:0}
+  .mobileIdentity strong{overflow:hidden;font-size:.8rem;line-height:1.2;text-overflow:ellipsis;white-space:nowrap}
+  .mobileIdentity>div>span{display:flex;align-items:center;gap:2px;color:var(--color-text-muted);font-size:.64rem}
+  .back,.hero{display:none}
+  .layout{display:flex;flex-direction:column;height:calc(100dvh - 64px);min-height:0;margin:0;border:0;border-radius:0;box-shadow:none}
+  .channelSidebar{order:0;flex:0 0 auto;padding:8px 10px;background:var(--color-surface-subtle);border:0;border-bottom:1px solid var(--color-border)}
+  .channelList{display:flex;gap:6px;overflow-x:auto;padding-bottom:1px;scrollbar-width:none}
+  .channelList::-webkit-scrollbar{display:none}
+  .channel,.channelActive{min-height:32px;padding:0 11px;border-radius:999px;font-size:.68rem}
+  .channel svg,.channelActive svg{width:14px;height:14px}
+  .chatPanel{order:1;min-height:0;flex:1;border:0;background:var(--color-surface)}
+  .chatHeader{display:none}
+  .chatBody{min-height:0;padding:7px 14px 4px;overflow-y:auto}
+  .chatIntro{width:max-content;max-width:100%;margin:0 auto 6px;padding:4px 10px;color:var(--color-text-muted);background:var(--color-surface-subtle);border-radius:999px;font-size:.61rem}
+  .post,.post+.post{grid-template-columns:32px minmax(0,1fr);gap:8px;padding:8px 0;border:0}
+  .post .avatar{width:32px;height:32px;font-size:.58rem;background:#dceee1;color:var(--color-green)}
+  .post .avatarGreen{color:#fff;background:var(--color-green)}
+  .post .avatarMuted{color:#fff;background:#15945e}
+  .post>div:last-child{min-width:0}
+  .post p:first-child{gap:5px;margin-bottom:4px;font-size:.7rem}
+  .post p:first-child span{font-size:.59rem}
+  .post p:last-child{padding:9px 11px;color:var(--color-text);background:#f1f7f2;border:1px solid #dbe9dd;border-radius:8px;font-size:.71rem;line-height:1.45}
+  .postOwn{grid-template-columns:minmax(0,1fr) 32px!important;text-align:right}
+  .postOwn .avatar{order:2}
+  .postOwn p:first-child{justify-content:flex-end}
+  .postOwn p:last-child{background:#e3f3e7;border-color:#c9e4cf;text-align:left}
+  .composer{flex:0 0 auto;padding:8px 10px;background:var(--color-surface-subtle);border-top:1px solid var(--color-border)}
+  .composer input{height:38px;padding:0 11px;border-radius:999px;font-size:.7rem}
+  .composer button{width:38px;height:38px;border-radius:50%}
+  .feedback{padding:0 12px 5px;background:var(--color-surface-subtle)}
+  .infoSidebar{display:none}
+}

@@ -18,7 +18,7 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const pathname = usePathname();
   const isHome = pathname === "/inicio";
-  const isStandalonePage = pathname === "/calendario" || pathname === "/disciplinas" || pathname === "/perfil" || pathname === "/progresso" || pathname.startsWith("/grupos/comunidade");
+  const isStandalonePage = pathname === "/calendario" || pathname.startsWith("/disciplinas/") || pathname === "/perfil" || pathname === "/progresso" || pathname.startsWith("/grupos/comunidade");
   const showUtilityActions = !isStandalonePage;
   const canCreateGroup = pathname === "/inicio" || pathname === "/grupos";
   const pageContext = isHome
@@ -38,7 +38,7 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
   }
 
   return (
-    <header className={`${styles.topbar} ${isStandalonePage ? styles.topbarMinimal : ""}`}>
+    <header className={`${styles.topbar} ${isStandalonePage ? styles.topbarMinimal : ""} ${pathname.startsWith("/grupos/comunidade") ? styles.topbarCommunity : ""}`}>
       <div className={styles.titleArea}>
         <button
           aria-controls="navegacao-principal"

@@ -16,6 +16,7 @@ import {
   X,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
+import Image from "next/image";
 import { FormEvent, useState } from "react";
 
 import styles from "./page.module.css";
@@ -41,6 +42,21 @@ export default function ComunidadePage() {
 
   return (
     <div className={styles.page}>
+      <header className={styles.mobileHeader}>
+        <Link aria-label="Voltar aos grupos" className={styles.mobileBack} href="/grupos">
+          <ArrowLeft aria-hidden size={21} />
+        </Link>
+        <div className={styles.mobileIdentity}>
+          <span className={styles.mobileGroupIcon}><Image alt="" height={23} src="/brand/nexoaula-symbol-color.png" width={23} /></span>
+          <div>
+            <strong>Comunidade MSD — C8</strong>
+            <span><Hash aria-hidden size={13} /> {activeTopic}</span>
+          </div>
+        </div>
+        <button aria-label="Gerenciar grupo" className={styles.mobileManage} onClick={() => setActivePanel("manage")} type="button">
+          <GearSix aria-hidden size={20} />
+        </button>
+      </header>
       <Link className={styles.back} href="/grupos">
         <ArrowLeft aria-hidden size={17} /> Voltar aos grupos
       </Link>
@@ -94,7 +110,7 @@ export default function ComunidadePage() {
             <p className={styles.chatIntro}>Este é o início do assunto <strong>#{activeTopic}</strong>.</p>
             <article className={styles.post}><div className={styles.avatar}>LA</div><div><p><strong>Lucas Andrade</strong><span>Hoje às 14:32</span></p><p>Pessoal, estou revisando a fórmula de Little para M/M/1. Alguém tem um exemplo prático resolvido daquele exercício 4?</p></div></article>
             <article className={styles.post}><div className={`${styles.avatar} ${styles.avatarGreen}`}>AS</div><div><p><strong>Ana Souza</strong><span>Hoje às 14:45</span></p><p>O truque é lembrar que a taxa de serviço (μ) precisa estar na mesma unidade de tempo da taxa de chegada (λ). Converti tudo para segundos e funcionou.</p></div></article>
-            <article className={styles.post}><div className={`${styles.avatar} ${styles.avatarMuted}`}>RL</div><div><p><strong>Rafael Lima</strong><span>Hoje às 15:10</span></p><p><b>@Ana Souza</b> salvou! Eu estava travado exatamente nessa conversão. A monitoria de amanhã ainda está de pé?</p></div></article>
+            <article className={`${styles.post} ${styles.postOwn}`}><div className={`${styles.avatar} ${styles.avatarMuted}`}>RL</div><div><p><strong>Rafael Lima</strong><span>Hoje às 15:10</span></p><p><b>@Ana Souza</b> salvou! Eu estava travado exatamente nessa conversão. A monitoria de amanhã ainda está de pé?</p></div></article>
           </div>
           <form className={styles.composer} onSubmit={sendMessage}>
             <label className="sr-only" htmlFor="new-message">Escreva uma mensagem</label>

@@ -265,7 +265,7 @@ Diferenças encontradas:
 Correções aplicadas:
 
 - criada a rota `/perfil`, acessível pelo nome do usuário na sidebar, com informações pessoais, IRA, créditos, disciplinas em andamento, previsão de formatura, notificações, tema e idioma;
-- `/disciplinas` passou a usar detalhe acadêmico com abas funcionais `Ementa`, `Materiais`, `Notas` e `Atividades`, tabela de avaliações e agenda lateral;
+- `/disciplinas/modelagem-simulacao` passou a usar detalhe acadêmico com abas funcionais `Ementa`, `Materiais`, `Notas` e `Atividades`, tabela de avaliações e agenda lateral; `/disciplinas` ficou reservado à lista de turmas no fluxo revisado da Iteração 11;
 - Perfil, Disciplinas e Progresso agora usam shell mínimo, deixando o cabeçalho da própria tela como primeira hierarquia;
 - `Meu progresso` foi alinhado ao rótulo da referência e o avatar da sidebar passou a ser um link de perfil;
 - dados continuam explicitamente simulados; nenhuma integração de API ou regra funcional foi inventada.
@@ -286,5 +286,34 @@ Validação pós-correção:
 Limitação de captura:
 
 - a chamada estruturada do Figma atingiu o limite do plano Starter; as referências foram capturadas pela sessão Browser autenticada, sem editar o arquivo Figma.
+
+final result: passed
+
+### Iteração 11 — fluxo de disciplinas e chat mobile comparados ao Figma (aprovada)
+
+Referências comparadas nesta revisão:
+
+- frame `grupos_mobile` (`16:666`) no arquivo NexoAula, com cabeçalho compacto, canais em chips e mensagens em balões;
+- frame `detalhes-disciplina` (`165:432`) e a captura anterior de `Minhas disciplinas`, comparados às rotas locais em 1265 × 800 e 390 × 844.
+
+Diferenças encontradas:
+
+- [P1] `/disciplinas` havia sido convertido diretamente em detalhe, removendo a etapa “Minhas disciplinas” do fluxo;
+- [P1] o chat mobile mantinha o cabeçalho desktop, a moldura de três painéis e mensagens em lista, divergindo do frame compacto do Figma;
+- [P2] o cabeçalho global ainda aparecia no mobile do grupo, roubando espaço da conversa.
+
+Correções aplicadas:
+
+- `/disciplinas` voltou a ser a lista “Minhas disciplinas”, com resumo da turma, próxima aula e progresso;
+- criada a rota `/disciplinas/modelagem-simulacao` para o detalhe com abas `Ementa`, `Materiais`, `Notas` e `Atividades`; CTAs de progresso e da lista apontam para essa etapa;
+- o grupo ganhou cabeçalho mobile com identidade da comunidade, tópico ativo, retorno e configurações; a navegação global é ocultada apenas nesse contexto;
+- canais mobile permanecem em chips roláveis sem scrollbar visível, mensagens usam balões e a mensagem do usuário é alinhada à direita; composer fica fixado ao rodapé e informações secundárias ficam acessíveis fora da conversa.
+
+Validação pós-correção:
+
+- grupo e disciplinas renderizados em 1265 × 800 e 390 × 844;
+- fluxo lista → detalhe confirmado por navegação real;
+- grupo mobile sem erros de console e sem overflow horizontal aparente;
+- lint, typecheck, testes (6/6) e build passaram; build gerou `/disciplinas` e `/disciplinas/modelagem-simulacao`.
 
 final result: passed

@@ -603,3 +603,9 @@
     padding-inline: 16px;
   }
 }
+
+@media (max-width: 820px) {
+  .topbarCommunity {
+    display: none;
+  }
+}
