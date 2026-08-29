@@ -105,6 +105,38 @@ Validação pós-correção:
 
 final result: passed
 
+### Iteração 9 — calendário mensal em canvas integral (aprovada)
+
+Feedback visual recebido: o calendário ainda parecia uma tela poluída e encaixotada; a leitura mensal precisava ser a primeira tarefa, com as aulas carregadas diretamente nas datas e os detalhes separados da grade.
+
+Problemas encontrados:
+
+- [P1] A grade mensal não ocupava o protagonismo visual e os eventos apareciam apenas como marcadores discretos, sem horário legível na data;
+- [P1] No mobile, o painel lateral podia disputar espaço com a grade e criar uma segunda coluna espremida;
+- [P2] Selecionar um dia fora do mês atual não levava o usuário para o mês correspondente.
+
+Correções aplicadas:
+
+- calendário reorganizado em uma composição de canvas com toolbar, grade mensal de sete colunas e painel `Agenda do dia` separado;
+- cada data com atividade exibe o horário diretamente na célula, usando cor verde para aula e âmbar para encontro; o título completo permanece disponível no tooltip e no painel de detalhes;
+- navegação por mês, botão `Hoje` e seleção de datas continuam funcionando; selecionar um dia fora do mês atual navega automaticamente para o mês dele;
+- painel de detalhes e próximas datas empilham abaixo da grade em larguras menores, sem overflow horizontal;
+- não foram adicionados cartões, issues, integrações ou dados reais: os eventos seguem explicitamente como mocks de apresentação.
+
+Validação pós-correção:
+
+- desktop em 1265 × 800 confirmou a grade mensal como foco, aulas marcadas nas células e agenda contextual à direita;
+- mobile em 390 × 844 confirmou a grade em uma única coluna, sem overflow horizontal, com os detalhes empilhados;
+- clique em `2 de setembro de 2026` mudou o mês para setembro e atualizou a agenda para `Quarta-feira, 2 de setembro`;
+- aba nova carregou sem erros de console; lint, typecheck, testes (6/6) e build passaram.
+
+Evidências salvas e inspecionadas:
+
+- `tmp/design-qa-issue-13/calendar-platform-full-desktop.png` — 1265 × 800;
+- `tmp/design-qa-issue-13/calendar-platform-full-mobile.png` — 390 × 844.
+
+final result: passed
+
 ### Iteração 8 — canvas de plataforma sem moldura externa (aprovada)
 
 Feedback visual recebido: a aplicação estava parecendo um SaaS de painéis encaixotados, não uma plataforma acadêmica atrativa. A fonte `f18af107-5249-4e3e-9415-874f63cab769/pasted-text.txt` usa um canvas contínuo para a comunidade, com navegação, conversa e contexto ocupando a tela; a implementação ainda prendia essas regiões em um cartão arredondado com altura artificial.
