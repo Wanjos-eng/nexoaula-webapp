@@ -125,16 +125,16 @@ export function ProfilePage() {
               ))}
             </div>
           </div>
-          <label className={styles.settingBlock}>
-            <span>
-              <h3>Idioma</h3>
+          <div className={styles.settingBlock}>
+            <div>
+              <h3 id="language-label">Idioma</h3>
               <p>Idioma preferencial da interface do usuário.</p>
-            </span>
-            <select defaultValue="pt-BR">
+            </div>
+            <select aria-labelledby="language-label" defaultValue="pt-BR" id="language">
               <option value="pt-BR">Português (Brasil)</option>
               <option value="en-US">English (United States)</option>
             </select>
-          </label>
+          </div>
         </div>
       </section>
 
