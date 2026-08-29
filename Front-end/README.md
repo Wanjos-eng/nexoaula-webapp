@@ -6,7 +6,7 @@ possui autenticação real nem integração com o FastAPI.
 
 ## Requisitos
 
-- Node.js 22.x;
+- Node.js 22.13 ou superior dentro da versão 22, ou Node.js 24.x;
 - npm compatível com a versão instalada do Node.js.
 
 ## Instalação

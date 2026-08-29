@@ -12,8 +12,8 @@ if (-not (Get-Command python -ErrorAction SilentlyContinue) -or ((python --versi
     Write-Host "--> Python 3.11 já instalado." -ForegroundColor Green
 }
 
-# 2. Verificar/Instalar Node.js 22.13 LTS ou Node.js 24+
-Write-Host "--> Verificando Node.js 22.13 LTS ou Node.js 24+..." -ForegroundColor Yellow
+# 2. Verificar/Instalar Node.js 22.13 LTS ou Node.js 24.x
+Write-Host "--> Verificando Node.js 22.13 LTS ou Node.js 24.x..." -ForegroundColor Yellow
 $nodeVersion = if (Get-Command node -ErrorAction SilentlyContinue) {
     [version]((node -v).Trim().TrimStart('v'))
 } else {
@@ -21,7 +21,7 @@ $nodeVersion = if (Get-Command node -ErrorAction SilentlyContinue) {
 }
 $nodeIsCompatible = $null -ne $nodeVersion -and (
     ($nodeVersion.Major -eq 22 -and $nodeVersion -ge [version]"22.13.0") -or
-    $nodeVersion.Major -ge 24
+    $nodeVersion.Major -eq 24
 )
 
 if (-not $nodeIsCompatible) {
