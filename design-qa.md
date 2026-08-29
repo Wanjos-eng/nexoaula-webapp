@@ -124,3 +124,29 @@ Evidência pós-correção:
 - implementação: `http://localhost:3000/grupos/comunidade-msd-c8` (captura IAB, 1265 × 800 px) e 390 × 844 px;
 - composer visível no desktop, canais selecionáveis, interesse no encontro e envio de mensagem simulada validados;
 - nova aba carregou sem erros de console.
+
+### Iteração 6 — descoberta, agenda e preferências de workspace (aprovada)
+
+- [P1] Grupos precisava separar a visão de comunidades do usuário da descoberta de grupos abertos; sem isso, a busca e a entrada em novas comunidades ficavam implícitas.
+- [P1] O calendário ainda funcionava como uma lista de compromissos, sem visão mensal ou detalhe contextual por data.
+- [P2] A busca global ocupava espaço em todos os contextos e repetia a mesma estrutura visual; a sidebar também não oferecia escolha de densidade ou ocultação.
+- [P1] Participantes e ações do organizador estavam expostos no mesmo nível da conversa, dificultando a leitura do chat e a distinção de permissões.
+
+Correções aplicadas:
+
+- `/grupos` agora possui abas `Meus grupos` e `Descobrir grupos`, busca local por disciplina/nome e cards de comunidades abertas, mantendo o CTA de criação somente no cabeçalho;
+- `/calendario` usa `react-day-picker` para uma visão mensal navegável, marcadores de aula/encontro e painel `Agenda do dia` atualizado ao selecionar uma data;
+- o topbar foi reduzido e contextualizado: a busca global virou um acionador compacto com expansão sob demanda, evitando um campo dominante em todas as páginas;
+- a sidebar ganhou preferências `Ampla`, `Compacta` e `Oculta`, com alça de revelação por hover/foco e ajuste de margem do conteúdo;
+- a comunidade ganhou painéis modais separados para `Participantes` e `Gerenciar grupo`, com papéis explícitos (organizador, tutora voluntária e participante) e ações de organização isoladas da conversa;
+- a proposta de valor continua sem bloqueios, anúncios ou cobrança no fluxo acadêmico; tutoria aparece apenas como papel futuro/opcional da comunidade.
+
+Validação pós-correção:
+
+- desktop em 1265 × 800 confirmou abas, busca filtrada, calendário mensal, topbar compacto e layout de chat em três regiões;
+- mobile em 390 × 844 confirmou calendário empilhado, grupos responsivos, navegação sem overflow horizontal e acionador de busca reduzido;
+- seleção de `2 de setembro` atualizou a agenda para o evento correspondente; modos `Compacta` e `Oculta` alteraram a largura/revelação da sidebar;
+- `Participantes` abriu o painel com quatro pessoas e papéis; `Gerenciar grupo` abriu a visão exclusiva do organizador;
+- console da aba de QA sem erros; lint, typecheck, testes (6/6) e build passaram.
+
+final result: passed

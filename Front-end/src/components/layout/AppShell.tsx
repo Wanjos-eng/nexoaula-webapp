@@ -13,6 +13,7 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState<"expanded" | "compact" | "hidden">("expanded");
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -42,14 +43,16 @@ export function AppShell({ children }: AppShellProps) {
   }, [isMenuOpen]);
 
   return (
-    <div className={styles.shell}>
+    <div className={`${styles.shell} ${sidebarMode === "compact" ? styles.shellCompact : sidebarMode === "hidden" ? styles.shellHidden : ""}`}>
       <a className={styles.skipLink} href="#conteudo-principal">
         Pular para o conteúdo
       </a>
       <Sidebar
         closeButtonRef={closeButtonRef}
         isOpen={isMenuOpen}
+        mode={sidebarMode}
         onClose={() => setIsMenuOpen(false)}
+        onModeChange={setSidebarMode}
       />
       <div className={styles.workspace}>
         <Topbar

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, List, MagnifyingGlass, UserPlus } from "@phosphor-icons/react";
+import { Bell, List, MagnifyingGlass, UserPlus, X } from "@phosphor-icons/react";
 import type { FormEvent, RefObject } from "react";
 import { useState } from "react";
 import Link from "next/link";
@@ -15,6 +15,7 @@ type TopbarProps = {
 
 export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
   const [feedback, setFeedback] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const pathname = usePathname();
   const isHome = pathname === "/inicio";
   const canCreateGroup = pathname === "/inicio" || pathname === "/grupos";
@@ -57,18 +58,30 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
       </div>
 
       <div className={styles.topbarActions}>
-        <form className={styles.search} onSubmit={handleSearch} role="search">
-          <label className="sr-only" htmlFor="dashboard-search">
-            Buscar no nexoAula
-          </label>
-          <MagnifyingGlass aria-hidden size={20} />
-          <input
-            id="dashboard-search"
-            name="search"
-            placeholder="Buscar no nexoAula..."
-            type="search"
-          />
-        </form>
+        {isSearchOpen ? (
+          <form className={styles.search} onSubmit={handleSearch} role="search">
+            <label className="sr-only" htmlFor="dashboard-search">
+              Buscar no nexoAula
+            </label>
+            <MagnifyingGlass aria-hidden size={20} />
+            <input
+              autoFocus
+              id="dashboard-search"
+              name="search"
+              placeholder="Buscar no nexoAula..."
+              type="search"
+            />
+            <button aria-label="Fechar busca" className={styles.searchClose} onClick={() => setIsSearchOpen(false)} type="button">
+              <X aria-hidden size={16} />
+            </button>
+          </form>
+        ) : (
+          <button aria-expanded={isSearchOpen} aria-label="Abrir busca global" className={styles.searchTrigger} onClick={() => setIsSearchOpen(true)} type="button">
+            <MagnifyingGlass aria-hidden size={18} />
+            <span>Buscar</span>
+            <kbd>⌘ K</kbd>
+          </button>
+        )}
         <button
           aria-label="Ver notificações"
           className={styles.iconButton}

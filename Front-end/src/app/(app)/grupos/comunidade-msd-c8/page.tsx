@@ -13,6 +13,7 @@ import {
   Tag,
   UserPlus,
   UsersThree,
+  X,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
@@ -26,6 +27,7 @@ export default function ComunidadePage() {
   const [message, setMessage] = useState("");
   const [interest, setInterest] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [activePanel, setActivePanel] = useState<"participants" | "manage" | null>(null);
 
   function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -55,7 +57,7 @@ export default function ComunidadePage() {
         </div>
         <div className={styles.heroActions}>
           <span className={styles.organizerBadge}>Organizador</span>
-          <button className={styles.outlineButton} type="button"><GearSix aria-hidden size={17} /> Gerenciar grupo</button>
+          <button className={styles.outlineButton} onClick={() => setActivePanel("manage")} type="button"><GearSix aria-hidden size={17} /> Gerenciar grupo</button>
         </div>
       </header>
 
@@ -78,7 +80,7 @@ export default function ComunidadePage() {
           <button className={styles.createTopic} type="button"><Plus aria-hidden size={16} /> Criar assunto</button>
           <div className={styles.channelDivider} />
           <button className={styles.utilityChannel} type="button"><CalendarBlank aria-hidden size={18} /> Encontros</button>
-          <button className={styles.utilityChannel} type="button"><UsersThree aria-hidden size={18} /> Participantes</button>
+          <button className={styles.utilityChannel} onClick={() => setActivePanel("participants")} type="button"><UsersThree aria-hidden size={18} /> Participantes</button>
           <button className={styles.utilityChannel} type="button"><UserPlus aria-hidden size={18} /> Solicitações de entrada <span>2</span></button>
           <button className={styles.utilityChannel} type="button"><ListBullets aria-hidden size={18} /> Plano e cronograma</button>
         </aside>
@@ -119,10 +121,39 @@ export default function ComunidadePage() {
           <section className={styles.sideCard} id="participantes">
             <div className={styles.sideHeading}><h3>Participantes</h3><span>12 de 20</span></div>
             <div className={styles.memberFaces}><span>LA</span><span>AS</span><span>RL</span><span>+9</span></div>
-            <Link className={styles.details} href="#participantes">Ver participantes <ArrowLeft aria-hidden className={styles.rotate} size={15} /></Link>
+            <button className={styles.detailsButton} onClick={() => setActivePanel("participants")} type="button">Ver participantes <ArrowLeft aria-hidden className={styles.rotate} size={15} /></button>
           </section>
         </aside>
       </div>
+      {activePanel ? (
+        <div className={styles.modalBackdrop} onClick={() => setActivePanel(null)} role="presentation">
+          <section aria-labelledby="group-panel-title" aria-modal="true" className={styles.modal} onClick={(event) => event.stopPropagation()} role="dialog">
+            <div className={styles.modalHeader}>
+              <div>
+                <p className={styles.eyebrow}>{activePanel === "manage" ? "Visão do organizador" : "Comunidade MSD — C8"}</p>
+                <h3 id="group-panel-title">{activePanel === "manage" ? "Gerenciar grupo" : "Participantes"}</h3>
+              </div>
+              <button aria-label="Fechar painel" className={styles.modalClose} onClick={() => setActivePanel(null)} type="button"><X aria-hidden size={18} /></button>
+            </div>
+            {activePanel === "participants" ? (
+              <div className={styles.participantList}>
+                <p className={styles.modalIntro}>Veja quem está na comunidade e identifique os papéis de apoio.</p>
+                {[{ initials: "LA", name: "Lucas Andrade", role: "Organizador" }, { initials: "AS", name: "Ana Souza", role: "Tutora voluntária" }, { initials: "RL", name: "Rafael Lima", role: "Participante" }, { initials: "MC", name: "Marina Costa", role: "Participante" }].map((person) => (
+                  <div className={styles.participantRow} key={person.name}><span className={styles.avatar}>{person.initials}</span><span><strong>{person.name}</strong><small>{person.role}</small></span><button aria-label={`Abrir conversa com ${person.name}`} type="button">Mensagem</button></div>
+                ))}
+                <p className={styles.modalHint}>Tutoria pode ser ativada pelo organizador quando a comunidade precisar de apoio em uma disciplina.</p>
+              </div>
+            ) : (
+              <div className={styles.manageList}>
+                <p className={styles.modalIntro}>Ações disponíveis somente para o organizador, sem misturar configurações com a experiência de quem participa.</p>
+                <button type="button"><GearSix aria-hidden size={18} /><span><strong>Configurações do grupo</strong><small>Nome, descrição e regras de convivência</small></span><ArrowLeft aria-hidden className={styles.rotate} size={16} /></button>
+                <button type="button"><UserPlus aria-hidden size={18} /><span><strong>Solicitações de entrada</strong><small>2 pessoas aguardando aprovação</small></span><ArrowLeft aria-hidden className={styles.rotate} size={16} /></button>
+                <button type="button"><ListBullets aria-hidden size={18} /><span><strong>Plano e cronograma</strong><small>Publique a próxima etapa do grupo</small></span><ArrowLeft aria-hidden className={styles.rotate} size={16} /></button>
+              </div>
+            )}
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

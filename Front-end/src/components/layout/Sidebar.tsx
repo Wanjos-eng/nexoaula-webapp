@@ -13,13 +13,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { RefObject } from "react";
+import { useState } from "react";
 
 import styles from "./AppShell.module.css";
 
 type SidebarProps = {
   closeButtonRef: RefObject<HTMLButtonElement | null>;
   isOpen: boolean;
+  mode: "expanded" | "compact" | "hidden";
   onClose: () => void;
+  onModeChange: (mode: "expanded" | "compact" | "hidden") => void;
 };
 
 const navigation = [
@@ -30,8 +33,10 @@ const navigation = [
   { href: "/progresso", icon: ChartLineUp, label: "Progresso" },
 ];
 
-export function Sidebar({ closeButtonRef, isOpen, onClose }: SidebarProps) {
+export function Sidebar({ closeButtonRef, isOpen, mode, onClose, onModeChange }: SidebarProps) {
   const pathname = usePathname();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPeekOpen, setIsPeekOpen] = useState(false);
 
   return (
     <>
@@ -44,8 +49,10 @@ export function Sidebar({ closeButtonRef, isOpen, onClose }: SidebarProps) {
       />
       <aside
         aria-label="Navegação principal"
-        className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ""}`}
+        className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ""} ${mode === "hidden" && isPeekOpen ? styles.sidebarPeekOpen : ""}`}
         id="navegacao-principal"
+        onMouseEnter={() => mode === "hidden" && setIsPeekOpen(true)}
+        onMouseLeave={() => mode === "hidden" && setIsPeekOpen(false)}
       >
         <div className={styles.sidebarHeader}>
           <Image
@@ -91,11 +98,13 @@ export function Sidebar({ closeButtonRef, isOpen, onClose }: SidebarProps) {
             LA
           </div>
           <span className={styles.profileName}>Lucas Andrade</span>
-          <button aria-label="Abrir configurações" className={styles.iconButton} type="button">
+          <button aria-expanded={isSettingsOpen} aria-label="Abrir configurações da barra lateral" className={styles.iconButton} onClick={() => setIsSettingsOpen((open) => !open)} type="button">
             <GearSix aria-hidden size={21} />
           </button>
+          {isSettingsOpen ? <div className={styles.sidebarSettings} role="dialog" aria-label="Configurações da barra lateral"><strong>Barra lateral</strong><button aria-pressed={mode === "expanded"} onClick={() => { onModeChange("expanded"); setIsSettingsOpen(false); }} type="button">Ampla <span>288 px</span></button><button aria-pressed={mode === "compact"} onClick={() => { onModeChange("compact"); setIsSettingsOpen(false); }} type="button">Compacta <span>220 px</span></button><button aria-pressed={mode === "hidden"} onClick={() => { onModeChange("hidden"); setIsSettingsOpen(false); }} type="button">Oculta <span>aparece ao passar o mouse</span></button></div> : null}
         </div>
       </aside>
+      {mode === "hidden" ? <button aria-label="Mostrar menu lateral" className={styles.sidebarRevealHandle} onMouseEnter={() => setIsPeekOpen(true)} onFocus={() => setIsPeekOpen(true)} type="button"><span /></button> : null}
     </>
   );
 }
