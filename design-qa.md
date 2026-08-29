@@ -104,3 +104,23 @@ Validação pós-correção:
 - lint, typecheck, testes (6/6) e build passaram.
 
 final result: passed
+
+### Iteração 5 — comunidade com padrão de canais (aprovada)
+
+- [P1] A comunidade estava organizada como uma sequência de chips e uma lista de posts sem separação clara entre canais, conversa e contexto do grupo. Isso deixava o chat visualmente solto e diferente da referência inspirada no Discord.
+- [P1] O topbar repetia “Olá, Lucas” e “Criar grupo” em telas internas, inclusive quando um grupo já estava aberto.
+
+Correções aplicadas:
+
+- comunidade reorganizada em três regiões: canais do grupo, chat central com rolagem interna e composer fixado, e informações laterais de encontro/plano/participantes;
+- canais `#geral`, `#filas-mm1`, `#modelo-analitico` e `#dúvidas` passaram a ter seleção ativa e estado de assunto;
+- topbar passou a ser contextual: saudação somente em `/inicio`, área de grupos nas rotas de grupo e CTA “Criar grupo” somente em `/inicio` e `/grupos`;
+- layout desktop usa altura controlada para manter o composer visível; mobile transforma a lista de canais em uma faixa horizontal sem scrollbar aparente;
+- ícones permanecem na biblioteca Phosphor e os recursos acadêmicos seguem sem bloqueios ou monetização intrusiva.
+
+Evidência pós-correção:
+
+- referência: `tmp/screen-references-2/05-comunidade.html` (captura IAB, 1265 × 800 px);
+- implementação: `http://localhost:3000/grupos/comunidade-msd-c8` (captura IAB, 1265 × 800 px) e 390 × 844 px;
+- composer visível no desktop, canais selecionáveis, interesse no encontro e envio de mensagem simulada validados;
+- nova aba carregou sem erros de console.

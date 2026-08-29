@@ -4,6 +4,7 @@ import { Bell, List, MagnifyingGlass, UserPlus } from "@phosphor-icons/react";
 import type { FormEvent, RefObject } from "react";
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import styles from "./AppShell.module.css";
 
@@ -14,6 +15,14 @@ type TopbarProps = {
 
 export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
   const [feedback, setFeedback] = useState("");
+  const pathname = usePathname();
+  const isHome = pathname === "/inicio";
+  const canCreateGroup = pathname === "/inicio" || pathname === "/grupos";
+  const pageContext = isHome
+    ? { title: "Olá, Lucas", subtitle: "Acompanhe suas disciplinas e próximos encontros" }
+    : pathname.startsWith("/grupos")
+      ? { title: "Área de grupos", subtitle: "Comunidade acadêmica e colaboração" }
+      : { title: "Área acadêmica", subtitle: "Organize sua rotina de estudos" };
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,10 +49,10 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
         </button>
         <div>
           <div className={styles.greetingLine}>
-            <h1>Olá, Lucas</h1>
-            <span>Dados simulados</span>
+            <h1>{pageContext.title}</h1>
+            {isHome ? <span>Dados simulados</span> : null}
           </div>
-          <p>Acompanhe suas disciplinas e próximos encontros</p>
+          <p>{pageContext.subtitle}</p>
         </div>
       </div>
 
@@ -68,14 +77,16 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
         >
           <Bell aria-hidden size={21} />
         </button>
-        <Link
-          aria-label="Criar grupo"
-          className={styles.createGroupButton}
-          href="/grupos/novo"
-        >
-          <UserPlus aria-hidden size={18} weight="bold" />
-          <span>Criar grupo</span>
-        </Link>
+        {canCreateGroup ? (
+          <Link
+            aria-label="Criar grupo"
+            className={styles.createGroupButton}
+            href="/grupos/novo"
+          >
+            <UserPlus aria-hidden size={18} weight="bold" />
+            <span>Criar grupo</span>
+          </Link>
+        ) : null}
       </div>
       <p aria-live="polite" className={styles.topbarFeedback} role="status">
         {feedback}
