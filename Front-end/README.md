@@ -6,7 +6,7 @@ possui autenticação real nem integração com o FastAPI.
 
 ## Requisitos
 
-- Node.js 22.13 LTS ou Node.js 24 ou superior;
+- Node.js 22.x;
 - npm compatível com a versão instalada do Node.js.
 
 ## Instalação
@@ -66,6 +66,15 @@ docker run --rm -p 3000:3000 nexoaula-web-demo
 
 O deploy da demonstração usa o build nativo do Next.js na Vercel. A imagem
 Docker permanece como alternativa para ambientes compatíveis com containers.
+O `Dockerfile` não é executado pela Vercel: os dois caminhos usam o mesmo código,
+mas possuem runtimes de implantação diferentes.
+
+## Deploy na Vercel
+
+A raiz do projeto na Vercel deve ser configurada como `Front-end`. O arquivo
+`vercel.json` mantém os comandos de instalação e build explícitos. Pull Requests
+podem receber previews automaticamente quando o repositório estiver conectado
+ao projeto pela integração Git da Vercel.
 
 ## Rotas disponíveis
 
