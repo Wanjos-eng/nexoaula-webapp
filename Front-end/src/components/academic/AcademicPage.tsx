@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, BookOpenText, CalendarBlank, CaretLeft, CaretRight, CheckCircle, Clock, NotePencil, Plus, TrendUp, UsersThree } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, BookOpenText, CalendarBlank, CaretDown, CaretLeft, CaretRight, CheckCircle, Clock, MagnifyingGlass, NotePencil, TrendUp, UsersThree } from "@phosphor-icons/react/dist/ssr";
 import { DayPicker } from "react-day-picker";
 import { ptBR } from "react-day-picker/locale";
 import type { DayButtonProps } from "react-day-picker";
@@ -25,7 +25,17 @@ const calendarEvents: Record<string, { title: string; type: "Aula" | "Encontro";
   "2026-09-08": [{ title: "Formulário semanal", type: "Encontro", time: "Até 23h59", context: "Sprint 1 · Entrega acadêmica" }],
 };
 
+const disciplines = [
+  { name: "Modelagem e Simulação Discreta", professor: "Brauliro Gonçalves Leal", progress: 45, schedule: "Seg e Qua, 14h–16h", lessons: "2 aulas realizadas", pending: "1 conteúdo pendente", absences: "Nenhuma ausência", available: true },
+  { name: "Engenharia de Software II", professor: "Ana Carolina Mota", progress: 62, schedule: "Ter e Qui, 10h–12h", lessons: "4 aulas realizadas", pending: "0 conteúdos pendentes", absences: "Nenhuma ausência", available: false },
+  { name: "Banco de Dados Avançado", professor: "Ricardo Souza", progress: 30, schedule: "Sex, 8h–10h", lessons: "1 aula realizada", pending: "2 conteúdos pendentes", absences: "Nenhuma ausência", available: false },
+];
+
 export function AcademicPage({ variant }: AcademicPageProps) {
+  if (variant === "disciplines") {
+    return <DisciplinesView />;
+  }
+
   if (variant === "calendar") {
     return <CalendarView />;
   }
@@ -34,7 +44,45 @@ export function AcademicPage({ variant }: AcademicPageProps) {
     return <div className={styles.page}><Header eyebrow="Acompanhamento" title="Meu progresso" description="Acompanhe sua rotina e identifique o próximo conteúdo para revisar." /><div className={styles.progressGrid}><section className={styles.progressCard}><div className={styles.cardTitle}><div><p className={styles.label}>Disciplina</p><h3>Modelagem e Simulação Discreta</h3><p>C8 · 2026.2</p></div><strong>45%</strong></div><div className={styles.track}><span style={{ width: "45%" }} /></div><ul><li><CheckCircle aria-hidden size={19} /> 2 aulas realizadas</li><li><NotePencil aria-hidden size={19} /> 1 conteúdo pendente</li><li><TrendUp aria-hidden size={19} /> Frequência em dia</li></ul><Link className={styles.linkAction} href="/disciplinas/modelagem-simulacao">Abrir disciplina <ArrowRight aria-hidden size={16} /></Link></section><section className={styles.nextCard}><p className={styles.label}>Próximo foco</p><h3>Modelo Analítico de Sistemas de Fila M/M/1</h3><p>Reserve um tempo para revisar este conteúdo antes do próximo encontro.</p><button className={styles.outlineButton} type="button">Marcar como revisado</button></section></div></div>;
   }
 
-  return <div className={styles.page}><Header eyebrow="Organização acadêmica" title="Minhas disciplinas" description="Centralize conteúdos, aulas e o progresso de cada turma." action="/grupos" actionLabel="Ver grupos" /><section aria-labelledby="discipline-card-title" className={styles.disciplineCard}><div className={styles.subjectIcon}><BookOpenText aria-hidden size={25} /></div><div className={styles.subjectHeading}><div><h3 id="discipline-card-title">Modelagem e Simulação Discreta</h3><p>Turma C8 · 2026.2 · Seg e Qua, 14h–16h</p></div><span>Em andamento</span></div><div className={styles.subjectMeta}><div><span>Próxima aula</span><strong>31 Ago · 14h–16h</strong></div><div><span>Professor</span><strong>Brauliro Gonçalves Leal</strong></div><div><span>Progresso</span><strong>45%</strong></div></div><div className={styles.subjectActions}><Link className={styles.primaryButton} href="/disciplinas/modelagem-simulacao">Abrir disciplina <ArrowRight aria-hidden size={16} /></Link><Link className={styles.outlineButton} href="/calendario">Abrir calendário</Link></div></section><section className={styles.tip}><Plus aria-hidden size={19} /><div><strong>Adicionar uma disciplina</strong><p>Deixe sua agenda completa para acompanhar as próximas aulas.</p></div><button className={styles.textButton} type="button">Em breve</button></section></div>;
+  return null;
+}
+
+function DisciplinesView() {
+  const [query, setQuery] = useState("");
+  const [notice, setNotice] = useState("");
+  const filteredDisciplines = disciplines.filter((discipline) => discipline.name.toLowerCase().includes(query.trim().toLowerCase()));
+
+  return <div className={`${styles.page} ${styles.disciplinesPage}`}>
+    <header className={styles.disciplinesHeader}>
+      <div><h2>Minhas disciplinas</h2><p>Gerencie suas disciplinas e acompanhe seu progresso acadêmico.</p></div>
+      <div className={styles.disciplineControls}>
+        <label className={styles.disciplineSearch}><MagnifyingGlass aria-hidden size={16} /><span className="sr-only">Buscar disciplina</span><input onChange={(event) => setQuery(event.target.value)} placeholder="Buscar disciplina..." value={query} /></label>
+        <label className={styles.termFilter}><span className="sr-only">Filtrar período</span><select aria-label="Filtrar período" defaultValue="C8 · 2026.2"><option>C8 · 2026.2</option></select><CaretDown aria-hidden size={14} /></label>
+      </div>
+    </header>
+    {filteredDisciplines.length > 0 ? <section aria-label="Disciplinas matriculadas" className={styles.disciplineGrid}>{filteredDisciplines.map((discipline) => <DisciplineTile discipline={discipline} key={discipline.name} onUnavailable={() => setNotice(`O detalhe de ${discipline.name} será conectado em uma próxima etapa.`)} />)}</section> : <div className={styles.noDisciplines}><MagnifyingGlass aria-hidden size={22} /><h3>Nenhuma disciplina encontrada</h3><p>Tente buscar por outro nome.</p></div>}
+    {notice ? <p aria-live="polite" className={styles.disciplineNotice}>{notice}</p> : null}
+  </div>;
+}
+
+type Discipline = (typeof disciplines)[number];
+
+function DisciplineTile({ discipline, onUnavailable }: { discipline: Discipline; onUnavailable: () => void }) {
+  const tileContent = <>
+    <div className={styles.tileTop}><span className={styles.termBadge}>C8 · 2026.2</span><strong>{discipline.progress}%</strong></div>
+    <h3 id={`discipline-${discipline.progress}`}>{discipline.name}</h3>
+    <p className={styles.tileProfessor}>Prof. {discipline.professor}</p>
+    <div aria-label={`Progresso: ${discipline.progress}%`} aria-valuemax={100} aria-valuemin={0} aria-valuenow={discipline.progress} className={styles.tileProgress} role="progressbar"><span style={{ width: `${discipline.progress}%` }} /></div>
+    <ul className={styles.tileMetrics}>
+      <li><Clock aria-hidden size={18} /><span>{discipline.schedule}</span></li>
+      <li><CheckCircle aria-hidden size={18} /><span>{discipline.lessons}</span></li>
+      <li><NotePencil aria-hidden size={18} /><span>{discipline.pending}</span></li>
+      <li><TrendUp aria-hidden size={18} /><span>{discipline.absences}</span></li>
+    </ul>
+    <div className={styles.tileActions}>{discipline.available ? <><Link className={styles.outlineButton} href="/disciplinas/modelagem-simulacao">Ver notas</Link><Link className={styles.primaryButton} href="/disciplinas/modelagem-simulacao">Abrir disciplina</Link></> : <><button className={styles.outlineButton} onClick={onUnavailable} type="button">Ver notas</button><button className={styles.primaryButton} onClick={onUnavailable} type="button">Abrir disciplina</button></>}</div>
+  </>;
+
+  return <article aria-labelledby={`discipline-${discipline.name}`} className={styles.disciplineTile}>{tileContent}</article>;
 }
 
 function CalendarView() {

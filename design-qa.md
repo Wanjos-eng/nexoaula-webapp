@@ -332,3 +332,26 @@ Validação pós-correção:
 - lint, typecheck, testes (6/6) e build passaram.
 
 final result: passed
+
+### Iteração 13 — listagem de disciplinas alinhada ao frame `118:1666` (aprovada)
+
+Diferenças encontradas na comparação correta:
+
+- [P1] a tela local tinha um único cartão grande, enquanto o Figma apresenta três disciplinas em cards paralelos;
+- [P1] faltavam a busca `Buscar disciplina...`, o filtro de período e os indicadores de agenda, aulas, pendências e ausências;
+- [P2] os CTAs `Ver notas` e `Abrir disciplina` não estavam presentes em cada card.
+
+Correções aplicadas:
+
+- `/disciplinas` agora exibe Modelagem e Simulação Discreta, Engenharia de Software II e Banco de Dados Avançado em grid responsivo;
+- busca por nome, filtro `C8 · 2026.2`, barras de progresso, métricas com ícones e ações foram adicionados;
+- o primeiro card navega para o detalhe implementado; os demais comunicam claramente que seus detalhes ainda serão conectados, sem inventar telas funcionais.
+
+Validação pós-correção:
+
+- referência `118:1666` revisada em 33% e 100% no Figma;
+- grid validado em 1265 × 800 e 390 × 844;
+- busca filtrou a disciplina esperada e o primeiro card abriu `/disciplinas/modelagem-simulacao`;
+- lint, typecheck, testes (6/6) e build passaram.
+
+final result: passed

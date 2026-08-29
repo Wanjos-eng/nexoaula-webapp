@@ -12,3 +12,40 @@
 .calendarShell :global(.rdp-day_button){padding:6px 7px;gap:3px}.dayNumber{width:22px;height:22px}.dayEventClass,.dayEventMeeting{flex:0 0 16px;height:16px;min-height:16px;padding:2px 4px;font-size:.53rem;line-height:12px}.dayEventMore{line-height:12px}
 @media(max-width:520px){.calendarShell :global(.rdp-day_button){padding:5px 4px;gap:2px}.dayNumber{width:20px;height:20px}.dayEventClass,.dayEventMeeting{flex-basis:15px;height:15px;min-height:15px;padding:1px 3px;font-size:.46rem;line-height:12px}}
 .calendarToolbar{background:transparent;border:0;border-bottom:1px solid var(--color-border);border-radius:0;padding-inline:0}.calendarBoard{border:0;border-radius:0;overflow:visible;background:transparent}.calendarBoardHeader{padding-inline:0}
+
+.disciplinesPage{max-width:1100px}
+.disciplinesHeader{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:22px;padding-bottom:16px;border-bottom:1px solid var(--color-border)}
+.disciplinesHeader h2{font-size:clamp(1.45rem,2.5vw,1.9rem);letter-spacing:-.025em;margin-bottom:6px}
+.disciplinesHeader>div>p{color:var(--color-text-muted);font-size:.75rem}
+.disciplineControls{display:flex;align-items:center;gap:8px}
+.disciplineSearch{position:relative;width:220px;display:flex;align-items:center}
+.disciplineSearch svg{position:absolute;left:10px;color:var(--color-text-muted);pointer-events:none}
+.disciplineSearch input{width:100%;height:36px;padding:0 10px 0 32px;color:var(--color-text);background:var(--color-surface);border:1px solid var(--color-border);border-radius:7px;font:inherit;font-size:.68rem}
+.disciplineSearch input:focus{border-color:var(--color-amber);box-shadow:var(--shadow-focus);outline:0}
+.termFilter{position:relative;display:flex;align-items:center}
+.termFilter select{height:36px;padding:0 28px 0 10px;color:var(--color-text-muted);background:var(--color-surface);border:1px solid var(--color-border);border-radius:7px;appearance:none;font:inherit;font-size:.65rem;font-weight:700}
+.termFilter svg{position:absolute;right:9px;color:var(--color-text-muted);pointer-events:none}
+.disciplineGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.disciplineTile{min-width:0;display:flex;flex-direction:column;padding:16px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:9px;box-shadow:var(--shadow-card)}
+.tileTop{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.termBadge{padding:4px 7px;color:var(--color-green);background:var(--color-surface-soft);border-radius:4px;font-size:.58rem;font-weight:800}
+.tileTop>strong{color:var(--color-green);font-size:1.1rem;letter-spacing:-.02em}
+.disciplineTile h3{font-size:.88rem;line-height:1.3;margin-bottom:4px}
+.tileProfessor{color:var(--color-text-muted);font-size:.66rem}
+.tileProgress{height:6px;overflow:hidden;margin:15px 0 13px;background:var(--color-surface-soft);border-radius:99px}
+.tileProgress span{display:block;height:100%;background:var(--color-green);border-radius:inherit}
+.tileMetrics{display:grid;gap:8px;padding:0;margin:0;list-style:none;color:var(--color-text-muted);font-size:.66rem}
+.tileMetrics li{display:flex;align-items:center;gap:8px;min-width:0}
+.tileMetrics li svg{flex:0 0 auto;color:var(--color-green)}
+.tileMetrics li:nth-child(3) svg{color:var(--color-amber)}
+.tileMetrics span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tileActions{display:flex;justify-content:flex-end;gap:7px;margin-top:auto;padding-top:16px;border-top:1px solid var(--color-border)}
+.tileActions .primaryButton,.tileActions .outlineButton{min-height:36px;padding-inline:10px;font-size:.65rem}
+.tileActions button{font:inherit;cursor:pointer}
+.noDisciplines{display:grid;place-items:center;gap:6px;padding:54px 20px;color:var(--color-text-muted);text-align:center;background:var(--color-surface);border:1px solid var(--color-border);border-radius:10px}
+.noDisciplines svg{color:var(--color-green)}
+.noDisciplines h3{color:var(--color-text);font-size:.86rem}
+.noDisciplines p{font-size:.7rem}
+.disciplineNotice{margin-top:14px;color:var(--color-green);font-size:.7rem}
+@media(max-width:920px){.disciplineGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.disciplinesHeader{display:block;margin-bottom:16px}.disciplineControls{margin-top:14px}.disciplineSearch{flex:1;width:auto}.disciplineGrid{grid-template-columns:1fr}.disciplineTile{padding:15px}.tileActions{margin-top:15px}.termFilter select{max-width:122px}}
