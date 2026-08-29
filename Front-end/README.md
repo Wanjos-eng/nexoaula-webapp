@@ -74,8 +74,8 @@ mas possuem runtimes de implantação diferentes.
 A raiz do projeto na Vercel deve ser configurada como `Front-end`. O arquivo
 `vercel.json` mantém os comandos de instalação e build explícitos. Pull Requests
 podem receber previews automaticamente quando o repositório estiver conectado
-ao projeto pela integração Git da Vercel. O passo de build é ignorado quando o
-commit não altera nenhum arquivo dentro de `Front-end`.
+ao projeto pela integração Git da Vercel. A opção `Skip deployments` do projeto
+evita builds quando não há mudanças em `Front-end` ou em suas dependências.
 
 ## Rotas disponíveis
 
