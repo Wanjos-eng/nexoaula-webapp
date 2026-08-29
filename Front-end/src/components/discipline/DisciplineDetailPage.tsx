@@ -1,17 +1,17 @@
 "use client";
 
-import { BookOpenText, CalendarBlank, CheckCircle, Clock, FileText, NotePencil } from "@phosphor-icons/react/dist/ssr";
+import { BookOpenText, CalendarBlank, CheckCircle, Clock, FileText } from "@phosphor-icons/react/dist/ssr";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
 import styles from "./DisciplineDetailPage.module.css";
 
 const notes = [
-  ["P1 — Prova Teórica 1", "30%", "8,5", "Entregue"],
-  ["P2 — Prova Teórica 2", "30%", "9,0", "Entregue"],
-  ["Trabalho 1 — Prático", "15%", "8,0", "Entregue"],
-  ["Trabalho 2 — Final", "15%", "—", "Pendente"],
-  ["Lista de Exercícios", "10%", "10,0", "Entregue"],
+  ["P1 - Prova Teórica 1", "30%", "8.5", "Entregue"],
+  ["P2 - Prova Teórica 2", "30%", "9.0", "Entregue"],
+  ["Trabalho 1 - Prático", "15%", "8.0", "Entregue"],
+  ["Trabalho 2 - Final", "15%", "--", "Pendente"],
+  ["Lista de Exercícios", "10%", "10.0", "Entregue"],
 ];
 
 const upcoming = [
@@ -28,21 +28,18 @@ export function DisciplineDetailPage() {
     <div className={styles.page}>
       <header className={styles.disciplineHeader}>
         <div className={styles.titleBlock}>
-          <div className={styles.titleIcon}><BookOpenText aria-hidden size={22} /></div>
           <div>
-            <p className={styles.eyebrow}>Disciplina · C8 · 2026.2</p>
             <h1>Modelagem e Simulação Discreta</h1>
-            <p>Prof. Dr. Brauliro Gonçalves Leal · Segunda e quarta, 14h–16h</p>
+            <p>Prof. Dr. Ricardo Lima · Código: CS-401 · Semestre: 2026.1</p>
           </div>
         </div>
         <span className={styles.activeBadge}><span /> Ativa</span>
+        <section className={styles.progressStrip} aria-label="Progresso do conteúdo">
+          <span>Progresso do Conteúdo:</span>
+          <div className={styles.progressTrack}><span style={{ width: "45%" }} /></div>
+          <strong>45% completo</strong>
+        </section>
       </header>
-
-      <section className={styles.progressStrip} aria-label="Progresso do conteúdo">
-        <span>Progresso do conteúdo</span>
-        <div className={styles.progressTrack}><span style={{ width: "45%" }} /></div>
-        <strong>45% completo</strong>
-      </section>
 
       <nav aria-label="Seções da disciplina" className={styles.tabs}>
         {tabs.map((tab) => (
@@ -54,8 +51,7 @@ export function DisciplineDetailPage() {
         <div className={styles.contentGrid}>
           <section aria-labelledby="notes-title" className={styles.notesPanel}>
             <div className={styles.panelHeading}>
-              <div><p className={styles.panelKicker}>Avaliação · 2026.2</p><h2 id="notes-title">Notas Acadêmicas</h2></div>
-              <span className={styles.panelIcon}><NotePencil aria-hidden size={19} /></span>
+              <div><h2 id="notes-title">Notas Acadêmicas</h2></div>
             </div>
             <div className={styles.tableWrap}>
               <table>
@@ -78,7 +74,7 @@ export function DisciplineDetailPage() {
 }
 
 function UpcomingActivities() {
-  return <aside aria-labelledby="upcoming-title" className={styles.upcomingPanel}><div className={styles.panelHeading}><div><p className={styles.panelKicker}>Agenda</p><h2 id="upcoming-title">Próximas atividades</h2></div><CalendarBlank aria-hidden className={styles.panelIcon} size={19} /></div><div className={styles.upcomingList}>{upcoming.map((item) => <article key={item.title}><div><span>{item.type}</span><small>{item.code}</small></div><h3>{item.title}</h3><p>{item.date}</p></article>)}</div></aside>;
+  return <aside aria-labelledby="upcoming-title" className={styles.upcomingPanel}><div className={styles.panelHeading}><div><h2 id="upcoming-title">Próximas atividades</h2></div></div><div className={styles.upcomingList}>{upcoming.map((item) => <article key={item.title}><div><span>{item.type}</span><small>{item.code}</small></div><h3>{item.title}</h3><p>{item.date}</p></article>)}</div></aside>;
 }
 
 function PanelTitle({ icon, title }: { icon: ReactNode; title: string }) {

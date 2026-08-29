@@ -317,3 +317,18 @@ Validação pós-correção:
 - lint, typecheck, testes (6/6) e build passaram; build gerou `/disciplinas` e `/disciplinas/modelagem-simulacao`.
 
 final result: passed
+
+### Iteração 12 — detalhe da disciplina recalibrado para o frame do Figma (aprovada)
+
+- o cabeçalho do detalhe foi simplificado para a mesma hierarquia do frame: título, professor/código/semestre, status e progresso no mesmo bloco;
+- o cartão de notas ganhou a altura ampla da referência e a agenda lateral foi estreitada, preservando o foco na tabela;
+- copy, separadores e estados da tabela foram aproximados do frame (`P1 - ...`, notas decimais e `--` para pendência), sem alterar as interações das quatro abas;
+- em mobile, a altura mínima fixa dos cartões foi removida para evitar espaço vazio e manter a leitura contínua.
+
+Validação pós-correção:
+
+- referência `detalhes-disciplina` revisada em 50% e 100% no Figma;
+- implementação validada em 1265 × 800 e 390 × 844, sem erros novos de console;
+- lint, typecheck, testes (6/6) e build passaram.
+
+final result: passed
