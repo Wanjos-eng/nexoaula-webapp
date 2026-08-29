@@ -73,10 +73,10 @@ export default function InicioPage() {
             </div>
 
             <div className={styles.cardActions}>
-              <Link className={styles.secondaryAction} href="#disciplinas">
+              <Link className={styles.secondaryAction} href="/disciplinas">
                 Abrir disciplina
               </Link>
-              <Link className={styles.primaryAction} href="#calendario">
+              <Link className={styles.primaryAction} href="/calendario">
                 Detalhes da aula
               </Link>
             </div>
@@ -127,7 +127,7 @@ export default function InicioPage() {
             <h2 className={styles.sectionTitle} id="calendario-title">
               Próximas aulas
             </h2>
-            <Link href="#calendario">Abrir calendário</Link>
+            <Link href="/calendario">Abrir calendário</Link>
           </div>
           <div className={`${styles.card} ${styles.lessonList}`}>
             {upcomingClasses.map((lesson) => (

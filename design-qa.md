@@ -89,4 +89,18 @@ Correções aplicadas:
 
 ## Resultado final
 
+### Iteração 4 — correções de navegação e stepper (aprovada)
+
+- [P2] A tela de Grupos apresentava mais de um CTA para criar grupo no mesmo contexto. O CTA contextual foi removido da página; a ação permanece no cabeçalho compartilhado.
+- [P2] Disciplinas, Calendário e Progresso apontavam para âncoras do dashboard e pareciam a mesma tela. Foram criadas as rotas próprias `/disciplinas`, `/calendario` e `/progresso`, com conteúdo específico e item ativo correto na navegação.
+- [P2] A linha do stepper atravessava os rótulos das etapas. O stepper passou a usar uma linha central independente, com os nomes acima dos círculos e progressão verde sem sobreposição em desktop e mobile.
+
+Validação pós-correção:
+
+- `/grupos` exibe somente um CTA “Criar grupo” (no topbar) e nenhum CTA duplicado no cartão informativo;
+- `/inicio`, `/disciplinas`, `/calendario`, `/progresso` e `/grupos` exibem títulos e conteúdos distintos;
+- fluxo `/grupos/novo` permanece navegável nas etapas 1 → 2 → 3 → sucesso;
+- screenshot IAB em 1265 × 800 confirmou o stepper sem texto cortado;
+- lint, typecheck, testes (6/6) e build passaram.
+
 final result: passed
