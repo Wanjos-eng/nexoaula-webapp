@@ -67,7 +67,9 @@ docker run --rm -p 3000:3000 nexoaula-web-demo
 O deploy da demonstração usa o build nativo do Next.js na Vercel. A imagem
 Docker permanece como alternativa para ambientes compatíveis com containers.
 O `Dockerfile` não é executado pela Vercel: os dois caminhos usam o mesmo código,
-mas possuem runtimes de implantação diferentes.
+mas possuem runtimes de implantação diferentes. Durante builds da Vercel, o
+bundle `standalone` é desativado para que o adaptador da plataforma gere seus
+próprios artefatos; builds Docker continuam gerando o bundle normalmente.
 
 ## Deploy na Vercel
 
