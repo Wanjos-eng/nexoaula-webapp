@@ -2,8 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Produces the minimal runtime bundle consumed by the frontend Docker image.
-  output: "standalone",
+  // Vercel applies its own Next.js output tracing. Self-hosted and Docker
+  // builds still produce the minimal standalone runtime consumed by the image.
+  output: process.env.VERCEL === "1" ? undefined : "standalone",
 };
 
 export default nextConfig;

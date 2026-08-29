@@ -19,11 +19,11 @@ else
     echo "--> Python 3.11 já instalado."
 fi
 
-# 3. Verificar/Instalar Node.js 22.13 LTS ou Node.js 24+ e NPM
+# 3. Verificar/Instalar Node.js 22.13 LTS ou Node.js 24.x e NPM
 node_is_compatible() {
     command -v node &> /dev/null && node -e '
         const [major, minor] = process.versions.node.split(".").map(Number);
-        process.exit((major === 22 && minor >= 13) || major >= 24 ? 0 : 1);
+        process.exit((major === 22 && minor >= 13) || major === 24 ? 0 : 1);
     '
 }
 
