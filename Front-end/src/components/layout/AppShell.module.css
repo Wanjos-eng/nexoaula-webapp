@@ -162,6 +162,19 @@
   backdrop-filter: blur(14px);
 }
 
+.topbarMinimal {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border-bottom: 0;
+  backdrop-filter: none;
+}
+
+.topbarMinimal .titleArea,
+.topbarMinimal .topbarActions {
+  display: none;
+}
+
 .titleArea {
   display: flex;
   align-items: center;
@@ -494,6 +507,23 @@
   .topbar {
     min-height: 96px;
     padding: 18px 20px;
+  }
+
+  .topbarMinimal {
+    min-height: 64px;
+    display: flex;
+    padding: 10px 20px;
+    background: rgb(247 248 247 / 92%);
+    border-bottom: 1px solid var(--color-border);
+    backdrop-filter: blur(14px);
+  }
+
+  .topbarMinimal .titleArea {
+    display: flex;
+  }
+
+  .topbarMinimal .topbarActions {
+    display: none;
   }
 
   .greetingLine h1 {

@@ -105,6 +105,36 @@ Validação pós-correção:
 
 final result: passed
 
+### Iteração 7 — adaptação às referências de comunidade e calendário (aprovada)
+
+Fontes visuais recebidas nesta revisão:
+
+- `C:\Users\wesle\.codex\attachments\f18af107-5249-4e3e-9415-874f63cab769\pasted-text.txt` — comunidade MSD com navegação de canais, cabeçalho contextual e três regiões;
+- `C:\Users\wesle\.codex\attachments\73badfdb-06ad-43c2-81d1-d0363654247d\pasted-text.txt` — calendário mensal com cabeçalho de página, navegação e agenda lateral.
+
+Problemas encontrados na comparação:
+
+- [P1] O shell repetia `Área de grupos`/`Área acadêmica` acima de páginas que já possuíam cabeçalho contextual próprio, criando uma hierarquia duplicada;
+- [P2] A comunidade ficava visualmente mais distante da referência quando o topbar global competia com o título do grupo;
+- [P2] A busca global precisava ser discreta e acionada sob demanda, sem dominar o cabeçalho.
+
+Correções aplicadas:
+
+- páginas de calendário e comunidade passaram a usar um shell mínimo no desktop; seus cabeçalhos próprios agora são a primeira hierarquia visual;
+- em mobile, o shell mínimo mantém somente o menu, evitando repetir títulos e liberando espaço para o conteúdo;
+- comunidade preserva a composição de canais + conversa + contexto, com composer fixado e modais de participantes/organizador;
+- calendário preserva a visão mensal, navegação por mês e agenda por data, com cards de próximas datas;
+- páginas gerais continuam com topbar contextual e busca compacta expansível.
+
+Validação pós-correção:
+
+- comunidade em 1265 × 800 e 390 × 844 ficou alinhada ao padrão visual recebido, sem título duplicado;
+- calendário em 1265 × 800 inicia diretamente no cabeçalho `Calendário`, com a agenda mensal e lateral em primeiro plano;
+- aba de comunidade carregou sem erros de console em uma aba nova; mobile não apresentou overflow horizontal;
+- lint, typecheck, testes (6/6) e build passaram.
+
+final result: passed
+
 ### Iteração 5 — comunidade com padrão de canais (aprovada)
 
 - [P1] A comunidade estava organizada como uma sequência de chips e uma lista de posts sem separação clara entre canais, conversa e contexto do grupo. Isso deixava o chat visualmente solto e diferente da referência inspirada no Discord.

@@ -18,6 +18,8 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const pathname = usePathname();
   const isHome = pathname === "/inicio";
+  const isStandalonePage = pathname === "/calendario" || pathname.startsWith("/grupos/comunidade");
+  const showUtilityActions = !isStandalonePage;
   const canCreateGroup = pathname === "/inicio" || pathname === "/grupos";
   const pageContext = isHome
     ? { title: "Olá, Lucas", subtitle: "Acompanhe suas disciplinas e próximos encontros" }
@@ -36,7 +38,7 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
   }
 
   return (
-    <header className={styles.topbar}>
+    <header className={`${styles.topbar} ${isStandalonePage ? styles.topbarMinimal : ""}`}>
       <div className={styles.titleArea}>
         <button
           aria-controls="navegacao-principal"
@@ -48,17 +50,17 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
         >
           <List aria-hidden size={24} />
         </button>
-        <div>
+        {!isStandalonePage ? <div>
           <div className={styles.greetingLine}>
             <h1>{pageContext.title}</h1>
             {isHome ? <span>Dados simulados</span> : null}
           </div>
           <p>{pageContext.subtitle}</p>
-        </div>
+        </div> : null}
       </div>
 
       <div className={styles.topbarActions}>
-        {isSearchOpen ? (
+        {showUtilityActions && isSearchOpen ? (
           <form className={styles.search} onSubmit={handleSearch} role="search">
             <label className="sr-only" htmlFor="dashboard-search">
               Buscar no nexoAula
@@ -75,21 +77,21 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
               <X aria-hidden size={16} />
             </button>
           </form>
-        ) : (
+        ) : showUtilityActions ? (
           <button aria-expanded={isSearchOpen} aria-label="Abrir busca global" className={styles.searchTrigger} onClick={() => setIsSearchOpen(true)} type="button">
             <MagnifyingGlass aria-hidden size={18} />
             <span>Buscar</span>
             <kbd>⌘ K</kbd>
           </button>
-        )}
-        <button
+        ) : null}
+        {showUtilityActions ? <button
           aria-label="Ver notificações"
           className={styles.iconButton}
           onClick={() => setFeedback("Você não tem novas notificações nesta demonstração.")}
           type="button"
         >
           <Bell aria-hidden size={21} />
-        </button>
+        </button> : null}
         {canCreateGroup ? (
           <Link
             aria-label="Criar grupo"
