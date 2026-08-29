@@ -6,9 +6,10 @@ import { useState } from "react";
 
 import styles from "./Field.module.css";
 
-type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
+type FieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "id"> & {
   error?: string;
   hint?: string;
+  id: string;
   label: string;
 };
 

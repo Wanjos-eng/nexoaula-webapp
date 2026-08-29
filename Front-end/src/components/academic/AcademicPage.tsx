@@ -26,9 +26,9 @@ const calendarEvents: Record<string, { title: string; type: "Aula" | "Encontro";
 };
 
 const disciplines = [
-  { name: "Modelagem e Simulação Discreta", professor: "Brauliro Gonçalves Leal", progress: 45, schedule: "Seg e Qua, 14h–16h", lessons: "2 aulas realizadas", pending: "1 conteúdo pendente", absences: "Nenhuma ausência", available: true },
-  { name: "Engenharia de Software II", professor: "Ana Carolina Mota", progress: 62, schedule: "Ter e Qui, 10h–12h", lessons: "4 aulas realizadas", pending: "0 conteúdos pendentes", absences: "Nenhuma ausência", available: false },
-  { name: "Banco de Dados Avançado", professor: "Ricardo Souza", progress: 30, schedule: "Sex, 8h–10h", lessons: "1 aula realizada", pending: "2 conteúdos pendentes", absences: "Nenhuma ausência", available: false },
+  { id: "modelagem-simulacao-discreta", name: "Modelagem e Simulação Discreta", professor: "Brauliro Gonçalves Leal", progress: 45, schedule: "Seg e Qua, 14h–16h", lessons: "2 aulas realizadas", pending: "1 conteúdo pendente", absences: "Nenhuma ausência", available: true },
+  { id: "engenharia-software-ii", name: "Engenharia de Software II", professor: "Ana Carolina Mota", progress: 62, schedule: "Ter e Qui, 10h–12h", lessons: "4 aulas realizadas", pending: "0 conteúdos pendentes", absences: "Nenhuma ausência", available: false },
+  { id: "banco-dados-avancado", name: "Banco de Dados Avançado", professor: "Ricardo Souza", progress: 30, schedule: "Sex, 8h–10h", lessons: "1 aula realizada", pending: "2 conteúdos pendentes", absences: "Nenhuma ausência", available: false },
 ];
 
 export function AcademicPage({ variant }: AcademicPageProps) {
@@ -70,7 +70,7 @@ type Discipline = (typeof disciplines)[number];
 function DisciplineTile({ discipline, onUnavailable }: { discipline: Discipline; onUnavailable: () => void }) {
   const tileContent = <>
     <div className={styles.tileTop}><span className={styles.termBadge}>C8 · 2026.2</span><strong>{discipline.progress}%</strong></div>
-    <h3 id={`discipline-${discipline.progress}`}>{discipline.name}</h3>
+    <h3 id={`discipline-${discipline.id}`}>{discipline.name}</h3>
     <p className={styles.tileProfessor}>Prof. {discipline.professor}</p>
     <div aria-label={`Progresso: ${discipline.progress}%`} aria-valuemax={100} aria-valuemin={0} aria-valuenow={discipline.progress} className={styles.tileProgress} role="progressbar"><span style={{ width: `${discipline.progress}%` }} /></div>
     <ul className={styles.tileMetrics}>
@@ -82,7 +82,7 @@ function DisciplineTile({ discipline, onUnavailable }: { discipline: Discipline;
     <div className={styles.tileActions}>{discipline.available ? <><Link className={styles.outlineButton} href="/disciplinas/modelagem-simulacao">Ver notas</Link><Link className={styles.primaryButton} href="/disciplinas/modelagem-simulacao">Abrir disciplina</Link></> : <><button className={styles.outlineButton} onClick={onUnavailable} type="button">Ver notas</button><button className={styles.primaryButton} onClick={onUnavailable} type="button">Abrir disciplina</button></>}</div>
   </>;
 
-  return <article aria-labelledby={`discipline-${discipline.progress}`} className={styles.disciplineTile}>{tileContent}</article>;
+  return <article aria-labelledby={`discipline-${discipline.id}`} className={styles.disciplineTile}>{tileContent}</article>;
 }
 
 function CalendarView() {
@@ -98,7 +98,8 @@ function CalendarView() {
   }
 
   function goToToday() {
-    const today = new Date(2026, 7, 28);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     setMonth(new Date(today.getFullYear(), today.getMonth(), 1));
     setSelectedDate(today);
   }

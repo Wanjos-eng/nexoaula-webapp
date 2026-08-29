@@ -158,7 +158,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         {isSignup ? (
           <div className={styles.terms} id="termos">
             <label className={styles.checkboxLabel}>
-              <input aria-describedby="terms-error" name="terms" type="checkbox" />
+              <input aria-describedby={errors.terms ? "terms-error" : undefined} name="terms" type="checkbox" />
               <span>
                 Li e concordo com os <a href="#termos">Termos de Uso</a> e a{" "}
                 <a href="#termos">Política de Privacidade</a>.
