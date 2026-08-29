@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
-import { AcademicPage } from "@/components/academic/AcademicPage";
+import { DisciplineDetailPage } from "@/components/discipline/DisciplineDetailPage";
 
 export const metadata: Metadata = { title: "Disciplinas" };
 
 export default function DisciplinasPage() {
-  return <AcademicPage variant="disciplines" />;
+  return <DisciplineDetailPage />;
 }

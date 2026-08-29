@@ -30,7 +30,7 @@ const navigation = [
   { href: "/disciplinas", icon: BookOpenText, label: "Disciplinas" },
   { href: "/calendario", icon: CalendarDots, label: "Calendário" },
   { href: "/grupos", icon: UsersThree, label: "Grupos" },
-  { href: "/progresso", icon: ChartLineUp, label: "Progresso" },
+  { href: "/progresso", icon: ChartLineUp, label: "Meu progresso" },
 ];
 
 export function Sidebar({ closeButtonRef, isOpen, mode, onClose, onModeChange }: SidebarProps) {
@@ -94,10 +94,12 @@ export function Sidebar({ closeButtonRef, isOpen, mode, onClose, onModeChange }:
         </nav>
 
         <div className={styles.profile}>
-          <div aria-hidden className={styles.avatarFallback}>
-            LA
-          </div>
-          <span className={styles.profileName}>Lucas Andrade</span>
+          <Link className={styles.profileLink} href="/perfil" onClick={onClose}>
+            <div aria-hidden className={styles.avatarFallback}>
+              LA
+            </div>
+            <span className={styles.profileName}>Lucas Andrade</span>
+          </Link>
           <button aria-expanded={isSettingsOpen} aria-label="Abrir configurações da barra lateral" className={styles.iconButton} onClick={() => setIsSettingsOpen((open) => !open)} type="button">
             <GearSix aria-hidden size={21} />
           </button>

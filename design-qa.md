@@ -245,3 +245,46 @@ Validação pós-correção:
 - console da aba de QA sem erros; lint, typecheck, testes (6/6) e build passaram.
 
 final result: passed
+
+### Iteração 10 — perfil e detalhe de disciplina alinhados ao Figma (aprovada)
+
+Referências comparadas nesta revisão:
+
+- `tmp/audit-profile-discipline/01-figma-profile.png` — frame `perfil` (`165:101`), capturado no arquivo NexoAula;
+- `tmp/audit-profile-discipline/02-figma-discipline.png` — frame `detalhes-disciplina` (`165:432`), capturado no arquivo NexoAula;
+- `tmp/audit-profile-discipline/local-profile-final.png` e `local-discipline-final.png` — implementação em 1265 × 800;
+- `tmp/audit-profile-discipline/local-profile-mobile-final.png` e `local-discipline-mobile-final.png` — implementação em 390 × 844.
+
+Diferenças encontradas:
+
+- [P1] Não existia uma rota de Perfil, embora o arquivo de referência apresentasse dados pessoais, desempenho acadêmico e preferências;
+- [P1] `Disciplinas` era somente um cartão-resumo, enquanto a referência apresentava detalhe da disciplina, progresso, abas, notas e próximas atividades;
+- [P2] o topbar contextual repetia `Área acadêmica` antes das telas que já tinham cabeçalho próprio;
+- [P3] a navegação usava `Progresso`, enquanto a referência usa `Meu progresso`.
+
+Correções aplicadas:
+
+- criada a rota `/perfil`, acessível pelo nome do usuário na sidebar, com informações pessoais, IRA, créditos, disciplinas em andamento, previsão de formatura, notificações, tema e idioma;
+- `/disciplinas` passou a usar detalhe acadêmico com abas funcionais `Ementa`, `Materiais`, `Notas` e `Atividades`, tabela de avaliações e agenda lateral;
+- Perfil, Disciplinas e Progresso agora usam shell mínimo, deixando o cabeçalho da própria tela como primeira hierarquia;
+- `Meu progresso` foi alinhado ao rótulo da referência e o avatar da sidebar passou a ser um link de perfil;
+- dados continuam explicitamente simulados; nenhuma integração de API ou regra funcional foi inventada.
+
+Revisão geral:
+
+- `/calendario`, `/grupos` e `/grupos/novo` estão consistentes com as correções visuais recentes e sem problemas estruturais críticos;
+- `/inicio`, `/login` e `/cadastro` mantêm a composição já validada;
+- `/progresso` agora elimina o cabeçalho duplicado, mas ainda é mais simples que a referência Figma: faltam os três indicadores, gráfico de evolução, conquistas e tabela detalhada por disciplina;
+- a diferença de fotografia no perfil foi mantida como fallback de iniciais (`LA`), pois não há avatar local oficial no repositório.
+
+Validação pós-correção:
+
+- Perfil e Disciplinas renderizados em desktop e mobile sem overflow horizontal;
+- abas da disciplina, toggle de notificações e seleção de tema testados no navegador;
+- abas novas carregaram sem erros de console; lint, typecheck, testes (6/6) e build passaram.
+
+Limitação de captura:
+
+- a chamada estruturada do Figma atingiu o limite do plano Starter; as referências foram capturadas pela sessão Browser autenticada, sem editar o arquivo Figma.
+
+final result: passed
