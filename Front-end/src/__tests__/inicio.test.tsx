@@ -11,5 +11,11 @@ describe("InicioPage", () => {
     expect(screen.getByRole("heading", { name: "Minhas disciplinas" })).toBeDefined();
     expect(screen.getByRole("heading", { name: "Meus grupos de estudo" })).toBeDefined();
     expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("45");
+    expect(screen.getByRole("link", { name: "Descobrir grupos" }).getAttribute("href")).toBe(
+      "/grupos?view=discover",
+    );
+    expect(screen.getByRole("link", { name: "Abrir grupo" }).getAttribute("href")).toBe(
+      "/grupos/comunidade-msd-c8",
+    );
   });
 });
