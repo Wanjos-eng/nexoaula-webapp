@@ -106,3 +106,4 @@ Não faça commits diretos na `main`. Use uma branch, submeta PR vinculado à is
 aguarde a revisão exigida. Nunca versione senhas, tokens ou arquivos `.env`;
 somente exemplos sem segredos. Consulte [CONTRIBUTING.md](CONTRIBUTING.md).
 
+* 📚 **[Documentação de Arquitetura e Banco de Dados](docs/architecture/README.md)**
