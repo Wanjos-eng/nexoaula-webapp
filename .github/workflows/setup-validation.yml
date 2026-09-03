@@ -1,0 +1,68 @@
+name: Environment setup validation
+
+on:
+  pull_request:
+    paths:
+      - 'setup.ps1'
+      - 'setup.sh'
+      - 'scripts/validate_setup.py'
+      - 'Back-end/apps/api/requirements.txt'
+      - 'Front-end/package.json'
+      - 'Front-end/package-lock.json'
+      - '.github/workflows/setup-validation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'setup.ps1'
+      - 'setup.sh'
+      - 'scripts/validate_setup.py'
+      - 'Back-end/apps/api/requirements.txt'
+      - 'Front-end/package.json'
+      - 'Front-end/package-lock.json'
+      - '.github/workflows/setup-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    name: Setup ${{ matrix.os }} / ${{ matrix.shell }} / Node ${{ matrix.node }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: '22.13.0'
+            shell: bash
+          - os: ubuntu-latest
+            node: '24'
+            shell: bash
+          - os: windows-latest
+            node: '22.13.0'
+            shell: powershell
+          - os: windows-latest
+            node: '24'
+            shell: powershell
+          - os: windows-latest
+            node: '24'
+            shell: bash
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Preflight and two real installs in an isolated repository
+        run: python scripts/validate_setup.py --shell ${{ matrix.shell }} --report setup-validation.json
+      - name: Store reproducibility evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: setup-${{ matrix.os }}-${{ matrix.shell }}-node-${{ matrix.node }}
+          path: setup-validation.json
+          if-no-files-found: error
+          retention-days: 14
