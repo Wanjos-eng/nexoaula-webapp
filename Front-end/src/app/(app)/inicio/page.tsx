@@ -141,7 +141,7 @@ export default function InicioPage() {
                   <h3>{lesson.title}</h3>
                   <span className={styles.statusBadge}>Programada</span>
                 </div>
-                <Link className={styles.secondaryAction} href="#calendario">
+                <Link className={styles.secondaryAction} href="/calendario">
                   Detalhes da aula
                 </Link>
               </article>
@@ -165,15 +165,18 @@ export default function InicioPage() {
               <strong>Modelo Analítico de Sistemas de Fila M/M/1 está pendente</strong>
             </li>
           </ul>
-          <Link href="#calendario">
+          <Link href="/calendario">
             Detalhes da alteração <ArrowRight aria-hidden size={16} />
           </Link>
         </section>
 
         <section aria-labelledby="grupos-title" id="grupos">
-          <h2 className={styles.sectionTitle} id="grupos-title">
-            Meus grupos de estudo
-          </h2>
+          <div className={styles.sectionHeadingRow}>
+            <h2 className={styles.sectionTitle} id="grupos-title">
+              Meus grupos de estudo
+            </h2>
+            <Link href="/grupos?view=discover">Descobrir grupos</Link>
+          </div>
           <article className={`${styles.card} ${styles.groupCard}`}>
             <div className={styles.groupHeading}>
               <h3>Comunidade MSD — C8</h3>
@@ -196,15 +199,15 @@ export default function InicioPage() {
             </div>
             <div className={styles.topics}>
               <h4>Assuntos em discussão</h4>
-              <Link href="#grupos"># geral</Link>
-              <Link href="#grupos"># filas-mm1</Link>
-              <Link href="#grupos"># modelo-analitico</Link>
+              <Link href="/grupos/comunidade-msd-c8"># geral</Link>
+              <Link href="/grupos/comunidade-msd-c8"># filas-mm1</Link>
+              <Link href="/grupos/comunidade-msd-c8"># modelo-analitico</Link>
             </div>
             <div className={styles.groupActions}>
-              <Link className={styles.primaryAction} href="#grupos">
+              <Link className={styles.primaryAction} href="/grupos/comunidade-msd-c8">
                 Abrir grupo
               </Link>
-              <Link className={styles.secondaryAction} href="#grupos">
+              <Link className={styles.secondaryAction} href="/grupos/comunidade-msd-c8#encontro">
                 Detalhes do encontro
               </Link>
             </div>
