@@ -4,7 +4,7 @@ import { CheckCircle, Info, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -22,9 +22,21 @@ export function LoginForm() {
   const [errors, setErrors] = useState<LoginFormErrors>({});
   const [banner, setBanner] = useState<BannerState>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (timeoutRef.current !== null) return;
+    setBanner(null);
 
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -38,10 +50,10 @@ export function LoginForm() {
     }
 
     setIsLoading(true);
-    setBanner(null);
 
     // Simulação de submissão assíncrona com feedback visual
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = null;
       setIsLoading(false);
       setBanner({
         type: "success",
