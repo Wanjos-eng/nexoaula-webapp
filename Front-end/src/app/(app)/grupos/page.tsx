@@ -9,11 +9,7 @@ export const metadata: Metadata = {
   description: "Encontre e acompanhe grupos de estudo do nexoAula.",
 };
 
-type GroupsPageProps = {
-  searchParams: Promise<{ state?: string | string[]; view?: string | string[] }>;
-};
-
-export default async function GruposPage({ searchParams }: GroupsPageProps) {
+export default async function GruposPage({ searchParams }: PageProps<"/grupos">) {
   const query = await searchParams;
   const view = Array.isArray(query.view) ? query.view[0] : query.view;
   const state = Array.isArray(query.state) ? query.state[0] : query.state;
