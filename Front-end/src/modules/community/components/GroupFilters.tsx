@@ -14,7 +14,7 @@ type GroupFiltersProps = {
 
 export function GroupFilters({ cohorts, disciplines, filters, onChange, topics }: GroupFiltersProps) {
   const hasActiveFilters =
-    filters.query.length > 0 ||
+    filters.query.trim().length > 0 ||
     filters.discipline !== ALL_FILTERS ||
     filters.cohort !== ALL_FILTERS ||
     filters.topic !== ALL_FILTERS;

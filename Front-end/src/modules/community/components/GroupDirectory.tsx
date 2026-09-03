@@ -2,10 +2,23 @@
 
 import { MagnifyingGlass, Plus, WarningCircle, X } from "@phosphor-icons/react";
 import Link from "next/link";
-import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { ALL_FILTERS, filterGroups, groupCohort, uniqueSorted } from "../filterGroups";
-import type { DirectoryStatus, GroupFilters as Filters, StudyGroup } from "../types";
+import type {
+  DirectoryStatus,
+  GroupFilters as Filters,
+  OwnedStudyGroup,
+  StudyGroup,
+} from "../types";
 import { GroupCard } from "./GroupCard";
 import { GroupFilters } from "./GroupFilters";
 import styles from "./GroupDirectory.module.css";
@@ -16,8 +29,17 @@ type GroupDirectoryProps = {
   groups: StudyGroup[];
   initialStatus?: DirectoryStatus;
   initialView?: DirectoryView;
-  myGroups: StudyGroup[];
+  myGroups: OwnedStudyGroup[];
 };
+
+const FOCUSABLE_ELEMENT_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
 
 const EMPTY_FILTERS: Filters = {
   query: "",
@@ -37,6 +59,7 @@ export function GroupDirectory({
   const [status, setStatus] = useState<DirectoryStatus>(initialStatus);
   const [preview, setPreview] = useState<StudyGroup | null>(null);
   const closeDialogRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
   const previewTriggerRef = useRef<HTMLElement | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -56,14 +79,43 @@ export function GroupDirectory({
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    function closeOnEscape(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") closePreview();
+    function handleDialogKeys(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        closePreview();
+        return;
+      }
+
+      const dialog = dialogRef.current;
+      if (event.key !== "Tab" || !dialog) return;
+
+      const focusableElements = Array.from(
+        dialog.querySelectorAll<HTMLElement>(FOCUSABLE_ELEMENT_SELECTOR),
+      );
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements.at(-1);
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      const focusLeftDialog = !activeElement || !dialog.contains(activeElement);
+
+      if (event.shiftKey && (activeElement === firstElement || focusLeftDialog)) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && (activeElement === lastElement || focusLeftDialog)) {
+        event.preventDefault();
+        firstElement.focus();
+      }
     }
 
-    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("keydown", handleDialogKeys);
     return () => {
       document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("keydown", handleDialogKeys);
     };
   }, [closePreview, preview]);
 
@@ -101,9 +153,18 @@ export function GroupDirectory({
           <p>Continue nos seus grupos ou descubra comunidades pela disciplina, turma e assunto.</p>
         </div>
         <div aria-label="Resumo de grupos" className={styles.summary}>
-          <p><strong>{myGroups.length}</strong><span>grupo ativo</span></p>
-          <p><strong>{groups.length}</strong><span>comunidades</span></p>
-          <p><strong>{disciplines.length}</strong><span>disciplinas</span></p>
+          <p>
+            <strong>{myGroups.length}</strong>
+            <span>{countLabel(myGroups.length, "grupo ativo", "grupos ativos")}</span>
+          </p>
+          <p>
+            <strong>{groups.length}</strong>
+            <span>{countLabel(groups.length, "comunidade", "comunidades")}</span>
+          </p>
+          <p>
+            <strong>{disciplines.length}</strong>
+            <span>{countLabel(disciplines.length, "disciplina", "disciplinas")}</span>
+          </p>
         </div>
       </div>
 
@@ -182,7 +243,7 @@ export function GroupDirectory({
               {filteredGroups.length ? (
                 <div className={styles.cardGrid}>
                   {filteredGroups.map((group) => (
-                    <GroupCard group={group} key={group.id} onPreview={openPreview} />
+                    <GroupCard group={group} key={group.id} onPreview={openPreview} variant="discover" />
                   ))}
                 </div>
               ) : (
@@ -204,7 +265,9 @@ export function GroupDirectory({
             aria-modal="true"
             className={styles.dialog}
             onClick={(event) => event.stopPropagation()}
+            ref={dialogRef}
             role="dialog"
+            tabIndex={-1}
           >
             <button
               aria-label="Fechar detalhes do grupo"
@@ -231,6 +294,10 @@ export function GroupDirectory({
       ) : null}
     </div>
   );
+}
+
+function countLabel(count: number, singular: string, plural: string) {
+  return count === 1 ? singular : plural;
 }
 
 function EmptyState({ action, description, title }: { action: ReactNode; description: string; title: string }) {

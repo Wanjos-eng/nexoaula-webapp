@@ -6,17 +6,33 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 
-import type { StudyGroup } from "../types";
+import type { OwnedStudyGroup, StudyGroup } from "../types";
 import styles from "./GroupDirectory.module.css";
 
-type GroupCardProps = {
-  group: StudyGroup;
-  onPreview?: (group: StudyGroup) => void;
-  variant?: "owned" | "discover";
+type OwnedGroupCardProps = {
+  group: OwnedStudyGroup;
+  onPreview?: never;
+  variant: "owned";
 };
 
-export function GroupCard({ group, onPreview, variant = "discover" }: GroupCardProps) {
+type DiscoverGroupCardProps = {
+  group: StudyGroup;
+  onPreview: (group: StudyGroup) => void;
+  variant: "discover";
+};
+
+type GroupCardProps = DiscoverGroupCardProps | OwnedGroupCardProps;
+
+export function GroupCard(props: GroupCardProps) {
+  const { group, variant } = props;
   const entryLabel = group.entryMode === "open" ? "Entrada livre" : "Aprovação necessária";
+  const badgeLabel = props.variant === "owned" ? props.group.role ?? "Participante" : entryLabel;
+  const badgeClassName =
+    variant === "owned"
+      ? styles.roleBadge
+      : group.entryMode === "open"
+        ? styles.openBadge
+        : styles.approvalBadge;
 
   return (
     <article className={`${styles.groupCard} ${variant === "owned" ? styles.ownedCard : ""}`}>
@@ -28,9 +44,7 @@ export function GroupCard({ group, onPreview, variant = "discover" }: GroupCardP
           <p>{group.discipline}</p>
           <h3>{group.name}</h3>
         </div>
-        <span className={group.entryMode === "open" ? styles.openBadge : styles.approvalBadge}>
-          {variant === "owned" ? group.role : entryLabel}
-        </span>
+        <span className={badgeClassName}>{badgeLabel}</span>
       </div>
 
       <p className={styles.description}>{group.description}</p>
@@ -62,11 +76,11 @@ export function GroupCard({ group, onPreview, variant = "discover" }: GroupCardP
           <Link className={styles.cardAction} href={group.href}>
             Abrir grupo <ArrowRight aria-hidden size={16} />
           </Link>
-        ) : (
-          <button className={styles.cardAction} onClick={() => onPreview?.(group)} type="button">
+        ) : props.variant === "discover" ? (
+          <button className={styles.cardAction} onClick={() => props.onPreview(group)} type="button">
             Ver detalhes <ArrowRight aria-hidden size={16} />
           </button>
-        )}
+        ) : null}
       </div>
     </article>
   );

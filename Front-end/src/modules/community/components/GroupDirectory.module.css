@@ -181,7 +181,8 @@
 }
 
 .openBadge,
-.approvalBadge {
+.approvalBadge,
+.roleBadge {
   padding: 5px 7px;
   color: var(--color-green);
   background: var(--color-surface-soft);
@@ -658,7 +659,8 @@
   }
 
   .openBadge,
-  .approvalBadge {
+  .approvalBadge,
+  .roleBadge {
     grid-column: 2;
     width: max-content;
   }

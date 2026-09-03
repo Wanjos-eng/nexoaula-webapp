@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -57,6 +57,51 @@ describe("GroupDirectory", () => {
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("mantém o foco no diálogo e o devolve ao gatilho ao fechar", async () => {
+    renderDirectory();
+    const previewTrigger = screen.getAllByRole("button", { name: "Ver detalhes" })[0];
+
+    previewTrigger.focus();
+    fireEvent.click(previewTrigger);
+
+    const dialog = screen.getByRole("dialog");
+    const closeButton = within(dialog).getByRole("button", { name: "Fechar detalhes do grupo" });
+    const backButton = within(dialog).getByRole("button", { name: "Voltar à descoberta" });
+
+    expect(document.activeElement).toBe(closeButton);
+
+    backButton.focus();
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(document.activeElement).toBe(closeButton);
+
+    closeButton.focus();
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(backButton);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(document.activeElement).toBe(previewTrigger));
+  });
+
+  it("ignora espaços em branco ao identificar filtros ativos", () => {
+    renderDirectory();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Buscar grupo" }), {
+      target: { value: "   " },
+    });
+
+    expect(screen.queryByRole("button", { name: "Limpar filtros" })).toBeNull();
+    expect(screen.getByRole("status").textContent).toContain("5 comunidades encontradas");
+  });
+
+  it("usa singular e plural corretos no resumo", () => {
+    renderDirectory({ groups: [communityGroups[0]], myGroups: [] });
+    const summary = screen.getByLabelText("Resumo de grupos");
+
+    expect(within(summary).getByText("grupos ativos")).toBeDefined();
+    expect(within(summary).getByText("comunidade")).toBeDefined();
+    expect(within(summary).getByText("disciplina")).toBeDefined();
   });
 
   it("suporta navegação por teclado entre as abas", () => {

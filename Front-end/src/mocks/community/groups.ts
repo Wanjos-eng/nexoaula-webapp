@@ -1,6 +1,6 @@
-import type { StudyGroup } from "@/modules/community/types";
+import type { OwnedStudyGroup, StudyGroup } from "@/modules/community/types";
 
-export const myStudyGroups: StudyGroup[] = [
+export const myStudyGroups: OwnedStudyGroup[] = [
   {
     id: "comunidade-msd-c8",
     name: "Comunidade MSD — C8",

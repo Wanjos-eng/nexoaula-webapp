@@ -1,4 +1,5 @@
 export type GroupEntryMode = "open" | "approval";
+export type StudyGroupRole = "Organizador" | "Tutor" | "Participante";
 
 export type StudyGroup = {
   id: string;
@@ -13,8 +14,11 @@ export type StudyGroup = {
   location: string;
   entryMode: GroupEntryMode;
   nextMeeting?: string;
-  role?: "Organizador" | "Tutor" | "Participante";
   href?: string;
+};
+
+export type OwnedStudyGroup = StudyGroup & {
+  role: StudyGroupRole;
 };
 
 export type GroupFilters = {
