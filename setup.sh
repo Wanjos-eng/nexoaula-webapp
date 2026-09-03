@@ -14,9 +14,13 @@ trap 'printf "Setup interrompido: comando falhou (linha %s). Consulte docs/envir
 require_tool() {
     command -v "$1" >/dev/null 2>&1 || fail "Ferramenta ausente: $1. $2"
 }
-case "${OSTYPE:-}" in
-    linux*|msys*) ;;
-    *) fail 'Sistema nao validado. Use Linux ou Git Bash no Windows; veja docs/environment/setup.md.' ;;
+# Git Bash recente pode informar OSTYPE=cygwin. Detecte o runtime por uname,
+# sem confundir o Git Bash (MINGW/MSYS) com uma instalacao Cygwin independente.
+runtime="$(uname -s)"
+case "$runtime" in
+    Linux*) windows_shell=false ;;
+    MINGW*|MSYS*) windows_shell=true ;;
+    *) fail "Sistema nao validado: $runtime. Use Linux ou Git Bash no Windows; veja docs/environment/setup.md." ;;
 esac
 
 while (($#)); do
@@ -44,10 +48,11 @@ if [[ "$target" != frontend ]]; then
     [[ -f "$api_path/requirements.txt" ]] || fail 'Requirements da API ausente. Use um clone completo e atualizado com Back-end/apps/api/requirements.txt.'
     assert_python311 "$python_command"
     venv_path="$api_path/.venv"
-    case "${OSTYPE:-}" in
-        msys*|cygwin*) venv_python="$venv_path/Scripts/python.exe" ;;
-        *) venv_python="$venv_path/bin/python" ;;
-    esac
+    if "$windows_shell"; then
+        venv_python="$venv_path/Scripts/python.exe"
+    else
+        venv_python="$venv_path/bin/python"
+    fi
     if [[ -e "$venv_path" ]]; then assert_python311 "$venv_python"; fi
 fi
 if [[ "$target" != backend ]]; then

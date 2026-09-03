@@ -44,6 +44,8 @@ def main():
         parser.error("Use Python 3.11 to validate the supported setup.")
 
     if args.shell == "powershell":
+        if os.name != "nt":
+            parser.error("PowerShell validation requires Windows.")
         shell = Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"
     elif os.name == "nt":
         shell = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe"

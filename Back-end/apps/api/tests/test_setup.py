@@ -69,6 +69,13 @@ def test_at_least_one_setup_shell_is_available():
     assert SHELLS, "Instale Bash ou execute no Windows com PowerShell."
 
 
+@pytest.mark.parametrize("shell", [item for item in SHELLS if item[0] == "bash"])
+def test_bash_platform_detection_does_not_depend_on_ostype(shell, setup_repo):
+    result = run_setup(shell, setup_repo, extra_env={"OSTYPE": "cygwin"})
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (setup_repo / "Back-end/apps/api/.venv/pyvenv.cfg").is_file()
+
+
 @pytest.mark.parametrize("shell", SHELLS, ids=[item[0] for item in SHELLS])
 def test_check_from_another_directory_does_not_install(shell, setup_repo):
     result = run_setup(shell, setup_repo, check=True)
