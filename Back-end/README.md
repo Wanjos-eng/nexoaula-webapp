@@ -1,6 +1,6 @@
-# Back-end
+# Backend do nexoAula
 
-Espaço reservado para o backend do nexoAula, definido em FastAPI (Python).
+A aplicação FastAPI e sua fonte única de dependências estão em
+[`apps/api`](apps/api/README.md). Execute o setup do monorepositório pela raiz.
 
-O framework ainda não foi inicializado e nenhuma dependência foi instalada.
-
+Não há um segundo `requirements.txt` neste diretório.

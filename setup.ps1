@@ -1,74 +1,88 @@
-$ErrorActionPreference = "Stop"
-
-Write-Host "=== [Setup nexoAula] Iniciando verificação e configuração do ambiente ===" -ForegroundColor Cyan
-
-# 1. Verificar/Instalar Python 3.11
-Write-Host "--> Verificando Python 3.11..." -ForegroundColor Yellow
-if (-not (Get-Command python -ErrorAction SilentlyContinue) -or ((python --version 2>&1) -notmatch "3\.11")) {
-    Write-Host "--> Instalando Python 3.11 via winget..." -ForegroundColor Green
-    winget install -e --id Python.Python.3.11 --accept-package-agreements --accept-source-agreements
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-} else {
-    Write-Host "--> Python 3.11 já instalado." -ForegroundColor Green
-}
-
-# 2. Verificar/Instalar Node.js 22.13 LTS ou Node.js 24.x
-Write-Host "--> Verificando Node.js 22.13 LTS ou Node.js 24.x..." -ForegroundColor Yellow
-$nodeVersion = if (Get-Command node -ErrorAction SilentlyContinue) {
-    [version]((node -v).Trim().TrimStart('v'))
-} else {
-    $null
-}
-$nodeIsCompatible = $null -ne $nodeVersion -and (
-    ($nodeVersion.Major -eq 22 -and $nodeVersion -ge [version]"22.13.0") -or
-    $nodeVersion.Major -eq 24
+[CmdletBinding()]
+param(
+    [ValidateSet('All', 'Backend', 'Frontend')]
+    [string]$Target = 'All',
+    [string]$PythonExecutable = '',
+    [switch]$Check
 )
 
-if (-not $nodeIsCompatible) {
-    Write-Host "--> Instalando Node.js LTS via winget..." -ForegroundColor Green
-    winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-} else {
-    Write-Host "--> Node.js compatível já instalado ($(node -v))." -ForegroundColor Green
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+$repoRoot = $PSScriptRoot
+$apiPath = Join-Path $repoRoot 'Back-end/apps/api'
+$frontendPath = Join-Path $repoRoot 'Front-end'
+$setupBackend = $Target -ne 'Frontend'
+$setupFrontend = $Target -ne 'Backend'
+
+function Invoke-Checked {
+    param([string]$Executable, [string[]]$Arguments)
+    & $Executable @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Comando '$Executable' falhou (exit $LASTEXITCODE). Setup interrompido."
+    }
 }
 
-# 3. Configuração do Back-end
-Write-Host "--> Configurando ambiente do Back-end..." -ForegroundColor Yellow
-if (Test-Path "Back-end") {
-    Set-Location "Back-end"
-    if (-not (Test-Path "venv")) {
-        python -m venv venv
-    }
-    .\venv\Scripts\Activate.ps1
-    python -m pip install --upgrade pip
-    if (Test-Path "requirements.txt") {
-        pip install -r requirements.txt
-    }
-    deactivate
-    Set-Location ..
-} else {
-    Write-Warning "Diretório Back-end não encontrado."
+function Assert-Python311 {
+    param([string]$Executable, [string[]]$Prefix = @())
+    Invoke-Checked $Executable ($Prefix + @('-c', 'import sys; print(sys.version); sys.exit(0 if sys.version_info[:2] == (3, 11) else 1)'))
 }
 
-# 4. Configuração do Front-end
-Write-Host "--> Configurando dependências do Front-end..." -ForegroundColor Yellow
-if (Test-Path "Front-end/package.json") {
-    Push-Location "Front-end"
-    try {
-        if (Test-Path "package-lock.json") {
-            npm ci
+try {
+    # Valide todos os pre-requisitos antes de instalar qualquer dependencia.
+    if ($setupBackend) {
+        if (-not (Test-Path -LiteralPath (Join-Path $apiPath 'requirements.txt') -PathType Leaf)) {
+            throw 'Requirements da API ausente em Back-end/apps/api/requirements.txt.'
+        }
+        $pythonPrefix = @()
+        if ($PythonExecutable) {
+            $pythonCommand = $PythonExecutable
+        } elseif (Get-Command py -ErrorAction SilentlyContinue) {
+            $pythonCommand = 'py'
+            $pythonPrefix = @('-3.11')
+        } elseif (Get-Command python3.11 -ErrorAction SilentlyContinue) {
+            $pythonCommand = 'python3.11'
         } else {
-            npm install
+            $pythonCommand = 'python'
         }
-
-        if ($LASTEXITCODE -ne 0) {
-            throw "Falha ao instalar as dependências do frontend."
+        Write-Host 'Verificando Python 3.11 (use -PythonExecutable para indicar o executavel)...'
+        Assert-Python311 $pythonCommand $pythonPrefix
+        $venvPath = Join-Path $apiPath '.venv'
+        $venvPython = Join-Path $venvPath 'Scripts/python.exe'
+        if (Test-Path -LiteralPath $venvPath) {
+            # Nao reutilize silenciosamente um ambiente de outra versao.
+            Assert-Python311 $venvPython
         }
-    } finally {
-        Pop-Location
     }
-} else {
-    Write-Warning "Aplicação frontend não encontrada em Front-end."
+    if ($setupFrontend) {
+        foreach ($file in @('package.json', 'package-lock.json')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $frontendPath $file) -PathType Leaf)) {
+                throw "Arquivo obrigatorio ausente: Front-end/$file."
+            }
+        }
+        Invoke-Checked 'node' @('-e', 'const [major, minor] = process.versions.node.split(".").map(Number); if (!((major === 22 && minor >= 13) || major === 24)) { console.error("Use Node.js 22.13+ (22.x) ou 24.x."); process.exit(1); } console.log(process.version);')
+        Invoke-Checked 'npm.cmd' @('--version')
+    }
+    if ($Check) {
+        Write-Host 'Pre-requisitos verificados. Nenhuma dependencia foi instalada.'
+        exit 0
+    }
+    if ($setupBackend) {
+        if (-not (Test-Path -LiteralPath $venvPath)) {
+            Invoke-Checked $pythonCommand ($pythonPrefix + @('-m', 'venv', $venvPath))
+        }
+        Invoke-Checked $venvPython @('-m', 'pip', 'install', '-r', (Join-Path $apiPath 'requirements.txt'))
+        Invoke-Checked $venvPython @('-m', 'pip', 'check')
+    }
+    if ($setupFrontend) {
+        Push-Location -LiteralPath $frontendPath
+        try {
+            Invoke-Checked 'npm.cmd' @('ci')
+        } finally {
+            Pop-Location
+        }
+    }
+    Write-Host "Setup concluido para: $Target."
+} catch {
+    [Console]::Error.WriteLine($_.Exception.Message)
+    exit 1
 }
-
-Write-Host "=== [Setup nexoAula] Ambiente configurado com sucesso! ===" -ForegroundColor Cyan

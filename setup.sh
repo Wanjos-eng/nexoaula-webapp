@@ -1,71 +1,62 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-set -e
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+api_path="$repo_root/Back-end/apps/api"
+frontend_path="$repo_root/Front-end"
+target="all"
+python_command="${PYTHON_EXECUTABLE:-python3.11}"
+check_only=false
 
-echo "=== [Setup nexoAula] Iniciando verificação e configuração do ambiente ==="
+fail() { printf '%s\n' "$*" >&2; exit 1; }
+trap 'printf "Setup interrompido: comando falhou (linha %s).\n" "$LINENO" >&2' ERR
 
-# 1. Atualizar repositórios do sistema
-echo "--> Atualizando lista de pacotes..."
-sudo apt-get update -y
+while (($#)); do
+    case "$1" in
+        --target)
+            (($# >= 2)) || fail 'Informe all, backend ou frontend depois de --target.'
+            target="$2"; shift 2 ;;
+        --python)
+            (($# >= 2)) || fail 'Informe o executavel Python 3.11 depois de --python.'
+            python_command="$2"; shift 2 ;;
+        --check) check_only=true; shift ;;
+        *) fail "Argumento desconhecido: $1" ;;
+    esac
+done
+case "$target" in all|backend|frontend) ;; *) fail 'Target invalido: use all, backend ou frontend.' ;; esac
 
-# 2. Verificar/Instalar Python 3.11 e venv
-if ! command -v python3.11 &> /dev/null; then
-    echo "--> Python 3.11 não encontrado. Instalando..."
-    sudo apt-get install -y software-properties-common
-    sudo add-apt-repository -y ppa:deadsnakes/ppa
-    sudo apt-get update -y
-    sudo apt-get install -y python3.11 python3.11-venv python3.11-dev
-else
-    echo "--> Python 3.11 já instalado."
-fi
-
-# 3. Verificar/Instalar Node.js 22.13 LTS ou Node.js 24.x e NPM
-node_is_compatible() {
-    command -v node &> /dev/null && node -e '
-        const [major, minor] = process.versions.node.split(".").map(Number);
-        process.exit((major === 22 && minor >= 13) || major === 24 ? 0 : 1);
-    '
+assert_python311() {
+    "$1" -c 'import sys; print(sys.version); sys.exit(0 if sys.version_info[:2] == (3, 11) else 1)' ||
+        fail 'Python incompativel ou indisponivel: use Python 3.11 e indique --python se necessario.'
 }
 
-if ! node_is_compatible; then
-    echo "--> Instalando/Atualizando Node.js para a versão 22 LTS..."
-    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-    sudo apt-get install -y nodejs
-else
-    echo "--> Node.js compatível já instalado ($(node -v))."
+# Valide tudo antes de instalar; nao instale runtimes globais com sudo/winget.
+if [[ "$target" != frontend ]]; then
+    [[ -f "$api_path/requirements.txt" ]] || fail 'Requirements da API ausente.'
+    assert_python311 "$python_command"
+    venv_path="$api_path/.venv"
+    case "${OSTYPE:-}" in
+        msys*|cygwin*) venv_python="$venv_path/Scripts/python.exe" ;;
+        *) venv_python="$venv_path/bin/python" ;;
+    esac
+    if [[ -e "$venv_path" ]]; then assert_python311 "$venv_python"; fi
 fi
-
-# 4. Configuração do Back-end
-echo "--> Configurando ambiente do Back-end..."
-if [ -d "Back-end" ]; then
-    cd Back-end
-    if [ ! -d "venv" ]; then
-        python3.11 -m venv venv
-    fi
-    source venv/bin/activate
-    pip install --upgrade pip
-    if [ -f "requirements.txt" ]; then
-        pip install -r requirements.txt
-    fi
-    deactivate
-    cd ..
-else
-    echo "Aviso: Diretório Back-end não encontrado."
+if [[ "$target" != backend ]]; then
+    [[ -f "$frontend_path/package.json" && -f "$frontend_path/package-lock.json" ]] ||
+        fail 'package.json/package-lock.json do frontend ausente.'
+    node -e 'const [major, minor] = process.versions.node.split(".").map(Number); if (!((major === 22 && minor >= 13) || major === 24)) { console.error("Use Node.js 22.13+ (22.x) ou 24.x."); process.exit(1); } console.log(process.version);'
+    npm --version
 fi
-
-# 5. Configuração do Front-end
-echo "--> Configurando dependências do Front-end..."
-if [ -f "Front-end/package.json" ]; then
-    (
-        cd Front-end
-        if [ -f "package-lock.json" ]; then
-            npm ci
-        else
-            npm install
-        fi
-    )
-else
-    echo "Aviso: Aplicação frontend não encontrada em Front-end."
+if "$check_only"; then
+    printf 'Pre-requisitos verificados. Nenhuma dependencia foi instalada.\n'
+    exit 0
 fi
-
-echo "=== [Setup nexoAula] Ambiente configurado com sucesso! ==="
+if [[ "$target" != frontend ]]; then
+    if [[ ! -e "$venv_path" ]]; then "$python_command" -m venv "$venv_path"; fi
+    "$venv_python" -m pip install -r "$api_path/requirements.txt"
+    "$venv_python" -m pip check
+fi
+if [[ "$target" != backend ]]; then
+    (cd -- "$frontend_path" && npm ci)
+fi
+printf 'Setup concluido para: %s.\n' "$target"
