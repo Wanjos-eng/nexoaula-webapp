@@ -1,0 +1,2 @@
+# Preserve Bash syntax on Windows checkouts with core.autocrlf enabled.
+/setup.sh text eol=lf
