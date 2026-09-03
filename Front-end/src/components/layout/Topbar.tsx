@@ -18,7 +18,7 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const pathname = usePathname();
   const isHome = pathname === "/inicio";
-  const isStandalonePage = pathname === "/calendario" || pathname === "/disciplinas" || pathname.startsWith("/disciplinas/") || pathname === "/perfil" || pathname === "/progresso" || pathname.startsWith("/grupos/comunidade");
+  const isStandalonePage = pathname === "/calendario" || pathname === "/disciplinas" || pathname.startsWith("/disciplinas/") || pathname === "/perfil" || pathname === "/progresso" || pathname === "/grupos/novo" || pathname.startsWith("/grupos/comunidade");
   const showUtilityActions = !isStandalonePage;
   const canCreateGroup = pathname === "/inicio" || pathname === "/grupos";
   const pageContext = isHome

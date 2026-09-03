@@ -4,6 +4,10 @@ Aplicação web do nexoAula construída com Next.js, TypeScript e App Router.
 A interface atual é um protótipo navegável com dados simulados; ela ainda não
 possui autenticação real nem integração com o FastAPI.
 
+A criação de grupo em `/grupos/novo` valida e preserva um rascunho somente enquanto
+a tela está aberta. A conclusão é simulada e não cria grupos, canais ou convites.
+Veja a [organização, limites e evidências da issue #16](../docs/evidence/issue-16/README.md).
+
 ## Requisitos
 
 - Node.js 22.13 ou superior dentro da versão 22, ou Node.js 24.x;
