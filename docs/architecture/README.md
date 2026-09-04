@@ -1,28 +1,48 @@
-# Arquitetura e Visão Geral do nexoAula
+# Arquitetura do nexoAula
 
-O nexoAula adota uma arquitetura baseada em **Monorepositório**, garantindo centralização, padronização e compartilhamento de contratos entre os pacotes do sistema.
+Monorepositório com Next.js em `Front-end/`, FastAPI em `Back-end/apps/api/` e PostgreSQL. O backend segue arquitetura modular/em camadas, não microsserviços. Veja o [ADR-0001](../decisions/ADR-0001-monorepo.md).
 
-## Pilha Tecnológica Oficial
-* **Front-end:** Next.js (localizado em `Front-end/` ou na estrutura de aplicações do repositório)
-* **Back-end:** FastAPI em Python (localizado em `Back-end/apps/api/` ou estrutura equivalente de microsserviços/APIs)
-* **Banco de Dados:** PostgreSQL
+O frontend atual é uma demonstração navegável com mocks. O setup da API e a documentação do modelo não significam autenticação, persistência ou integração funcional já concluídas.
 
-> **Nota técnica:** Decisões complexas referentes a frameworks de ORM definitivos, provedores de storage de arquivos em object storage ou fluxos complexos de autenticação detalhada ainda **não** estão escopo fechado ou escolhidas neste momento.
+## Regra central do produto
 
-## Limites e Dependências dos Módulos (Escopo e Priorização)
+Cada grupo possui seu próprio PD/plano de ensino, conteúdo, aulas e correções. Grupos da mesma turma não compartilham automaticamente essas informações. Acesso ao PD exige participação ativa no grupo; não existe acompanhamento avulso de turma ou PD pessoal.
 
-O sistema organiza-se em blocos conceituais e lógicos bem delimitados:
+PREVISTO (`teaching_plans` / `scheduled_lessons`), REALIZADO (`lesson_occurrences`) e registro individual (`student_lesson_attendance` / `student_topic_progress`) são camadas distintas. Presença/falta é privada e ligada ao aluno e à aula efetivamente realizada, não um registro compartilhado do grupo. O grupo de origem determina a autorização de acesso.
 
-* **CORE (Núcleo):** 
-  * *Identity:* Contas, perfis, tokens de verificação e credenciais de acesso.
-  * *Academic:* Estrutura institucional, cursos, disciplinas, turmas e vínculos docentes.
-  * *Academic Planning:* O planejamento acadêmico estruturado sob a ótica estrita de **PREVISTO** (`teaching_plans` e `scheduled_lessons`), **REALIZADO** (`lesson_occurrences`) e **MEU REGISTRO** privado do aluno (`student_lesson_attendance` e `student_topic_progress`).
-* **NEXT (Engajamento):** 
-  * *Community:* Grupos de estudo, canais de texto, mensagens e encontros comunitários/gratuitos.
-* **MONETIZATION (Fluxo Comercial e Futuro):** 
-  * *Marketplace:* Perfis profissionais de tutores, credenciamento, venda de materiais autorais e sessões profissionais com transações financeiras simuladas.
-* **FUTURE:** 
-  * Funcionalidades mapeadas mas mantidas fora do MVP ou do escopo imediato (ex: integrações diretas com sistemas acadêmicos externos legados, publicidade modular pesada).
+## Módulos e contratos
 
-## Referências
-* **[Modelo de Dados Oficial em DBML](../diagrams/nexoaula.dbml)**
+| Módulo | Responsabilidade | Limite e colaboração |
+| --- | --- | --- |
+| Identity | Conta, perfil, tokens e identidade autenticada | Fornece a identidade; não incorpora regras de grupos ou cobrança |
+| Media | Metadados/referências de arquivos externos | Não guarda binários no PostgreSQL; acesso ao arquivo do PD exige autorização do grupo |
+| Academic | Instituição, curso, disciplina, turma, período e docente | Catálogo de contexto; não representa matrícula oficial ou acompanhamento avulso |
+| Academic Planning | Plano próprio do grupo, aulas, conteúdo, correções e registros individuais | Recebe contexto e autorização do grupo; preserva previsto/realizado e privacidade |
+| Community | Grupos, membros, entrada, canais, mensagens e encontros gratuitos | Define pertencimento/papéis; integra contexto acadêmico sem assumir regras comerciais |
+| Marketplace | Tutores, materiais, sessões, reservas e transações simuladas | Usa identidade e contexto acadêmico; não limita funcionalidades gratuitas |
+
+Routers devem validar o contrato HTTP e delegar o caso de uso; regras ficam em serviços e persistência em repositories. A camada de aplicação coordena autorização e operações entre módulos usando interfaces públicas, sem importar repositories internos de outro módulo. FKs cruzadas não autorizam dependências circulares de implementação.
+
+O frontend consome contratos HTTP/OpenAPI da API, não acessa o banco diretamente. Mocks precisam permanecer explícitos até a integração real. Não criar esqueletos de todos os módulos apenas porque aparecem no roadmap.
+
+## Recortes de entrega
+
+| Recorte | Conteúdo |
+| --- | --- |
+| CORE | Identity, Media, catálogo Academic, planos/aulas por grupo e registros individuais; grupos, membros, solicitações, canais e mensagens |
+| NEXT | Importação assistida de PDF, correções colaborativas e histórico/aviso dos ajustes; encontros comunitários gratuitos |
+| MONETIZATION | Perfil profissional, credenciamento, materiais, sessões de tutoria, inscrições, transações simuladas e avaliações |
+| FUTURE | Publicidade, ainda sem tabelas físicas |
+
+CORE não significa implementar todas as tabelas nesta Sprint. O núcleo gratuito não recebe limitação artificial de grupos ou membros. PDF não é requisito para cadastrar um plano manualmente; publicidade e integrações institucionais não foram implementadas. Não há dependência de UNIVASF/SIGA.
+
+## Modelo, validação e decisões abertas
+
+- [Guia de modelagem e limites das garantias](data-model.md).
+- [DBML textual](../diagrams/nexoaula.dbml) e [diagramas gerados por módulo](../diagrams/README.md).
+- [Fonte oficial no Notion](https://app.notion.com/p/3c9bb0fde01f806db3f3f09dc5a2d944).
+- [Revisão da modelagem #7](https://github.com/Wanjos-eng/nexoaula-webapp/issues/7) e [decisão de monetização #11](https://github.com/Wanjos-eng/nexoaula-webapp/issues/11).
+
+A documentação registra as decisões confirmadas e a revisão conjunta aceita por Wanjos-eng em 04/09/2026 como conclusão da #7, em substituição expressa ao critério de outro integrante. Não há aprovação atribuída a terceiros; publicar esta referência não autoriza migrations.
+
+ORM, estratégia concreta de migrations, provedor de autenticação e storage continuam pendentes. Também exigem decisão os papéis de publicação/correção, governança de conteúdo, saída de owner, credenciamento/comissão e retenção/anonimização. Não tratar essas escolhas como aprovadas neste PR.
