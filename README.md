@@ -3,7 +3,7 @@
 > Plataforma para formação de grupos de estudo baseados em compatibilidade de disciplina e horário.
 
 ## Visão do Produto
-Para estudantes universitários que precisam organizar os estudos e encontrar colegas com objetivos e horários compatíveis, o **nexoAula** é um WebApp que conecta alunos através de grupos de estudo vinculados a disciplinas específicas, permitindo o acompanhamento de cronograma e progresso pessoal.
+Para estudantes universitários que precisam organizar os estudos e encontrar colegas com objetivos e horários compatíveis, o **nexoAula** conecta alunos através de grupos vinculados a disciplinas. Cada grupo possui seu próprio plano de ensino, aulas e correções; presença/falta é um registro individual ligado à aula realizada. Não há acompanhamento de PD avulso fora dos grupos.
 
 Estado atual: frontend demonstrativo navegável e API em setup técnico, ainda sem
 autenticação, persistência ou integração funcional com o frontend.
@@ -104,9 +104,14 @@ npm run dev
 
 [Quadro do Projeto (GitHub Projects)](https://github.com/users/Wanjos-eng/projects/7/views/1)
 
+## Documentação técnica
+
+- [Arquitetura, módulos e recortes de entrega](docs/architecture/README.md).
+- [Modelagem revisada e validação](docs/architecture/data-model.md).
+- [Diagramas gerados do DBML](docs/diagrams/README.md).
+
 ## Contribuição
 
 Não faça commits diretos na `main`. Use uma branch, submeta PR vinculado à issue e
 aguarde a revisão exigida. Nunca versione senhas, tokens ou arquivos `.env`;
 somente exemplos sem segredos. Consulte [CONTRIBUTING.md](CONTRIBUTING.md).
-

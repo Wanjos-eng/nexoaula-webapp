@@ -1,0 +1,11 @@
+{
+  "name": "nexoaula-data-model-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Isolated tooling for documentary DBML validation and diagrams; not an application dependency.",
+  "devDependencies": {
+    "@dbml/core": "10.1.1",
+    "@electric-sql/pglite": "0.5.8",
+    "@viz-js/viz": "3.30.0"
+  }
+}

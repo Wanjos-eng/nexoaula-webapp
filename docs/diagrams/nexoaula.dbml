@@ -1,0 +1,1293 @@
+Project nexoaula {
+  database_type: 'PostgreSQL'
+  Note: 'Modelo conceitual e logico oficial do nexoAula. O grupo possui seu proprio PD/plano de ensino, aulas e correcoes. Acesso exige participacao ativa nesse grupo; nao existe acompanhamento academico avulso. PREVISTO, REALIZADO e registros do membro permanecem separados dentro do grupo. Monetizacao e modular e publicidade permanece fora do modelo fisico.'
+}
+
+//////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////
+
+Enum file_purpose {
+  avatar
+  group_cover
+  teaching_plan_source
+  material_content
+}
+
+Enum auth_token_type {
+  email_verification
+  password_reset
+}
+
+Enum section_teacher_role {
+  lead
+  assistant
+  substitute
+}
+
+Enum teaching_plan_status {
+  draft
+  published
+  superseded
+}
+
+Enum teaching_plan_import_status {
+  pending
+  processing
+  review_required
+  reviewed
+  applied
+  rejected
+  failed
+}
+
+Enum lesson_occurrence_status {
+  held
+  cancelled
+  postponed
+}
+
+Enum attendance_status {
+  present
+  absent
+}
+
+Enum attendance_adjustment_outcome {
+  transferred
+  invalidated
+  kept_existing
+}
+
+Enum topic_progress_status {
+  pending
+  reviewing
+  mastered
+}
+
+Enum planning_correction_kind {
+  schedule
+  topics
+  status
+  details
+  other
+}
+
+Enum correction_status {
+  pending
+  approved
+  rejected
+}
+
+Enum group_visibility {
+  public
+  unlisted
+  private
+}
+
+Enum group_join_policy {
+  open
+  approval_required
+  invite_only
+}
+
+Enum group_status {
+  active
+  archived
+  closed
+}
+
+Enum membership_role {
+  owner
+  moderator
+  member
+}
+
+Enum membership_status {
+  active
+  left
+  removed
+}
+
+Enum join_request_status {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
+Enum channel_status {
+  active
+  archived
+}
+
+Enum meeting_modality {
+  in_person
+  online
+  hybrid
+}
+
+Enum meeting_status {
+  scheduled
+  completed
+  cancelled
+}
+
+Enum meeting_participant_status {
+  interested
+  confirmed
+  cancelled
+}
+
+Enum tutor_profile_status {
+  active
+  paused
+  suspended
+}
+
+Enum tutor_credential_status {
+  pending
+  approved
+  rejected
+  expired
+  revoked
+}
+
+Enum material_status {
+  draft
+  published
+  archived
+}
+
+Enum tutor_session_status {
+  draft
+  scheduled
+  completed
+  cancelled
+}
+
+Enum session_booking_status {
+  reserved
+  confirmed
+  cancelled
+  attended
+  no_show
+}
+
+Enum transaction_status {
+  pending
+  completed
+  failed
+  refunded
+  cancelled
+}
+
+//////////////////////////////////////////////
+// IDENTITY
+//////////////////////////////////////////////
+
+Table users {
+  id uuid [pk, default: `gen_random_uuid()`]
+  email varchar(320) [not null]
+  password_hash text [not null]
+  email_verified_at timestamptz
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  deleted_at timestamptz
+
+  Note: 'Identidade e credenciais. A senha existe apenas como hash. A unicidade do e-mail e case-insensitive por indice em lower(email).'
+
+  indexes {
+    (`lower(email)`) [unique, name: 'uq_users_email_ci']
+  }
+}
+
+Table user_profiles {
+  user_id uuid [pk]
+  display_name varchar(120) [not null]
+  bio text
+  avatar_file_id uuid
+  institution_id uuid
+  course_id uuid
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Perfil de exibicao e contexto academico opcional. Instituicao e curso nao representam matricula oficial.'
+
+  checks {
+    `course_id IS NULL OR institution_id IS NOT NULL` [name: 'chk_user_profile_course_requires_institution']
+  }
+}
+
+Table auth_tokens {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [not null]
+  type auth_token_type [not null]
+  token_hash text [not null, unique]
+  expires_at timestamptz [not null]
+  used_at timestamptz
+  revoked_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: 'Tokens de uso unico para verificacao de e-mail e recuperacao de senha. Somente o hash do token e persistido.'
+
+  indexes {
+    (user_id, type, expires_at)
+  }
+}
+
+//////////////////////////////////////////////
+// MEDIA
+//////////////////////////////////////////////
+
+Table files {
+  id uuid [pk, default: `gen_random_uuid()`]
+  owner_id uuid [not null]
+  purpose file_purpose [not null]
+  storage_provider varchar(40) [not null, default: 'object_storage']
+  storage_key text [not null, unique]
+  original_filename varchar(255)
+  mime_type varchar(150) [not null]
+  size_bytes bigint [not null]
+  checksum_sha256 char(64)
+  created_at timestamptz [not null, default: `now()`]
+  deleted_at timestamptz
+
+  Note: 'Metadados e referencia de arquivo externo. O binario nunca e armazenado no PostgreSQL.'
+
+  indexes {
+    (owner_id)
+    (purpose)
+  }
+
+  checks {
+    `size_bytes > 0` [name: 'chk_files_positive_size']
+  }
+}
+
+//////////////////////////////////////////////
+// ACADEMIC
+//////////////////////////////////////////////
+
+Table institutions {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name varchar(200) [not null]
+  short_name varchar(50)
+  timezone varchar(64) [not null, default: 'America/Sao_Paulo']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Instituicao academica. timezone deve usar um identificador IANA validado pelo backend.'
+
+  indexes {
+    (`lower(name)`)
+  }
+}
+
+Table courses {
+  id uuid [pk, default: `gen_random_uuid()`]
+  institution_id uuid [not null]
+  name varchar(200) [not null]
+  code varchar(40)
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (id, institution_id) [unique]
+    (institution_id, name) [unique]
+    (institution_id, code) [unique]
+  }
+}
+
+Table subjects {
+  id uuid [pk, default: `gen_random_uuid()`]
+  institution_id uuid [not null]
+  name varchar(200) [not null]
+  code varchar(40)
+  description text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Disciplina de catalogo pertencente a uma instituicao, independente de periodo, turma e professor.'
+
+  indexes {
+    (id, institution_id) [unique]
+    (institution_id, name) [unique]
+    (institution_id, code) [unique]
+    (`lower(name)`)
+  }
+}
+
+Table course_subjects {
+  course_id uuid [not null]
+  subject_id uuid [not null]
+  institution_id uuid [not null]
+
+  Note: 'Associacao entre curso e disciplina dentro da mesma instituicao. Uma disciplina pode ser compartilhada por varios cursos.'
+
+  indexes {
+    (course_id, subject_id) [pk]
+    (subject_id)
+  }
+}
+
+Table academic_terms {
+  id uuid [pk, default: `gen_random_uuid()`]
+  institution_id uuid [not null]
+  label varchar(30) [not null]
+  start_date date [not null]
+  end_date date [not null]
+
+  indexes {
+    (id, institution_id) [unique]
+    (institution_id, label) [unique]
+  }
+
+  checks {
+    `end_date >= start_date` [name: 'chk_academic_terms_date_range']
+  }
+}
+
+Table teachers {
+  id uuid [pk, default: `gen_random_uuid()`]
+  institution_id uuid [not null]
+  user_id uuid
+  full_name varchar(200) [not null]
+  external_code varchar(50)
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Docente institucional. Pode existir sem conta no nexoAula; user_id e apenas uma vinculacao opcional.'
+
+  indexes {
+    (id, institution_id) [unique]
+    (institution_id, user_id) [unique]
+    (institution_id, external_code) [unique]
+    (`lower(full_name)`)
+  }
+}
+
+Table class_sections {
+  id uuid [pk, default: `gen_random_uuid()`]
+  institution_id uuid [not null]
+  subject_id uuid [not null]
+  academic_term_id uuid [not null]
+  label varchar(80) [not null]
+  created_by uuid [not null]
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Oferta concreta de uma disciplina em um periodo academico. institution_id e repetido de forma controlada para impedir cruzamentos entre instituicoes.'
+
+  indexes {
+    (id, institution_id) [unique]
+    (id, subject_id) [unique]
+    (subject_id, academic_term_id, label) [unique]
+    (academic_term_id)
+  }
+}
+
+Table class_section_teachers {
+  id uuid [pk, default: `gen_random_uuid()`]
+  class_section_id uuid [not null]
+  teacher_id uuid [not null]
+  institution_id uuid [not null]
+  role section_teacher_role [not null, default: 'lead']
+  starts_on date [not null]
+  ends_on date
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: 'Vinculo de docente com uma turma. starts_on e obrigatorio; ends_on e opcional. O intervalo preserva substituicoes e co-docencia sem apagar quem ministrou anteriormente.'
+
+  indexes {
+    (class_section_id, teacher_id, starts_on) [unique]
+    (teacher_id)
+  }
+
+  checks {
+    `ends_on IS NULL OR ends_on >= starts_on` [name: 'chk_section_teachers_date_range']
+  }
+}
+
+Table class_section_schedules {
+  id uuid [pk, default: `gen_random_uuid()`]
+  class_section_id uuid [not null]
+  day_of_week smallint [not null]
+  start_time time [not null]
+  end_time time [not null]
+  location varchar(150)
+  effective_from date
+  effective_until date
+
+  Note: 'Padrao recorrente em horario local da instituicao. Instantes concretos de aulas usam timestamptz em scheduled_lessons e lesson_occurrences.'
+
+  indexes {
+    (class_section_id, day_of_week)
+  }
+
+  checks {
+    `day_of_week BETWEEN 1 AND 7` [name: 'chk_section_schedules_day_of_week']
+    `end_time > start_time` [name: 'chk_section_schedules_time_range']
+    `effective_until IS NULL OR effective_from IS NULL OR effective_until >= effective_from` [name: 'chk_section_schedules_effective_range']
+  }
+}
+
+//////////////////////////////////////////////
+// ACADEMIC PLANNING
+//////////////////////////////////////////////
+
+Table topics {
+  id uuid [pk, default: `gen_random_uuid()`]
+  slug varchar(180) [not null, unique]
+  name varchar(150) [not null]
+  description text
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: 'Conceito academico reutilizavel entre disciplinas. slug e a chave normalizada; o contexto dentro de cada disciplina fica em subject_topics.'
+
+  indexes {
+    (`lower(name)`)
+  }
+}
+
+Table subject_topics {
+  id uuid [pk, default: `gen_random_uuid()`]
+  subject_id uuid [not null]
+  topic_id uuid [not null]
+  display_order integer
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: 'Contextualiza um topic dentro de uma disciplina. E a referencia usada por aulas, progresso, grupos, materiais e sessoes.'
+
+  indexes {
+    (subject_id, topic_id) [unique]
+    (id, subject_id) [unique]
+    (topic_id)
+  }
+
+  checks {
+    `display_order IS NULL OR display_order > 0` [name: 'chk_subject_topics_display_order']
+  }
+}
+
+Table teaching_plans {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_id uuid [not null]
+  version integer [not null]
+  status teaching_plan_status [not null, default: 'draft']
+  based_on_plan_id uuid
+  created_by uuid [not null]
+  published_by uuid
+  created_at timestamptz [not null, default: `now()`]
+  published_at timestamptz
+
+  Note: 'PD/plano de ensino proprio do grupo. Grupos da mesma turma nao compartilham versoes nem correcoes. A base deve pertencer ao mesmo grupo e ter versao menor, sem ciclos. Acesso/publicacao exigem membro ativo e papel autorizado no backend. O indice unico permite somente um plano published por grupo; imutabilidade e ordem da cadeia exigem validacao transacional.'
+
+  indexes {
+    (group_id, version) [unique]
+    (id, group_id) [unique]
+    (`CASE WHEN status = 'published' THEN group_id END`) [unique, name: 'uq_teaching_plans_current_published']
+    (group_id, status)
+  }
+
+  checks {
+    `version > 0` [name: 'chk_teaching_plans_positive_version']
+    `status = 'draft' OR (published_by IS NOT NULL AND published_at IS NOT NULL)` [name: 'chk_teaching_plans_publication_data']
+    `based_on_plan_id IS NULL OR based_on_plan_id <> id` [name: 'chk_teaching_plans_not_self_based']
+  }
+}
+
+Table teaching_plan_imports {
+  id uuid [pk, default: `gen_random_uuid()`]
+  teaching_plan_id uuid [not null]
+  source_file_id uuid [not null]
+  status teaching_plan_import_status [not null, default: 'pending']
+  extractor_key varchar(80)
+  extractor_version varchar(40)
+  confidence_score numeric(5,4)
+  raw_extracted_data jsonb
+  requested_by uuid [not null]
+  reviewed_by uuid
+  reviewed_at timestamptz
+  error_message text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Tentativa de extracao ligada a um plano em rascunho. O JSONB guarda somente o payload bruto; dados revisados sao persistidos nas tabelas relacionais antes da publicacao.'
+
+  indexes {
+    (teaching_plan_id, created_at)
+    (status, created_at)
+  }
+
+  checks {
+    `confidence_score IS NULL OR confidence_score BETWEEN 0 AND 1` [name: 'chk_plan_imports_confidence']
+    `raw_extracted_data IS NULL OR jsonb_typeof(raw_extracted_data) = 'object'` [name: 'chk_plan_imports_raw_object']
+    `status NOT IN ('reviewed', 'applied') OR (reviewed_by IS NOT NULL AND reviewed_at IS NOT NULL)` [name: 'chk_plan_imports_review_data']
+  }
+}
+
+Table scheduled_lessons {
+  id uuid [pk, default: `gen_random_uuid()`]
+  teaching_plan_id uuid [not null]
+  group_id uuid [not null]
+  sequence_number integer
+  planned_start_at timestamptz [not null]
+  planned_end_at timestamptz
+  title varchar(200)
+  description text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'PREVISTO do grupo. group_id repete o contexto do plano sob FK composta, impedindo cruzamento com outro grupo, mesmo da mesma turma. Nao admite presenca diretamente; a previsao nao prova que a aula aconteceu.'
+
+  indexes {
+    (teaching_plan_id, planned_start_at)
+    (id, group_id) [unique]
+    (teaching_plan_id, sequence_number) [unique]
+  }
+
+  checks {
+    `sequence_number IS NULL OR sequence_number > 0` [name: 'chk_scheduled_lessons_sequence']
+    `planned_end_at IS NULL OR planned_end_at > planned_start_at` [name: 'chk_scheduled_lessons_time_range']
+  }
+}
+
+Table scheduled_lesson_topics {
+  scheduled_lesson_id uuid [not null]
+  subject_topic_id uuid [not null]
+
+  indexes {
+    (scheduled_lesson_id, subject_topic_id) [pk]
+    (subject_topic_id)
+  }
+}
+
+Table lesson_occurrences {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_id uuid [not null]
+  scheduled_lesson_id uuid
+  supersedes_occurrence_id uuid [unique]
+  status lesson_occurrence_status [not null]
+  actual_started_at timestamptz
+  actual_ended_at timestamptz
+  rescheduled_to timestamptz
+  notes text
+  recorded_by uuid [not null]
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: 'REALIZADO do grupo. held exige inicio e fim anteriores ao registro gerado pelo servidor; o backend tambem deve conferir o relogio atual e impedir escrita em ocorrencia superada. cancelled/postponed registram o cancelamento/adiamento, nao uma aula realizada e nao permitem presenca. Correcao cria sucessora no mesmo grupo; historico e aviso do membro ficam em student_attendance_adjustments. Append-only e ausencia de ciclos exigem implementacao transacional.'
+
+  indexes {
+    (group_id, created_at)
+    (id, group_id) [unique]
+    (id, status) [unique]
+    (scheduled_lesson_id, created_at)
+  }
+
+  checks {
+    `actual_ended_at IS NULL OR (actual_started_at IS NOT NULL AND actual_ended_at > actual_started_at)` [name: 'chk_lesson_occurrences_time_range']
+    `(status = 'held' AND actual_started_at IS NOT NULL AND actual_ended_at IS NOT NULL AND actual_ended_at <= created_at AND rescheduled_to IS NULL) OR (status = 'cancelled' AND actual_started_at IS NULL AND actual_ended_at IS NULL AND rescheduled_to IS NULL) OR (status = 'postponed' AND actual_started_at IS NULL AND actual_ended_at IS NULL AND rescheduled_to IS NOT NULL)` [name: 'chk_lesson_occurrences_status_fields']
+    `supersedes_occurrence_id IS NULL OR supersedes_occurrence_id <> id` [name: 'chk_lesson_occurrences_not_self_superseding']
+  }
+}
+
+Table occurrence_topics {
+  lesson_occurrence_id uuid [not null]
+  subject_topic_id uuid [not null]
+
+  indexes {
+    (lesson_occurrence_id, subject_topic_id) [pk]
+    (subject_topic_id)
+  }
+}
+
+Table student_lesson_attendance {
+  user_id uuid [not null]
+  lesson_occurrence_id uuid [not null]
+  occurrence_status lesson_occurrence_status [not null, default: 'held']
+  status attendance_status [not null]
+  notes text
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Presenca/falta individual e privada ligada ao aluno e a aula realizada, nao diretamente ao grupo. O grupo e derivado da aula e controla o acesso: o backend exige participacao ativa, aula passada e ocorrencia vigente. Nao e controle avulso de turma/PD nem presenca compartilhada do grupo. Linha de ocorrencia superada serve apenas de historico e nao entra nos totais atuais. Ausencia de linha significa ainda nao informado.'
+
+  indexes {
+    (user_id, lesson_occurrence_id) [pk]
+    (lesson_occurrence_id)
+  }
+
+  checks {
+    `occurrence_status = 'held'` [name: 'chk_attendance_held_only']
+  }
+}
+
+Table student_attendance_adjustments {
+  id uuid [pk, default: `gen_random_uuid()`]
+  user_id uuid [not null]
+  source_occurrence_id uuid [not null]
+  target_occurrence_id uuid [not null]
+  target_status lesson_occurrence_status [not null]
+  outcome attendance_adjustment_outcome [not null]
+  previous_status attendance_status [not null]
+  previous_notes text
+  created_at timestamptz [not null, default: `now()`]
+  notice_seen_at timestamptz
+
+  Note: 'Historico e aviso individual ligado ao aluno e as aulas de origem/destino, sem registro direto de grupo. Snapshot anterior imutavel, com resultado transferred, invalidated ou kept_existing. Correcoes para held passada copiam automaticamente sem sobrescrever registro ja feito no destino; cancelled/postponed invalidam para os totais, sem criar presenca no destino. Criar ajuste e eventual copia em transacao idempotente. Backend valida mesma cadeia/grupo, gera snapshots e autoriza leitura/aviso; notice_seen_at nulo representa aviso ainda nao visto, nao envio de e-mail.'
+
+  indexes {
+    (user_id, target_occurrence_id) [unique]
+    (user_id, notice_seen_at)
+  }
+
+  checks {
+    `source_occurrence_id <> target_occurrence_id` [name: 'chk_attendance_adjustment_distinct_occurrences']
+    `(outcome = 'invalidated' AND target_status IN ('cancelled', 'postponed')) OR (outcome IN ('transferred', 'kept_existing') AND target_status = 'held')` [name: 'chk_attendance_adjustment_outcome']
+    `notice_seen_at IS NULL OR notice_seen_at >= created_at` [name: 'chk_attendance_adjustment_notice_time']
+  }
+}
+
+Table student_topic_progress {
+  user_id uuid [not null]
+  group_topic_id uuid [not null]
+  status topic_progress_status [not null, default: 'pending']
+  notes text
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Registro individual e privado sobre um conteudo disponibilizado pelo grupo, sem vinculo direto a turma ou grupo. group_topic_id fornece a origem do conteudo; acesso exige participacao ativa no grupo correspondente, validada pelo backend. Nao constitui PD pessoal, controle academico avulso ou progresso compartilhado entre participantes.'
+
+  indexes {
+    (user_id, group_topic_id) [pk]
+    (user_id, status)
+    (group_topic_id)
+  }
+}
+
+Table planning_corrections {
+  id uuid [pk, default: `gen_random_uuid()`]
+  suggested_by uuid [not null]
+  scheduled_lesson_id uuid
+  lesson_occurrence_id uuid
+  kind planning_correction_kind [not null]
+  original_snapshot jsonb [not null]
+  proposed_patch jsonb [not null]
+  reason text
+  status correction_status [not null, default: 'pending']
+  decided_by uuid
+  decided_at timestamptz
+  decision_note text
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: 'Solicitacao auditavel de correcao. JSONB e usado apenas para o patch heterogeneo e seu snapshot; o estado academico oficial continua relacional.'
+
+  indexes {
+    (status, created_at)
+    (suggested_by)
+  }
+
+  checks {
+    `num_nonnulls(scheduled_lesson_id, lesson_occurrence_id) = 1` [name: 'chk_planning_corrections_single_target']
+    `jsonb_typeof(original_snapshot) = 'object'` [name: 'chk_planning_corrections_snapshot_object']
+    `jsonb_typeof(proposed_patch) = 'object'` [name: 'chk_planning_corrections_patch_object']
+    `(status = 'pending' AND decided_by IS NULL AND decided_at IS NULL) OR (status IN ('approved', 'rejected') AND decided_by IS NOT NULL AND decided_at IS NOT NULL)` [name: 'chk_planning_corrections_decision']
+  }
+}
+
+//////////////////////////////////////////////
+// COMMUNITY
+//////////////////////////////////////////////
+
+Table study_groups {
+  id uuid [pk, default: `gen_random_uuid()`]
+  created_by uuid [not null]
+  subject_id uuid [not null]
+  class_section_id uuid
+  name varchar(150) [not null]
+  description text
+  visibility group_visibility [not null, default: 'public']
+  join_policy group_join_policy [not null, default: 'approval_required']
+  status group_status [not null, default: 'active']
+  capacity integer
+  cover_file_id uuid
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  deleted_at timestamptz
+
+  Note: 'Grupo ligado a uma disciplina e opcionalmente a uma turma. Possui seus proprios planos de ensino, aulas, conteudos e correcoes, sem compartilhamento automatico com outros grupos. Participacao ativa e requisito de acesso ao PD e registros. created_by e historico; proprietario atual e o membro ativo com role owner.'
+
+  indexes {
+    (subject_id, status)
+    (id, subject_id) [unique]
+    (class_section_id)
+    (`lower(name)`)
+  }
+
+  checks {
+    `capacity IS NULL OR capacity > 0` [name: 'chk_study_groups_capacity']
+  }
+}
+
+Table group_members {
+  group_id uuid [not null]
+  user_id uuid [not null]
+  role membership_role [not null, default: 'member']
+  status membership_status [not null, default: 'active']
+  joined_at timestamptz [not null, default: `now()`]
+  ended_at timestamptz
+  removed_by uuid
+
+  Note: 'Estado atual da participacao. O indice unico por expressao garante no maximo um owner ativo; a existencia de pelo menos um deve ser garantida na criacao, saida e transferencia em transacao. O proprietario atual existe apenas aqui.'
+
+  indexes {
+    (group_id, user_id) [pk]
+    (`CASE WHEN role = 'owner' AND status = 'active' THEN group_id END`) [unique, name: 'uq_group_members_active_owner']
+    (user_id, status)
+  }
+
+  checks {
+    `(status = 'active' AND ended_at IS NULL AND removed_by IS NULL) OR (status = 'left' AND ended_at IS NOT NULL AND removed_by IS NULL) OR (status = 'removed' AND ended_at IS NOT NULL AND removed_by IS NOT NULL)` [name: 'chk_group_members_lifecycle']
+  }
+}
+
+Table group_join_requests {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_id uuid [not null]
+  user_id uuid [not null]
+  status join_request_status [not null, default: 'pending']
+  requested_at timestamptz [not null, default: `now()`]
+  resolved_by uuid
+  resolved_at timestamptz
+  resolution_note text
+
+  Note: 'Cada linha e uma tentativa de entrada e preserva o historico. O indice unico por expressao permite somente uma solicitacao pending por usuario/grupo, sem impedir novas tentativas apos o encerramento.'
+
+  indexes {
+    (group_id, user_id, status)
+    (group_id, user_id, `CASE WHEN status = 'pending' THEN 1 END`) [unique, name: 'uq_group_join_requests_pending']
+    (user_id, status)
+  }
+
+  checks {
+    `(status = 'pending' AND resolved_by IS NULL AND resolved_at IS NULL) OR (status <> 'pending' AND resolved_by IS NOT NULL AND resolved_at IS NOT NULL)` [name: 'chk_join_requests_resolution']
+  }
+}
+
+Table group_topics {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_id uuid [not null]
+  subject_id uuid [not null]
+  subject_topic_id uuid [not null]
+
+  indexes {
+    (group_id, subject_topic_id) [unique]
+    (subject_topic_id)
+  }
+}
+
+Table channels {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_id uuid [not null]
+  subject_topic_id uuid
+  name varchar(80) [not null]
+  description text
+  created_by uuid [not null]
+  status channel_status [not null, default: 'active']
+  created_at timestamptz [not null, default: `now()`]
+  archived_at timestamptz
+
+  Note: 'Canal de texto dentro do grupo. O conteudo academico e opcional para permitir canais gerais.'
+
+  indexes {
+    (group_id, name) [unique]
+    (id, group_id) [unique]
+    (subject_topic_id)
+  }
+
+  checks {
+    `(status = 'active' AND archived_at IS NULL) OR (status = 'archived' AND archived_at IS NOT NULL)` [name: 'chk_channels_archive_state']
+  }
+}
+
+Table channel_messages {
+  id uuid [pk, default: `gen_random_uuid()`]
+  channel_id uuid [not null]
+  author_id uuid [not null]
+  reply_to_message_id uuid
+  content text [not null]
+  created_at timestamptz [not null, default: `now()`]
+  edited_at timestamptz
+  deleted_at timestamptz
+
+  Note: 'Mensagem de canal com edicao, exclusao logica e resposta opcional a outra mensagem do mesmo canal. Nao pode responder a si mesma. A FK simples preserva SET NULL apenas no alvo; a FK composta NO ACTION garante o canal sem anular channel_id. Autoria, canal e alvo da resposta devem ser imutaveis no backend para impedir ciclos de respostas.'
+
+  indexes {
+    (channel_id, created_at)
+    (author_id, created_at)
+    (id, channel_id) [unique]
+  }
+
+  checks {
+    `reply_to_message_id IS NULL OR reply_to_message_id <> id` [name: 'chk_channel_messages_not_self_reply']
+  }
+}
+
+Table meetings {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_id uuid [not null]
+  channel_id uuid
+  organizer_id uuid [not null]
+  title varchar(200) [not null]
+  description text
+  modality meeting_modality [not null]
+  location varchar(250)
+  external_url text
+  starts_at timestamptz [not null]
+  ends_at timestamptz
+  status meeting_status [not null, default: 'scheduled']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Encontro comunitario gratuito. Canal opcional deve pertencer ao mesmo grupo. A FK simples preserva SET NULL apenas em channel_id; a FK composta NO ACTION garante o grupo sem anular group_id. Usa local e/ou URL externa conforme a modalidade; nao implementa videoconferencia propria.'
+
+  indexes {
+    (group_id, starts_at)
+    (status, starts_at)
+  }
+
+  checks {
+    `ends_at IS NULL OR ends_at > starts_at` [name: 'chk_meetings_time_range']
+    `(modality = 'in_person' AND location IS NOT NULL) OR (modality = 'online' AND external_url IS NOT NULL) OR (modality = 'hybrid' AND location IS NOT NULL AND external_url IS NOT NULL)` [name: 'chk_meetings_modality_fields']
+  }
+}
+
+Table meeting_participants {
+  meeting_id uuid [not null]
+  user_id uuid [not null]
+  status meeting_participant_status [not null, default: 'interested']
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (meeting_id, user_id) [pk]
+    (user_id, status)
+  }
+}
+
+Table meeting_topics {
+  meeting_id uuid [not null]
+  subject_topic_id uuid [not null]
+
+  indexes {
+    (meeting_id, subject_topic_id) [pk]
+    (subject_topic_id)
+  }
+}
+
+//////////////////////////////////////////////
+// MARKETPLACE
+//////////////////////////////////////////////
+
+Table tutor_profiles {
+  user_id uuid [pk]
+  headline varchar(200)
+  bio text
+  status tutor_profile_status [not null, default: 'active']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Extensao profissional opcional de users. Verificacao e derivada do credenciamento vigente, evitando duas fontes de verdade.'
+}
+
+Table tutor_subjects {
+  tutor_user_id uuid [not null]
+  subject_id uuid [not null]
+
+  indexes {
+    (tutor_user_id, subject_id) [pk]
+    (subject_id)
+  }
+}
+
+Table tutor_subject_topics {
+  tutor_user_id uuid [not null]
+  subject_topic_id uuid [not null]
+
+  Note: 'Especializacao opcional do tutor em conteudos concretos, alem da associacao ampla por disciplina.'
+
+  indexes {
+    (tutor_user_id, subject_topic_id) [pk]
+    (subject_topic_id)
+  }
+}
+
+Table tutor_credentials {
+  id uuid [pk, default: `gen_random_uuid()`]
+  tutor_user_id uuid [not null]
+  status tutor_credential_status [not null, default: 'pending']
+  valid_from date
+  valid_until date
+  simulated_fee_cents integer [not null, default: 0]
+  currency char(3) [not null, default: 'BRL']
+  decided_by uuid
+  decided_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: 'Uma linha por ciclo de credenciamento ou renovacao. Preserva o historico sem armazenar cartao ou dado bancario real.'
+
+  indexes {
+    (tutor_user_id, status)
+  }
+
+  checks {
+    `valid_until IS NULL OR valid_from IS NULL OR valid_until >= valid_from` [name: 'chk_tutor_credentials_validity']
+    `simulated_fee_cents >= 0` [name: 'chk_tutor_credentials_fee']
+    `currency ~ '^[A-Z]{3}$'` [name: 'chk_tutor_credentials_currency']
+    `(status = 'pending' AND decided_by IS NULL AND decided_at IS NULL) OR (status <> 'pending' AND decided_by IS NOT NULL AND decided_at IS NOT NULL)` [name: 'chk_tutor_credentials_decision']
+  }
+}
+
+Table materials {
+  id uuid [pk, default: `gen_random_uuid()`]
+  creator_user_id uuid [not null]
+  subject_id uuid [not null]
+  class_section_id uuid
+  file_id uuid [not null]
+  title varchar(200) [not null]
+  description text
+  status material_status [not null, default: 'draft']
+  price_cents integer [not null, default: 0]
+  currency char(3) [not null, default: 'BRL']
+  published_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+  deleted_at timestamptz
+
+  Note: 'Material autoral de um perfil profissional. A disciplina e obrigatoria; a turma e opcional para contextualizacao mais especifica.'
+
+  indexes {
+    (subject_id, status)
+    (class_section_id)
+    (creator_user_id, status)
+    (`lower(title)`)
+  }
+
+  checks {
+    `price_cents >= 0` [name: 'chk_materials_price']
+    `currency ~ '^[A-Z]{3}$'` [name: 'chk_materials_currency']
+    `status <> 'published' OR published_at IS NOT NULL` [name: 'chk_materials_publication']
+  }
+}
+
+Table material_topics {
+  material_id uuid [not null]
+  subject_topic_id uuid [not null]
+
+  indexes {
+    (material_id, subject_topic_id) [pk]
+    (subject_topic_id)
+  }
+}
+
+Table tutor_sessions {
+  id uuid [pk, default: `gen_random_uuid()`]
+  tutor_user_id uuid [not null]
+  subject_id uuid [not null]
+  class_section_id uuid
+  title varchar(200) [not null]
+  description text
+  modality meeting_modality [not null]
+  location varchar(250)
+  external_url text
+  starts_at timestamptz [not null]
+  ends_at timestamptz [not null]
+  capacity integer [not null]
+  price_cents integer [not null]
+  currency char(3) [not null, default: 'BRL']
+  status tutor_session_status [not null, default: 'draft']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Sessao profissional orientada por tutor. E separada de meetings porque possui preco, capacidade comercial, reserva e transacao.'
+
+  indexes {
+    (tutor_user_id, starts_at)
+    (id, tutor_user_id) [unique]
+    (subject_id, status, starts_at)
+    (class_section_id)
+  }
+
+  checks {
+    `ends_at > starts_at` [name: 'chk_tutor_sessions_time_range']
+    `capacity > 0` [name: 'chk_tutor_sessions_capacity']
+    `price_cents >= 0` [name: 'chk_tutor_sessions_price']
+    `currency ~ '^[A-Z]{3}$'` [name: 'chk_tutor_sessions_currency']
+    `(modality = 'in_person' AND location IS NOT NULL) OR (modality = 'online' AND external_url IS NOT NULL) OR (modality = 'hybrid' AND location IS NOT NULL AND external_url IS NOT NULL)` [name: 'chk_tutor_sessions_modality_fields']
+  }
+}
+
+Table session_topics {
+  session_id uuid [not null]
+  subject_topic_id uuid [not null]
+
+  indexes {
+    (session_id, subject_topic_id) [pk]
+    (subject_topic_id)
+  }
+}
+
+Table session_bookings {
+  id uuid [pk, default: `gen_random_uuid()`]
+  session_id uuid [not null]
+  user_id uuid [not null]
+  status session_booking_status [not null, default: 'reserved']
+  booked_at timestamptz [not null, default: `now()`]
+  cancelled_at timestamptz
+  attended_at timestamptz
+  attendance_recorded_by uuid
+
+  Note: 'Uma linha por tentativa de inscricao em encontro de tutoria. Cancelamento preserva a linha; reinscricao cria outra se ainda houver vaga e o encontro nao tiver iniciado, validado em transacao. O indice por expressao impede mais de uma inscricao nao cancelada por usuario/sessao. Para avaliar, a sessao deve estar concluida e a presenca deve ser registrada pelo proprio tutor; essa elegibilidade exige validacao no backend.'
+
+  indexes {
+    (session_id, user_id, `CASE WHEN status <> 'cancelled' THEN 1 END`) [unique, name: 'uq_session_bookings_non_cancelled']
+    (id, user_id) [unique]
+    (id, status) [unique]
+    (user_id, status)
+  }
+
+  checks {
+    `(status = 'cancelled' AND cancelled_at IS NOT NULL) OR (status <> 'cancelled' AND cancelled_at IS NULL)` [name: 'chk_session_bookings_cancellation']
+    `(status = 'attended' AND attended_at IS NOT NULL AND attendance_recorded_by IS NOT NULL) OR (status <> 'attended' AND attended_at IS NULL AND attendance_recorded_by IS NULL)` [name: 'chk_session_bookings_attendance']
+    `cancelled_at IS NULL OR cancelled_at >= booked_at` [name: 'chk_session_bookings_cancellation_time']
+  }
+}
+
+Table transactions {
+  id uuid [pk, default: `gen_random_uuid()`]
+  buyer_id uuid [not null]
+  material_id uuid
+  session_booking_id uuid
+  amount_cents integer [not null]
+  commission_cents integer [not null, default: 0]
+  currency char(3) [not null, default: 'BRL']
+  status transaction_status [not null, default: 'pending']
+  created_at timestamptz [not null, default: `now()`]
+  completed_at timestamptz
+  refunded_at timestamptz
+
+  Note: 'Transacao simulada generica. O alvo e exatamente um material ou uma reserva de sessao; valores sao snapshots historicos em centavos. O indice unico por expressao impede duas transacoes completed para a mesma reserva e permite tentativas failed/cancelled. Politica de reinscricao, reembolso e elegibilidade de avaliacao deve ser documentada antes da implementacao do modulo.'
+
+  indexes {
+    (buyer_id, created_at)
+    (id, session_booking_id) [unique]
+    (id, material_id) [unique]
+    (material_id)
+    (session_booking_id)
+    (`CASE WHEN status = 'completed' THEN session_booking_id END`) [unique, name: 'uq_transactions_completed_booking']
+    (status, created_at)
+  }
+
+  checks {
+    `num_nonnulls(material_id, session_booking_id) = 1` [name: 'chk_transactions_single_target']
+    `amount_cents >= 0` [name: 'chk_transactions_amount']
+    `commission_cents >= 0 AND commission_cents <= amount_cents` [name: 'chk_transactions_commission']
+    `currency ~ '^[A-Z]{3}$'` [name: 'chk_transactions_currency']
+    `(status IN ('completed', 'refunded') AND completed_at IS NOT NULL) OR (status NOT IN ('completed', 'refunded') AND completed_at IS NULL)` [name: 'chk_transactions_completion']
+    `(status = 'refunded' AND refunded_at IS NOT NULL) OR (status <> 'refunded' AND refunded_at IS NULL)` [name: 'chk_transactions_refund']
+  }
+}
+
+Table reviews {
+  id uuid [pk, default: `gen_random_uuid()`]
+  transaction_id uuid [not null, unique]
+  session_booking_id uuid [unique]
+  booking_status session_booking_status
+  material_id uuid
+  rating smallint [not null]
+  comment text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  Note: 'Avaliacao individual de uma experiencia. Em tutoria exige reserva attended com presenca registrada pelo tutor; inscricao ou compra sem participacao nao basta. Alvo repetido sob FKs compostas impede ligar a avaliacao a outra reserva/material. Uma avaliacao por participacao ou transacao de material; autor/tutor continuam derivados. Backend autoriza o aluno, exige encontro passado/concluido e transacao completed; material nao e uma avaliacao de participacao em tutoria.'
+
+  checks {
+    `rating BETWEEN 1 AND 5` [name: 'chk_reviews_rating']
+    `(session_booking_id IS NOT NULL AND booking_status IS NOT NULL AND booking_status = 'attended' AND material_id IS NULL) OR (session_booking_id IS NULL AND booking_status IS NULL AND material_id IS NOT NULL)` [name: 'chk_reviews_experience_target']
+  }
+}
+
+//////////////////////////////////////////////
+// REFERENCES
+//////////////////////////////////////////////
+
+Ref: user_profiles.user_id > users.id [delete: cascade]
+Ref: user_profiles.avatar_file_id > files.id [delete: set null]
+Ref: user_profiles.institution_id > institutions.id [delete: set null]
+Ref: user_profiles.(course_id, institution_id) > courses.(id, institution_id) [delete: restrict]
+Ref: auth_tokens.user_id > users.id [delete: cascade]
+Ref: files.owner_id > users.id [delete: restrict]
+
+Ref: courses.institution_id > institutions.id [delete: restrict]
+Ref: subjects.institution_id > institutions.id [delete: restrict]
+Ref: course_subjects.(course_id, institution_id) > courses.(id, institution_id) [delete: cascade]
+Ref: course_subjects.(subject_id, institution_id) > subjects.(id, institution_id) [delete: cascade]
+Ref: academic_terms.institution_id > institutions.id [delete: restrict]
+Ref: teachers.institution_id > institutions.id [delete: restrict]
+Ref: teachers.user_id > users.id [delete: set null]
+Ref: class_sections.(subject_id, institution_id) > subjects.(id, institution_id) [delete: restrict]
+Ref: class_sections.(academic_term_id, institution_id) > academic_terms.(id, institution_id) [delete: restrict]
+Ref: class_sections.created_by > users.id [delete: restrict]
+Ref: class_section_teachers.(class_section_id, institution_id) > class_sections.(id, institution_id) [delete: cascade]
+Ref: class_section_teachers.(teacher_id, institution_id) > teachers.(id, institution_id) [delete: restrict]
+Ref: class_section_schedules.class_section_id > class_sections.id [delete: cascade]
+Ref: subject_topics.subject_id > subjects.id [delete: restrict]
+Ref: subject_topics.topic_id > topics.id [delete: restrict]
+Ref: teaching_plans.group_id > study_groups.id [delete: restrict]
+Ref: teaching_plans.(based_on_plan_id, group_id) > teaching_plans.(id, group_id) [delete: restrict]
+Ref: teaching_plans.(group_id, created_by) > group_members.(group_id, user_id) [delete: restrict]
+Ref: teaching_plans.(group_id, published_by) > group_members.(group_id, user_id) [delete: restrict]
+Ref: teaching_plan_imports.teaching_plan_id > teaching_plans.id [delete: cascade]
+Ref: teaching_plan_imports.source_file_id > files.id [delete: restrict]
+Ref: teaching_plan_imports.requested_by > users.id [delete: restrict]
+Ref: teaching_plan_imports.reviewed_by > users.id [delete: restrict]
+Ref: scheduled_lessons.(teaching_plan_id, group_id) > teaching_plans.(id, group_id) [delete: cascade]
+Ref: scheduled_lesson_topics.scheduled_lesson_id > scheduled_lessons.id [delete: cascade]
+Ref: scheduled_lesson_topics.subject_topic_id > subject_topics.id [delete: restrict]
+Ref: lesson_occurrences.group_id > study_groups.id [delete: restrict]
+Ref: lesson_occurrences.(scheduled_lesson_id, group_id) > scheduled_lessons.(id, group_id) [delete: restrict]
+Ref: lesson_occurrences.(supersedes_occurrence_id, group_id) > lesson_occurrences.(id, group_id) [delete: restrict]
+Ref: lesson_occurrences.(group_id, recorded_by) > group_members.(group_id, user_id) [delete: restrict]
+Ref: occurrence_topics.lesson_occurrence_id > lesson_occurrences.id [delete: cascade]
+Ref: occurrence_topics.subject_topic_id > subject_topics.id [delete: restrict]
+Ref: student_lesson_attendance.user_id > users.id [delete: cascade]
+Ref: student_lesson_attendance.(lesson_occurrence_id, occurrence_status) > lesson_occurrences.(id, status) [delete: restrict]
+Ref: student_attendance_adjustments.(user_id, source_occurrence_id) > student_lesson_attendance.(user_id, lesson_occurrence_id) [delete: cascade]
+Ref: student_attendance_adjustments.(target_occurrence_id, target_status) > lesson_occurrences.(id, status) [delete: restrict]
+Ref: student_topic_progress.user_id > users.id [delete: cascade]
+Ref: student_topic_progress.group_topic_id > group_topics.id [delete: restrict]
+Ref: planning_corrections.suggested_by > users.id [delete: restrict]
+Ref: planning_corrections.scheduled_lesson_id > scheduled_lessons.id [delete: restrict]
+Ref: planning_corrections.lesson_occurrence_id > lesson_occurrences.id [delete: restrict]
+Ref: planning_corrections.decided_by > users.id [delete: restrict]
+
+Ref: study_groups.created_by > users.id [delete: restrict]
+Ref: study_groups.subject_id > subjects.id [delete: restrict]
+Ref: study_groups.(class_section_id, subject_id) > class_sections.(id, subject_id) [delete: restrict]
+Ref: study_groups.cover_file_id > files.id [delete: set null]
+Ref: group_members.group_id > study_groups.id [delete: cascade]
+Ref: group_members.user_id > users.id [delete: restrict]
+Ref: group_members.removed_by > users.id [delete: restrict]
+Ref: group_join_requests.group_id > study_groups.id [delete: cascade]
+Ref: group_join_requests.user_id > users.id [delete: restrict]
+Ref: group_join_requests.resolved_by > users.id [delete: restrict]
+Ref: group_topics.(group_id, subject_id) > study_groups.(id, subject_id) [delete: cascade]
+Ref: group_topics.(subject_topic_id, subject_id) > subject_topics.(id, subject_id) [delete: restrict]
+Ref: channels.group_id > study_groups.id [delete: cascade]
+Ref: channels.subject_topic_id > subject_topics.id [delete: restrict]
+Ref: channels.created_by > users.id [delete: restrict]
+Ref: channel_messages.channel_id > channels.id [delete: cascade]
+Ref: channel_messages.author_id > users.id [delete: restrict]
+Ref: channel_messages.reply_to_message_id > channel_messages.id [delete: set null]
+Ref: channel_messages.(reply_to_message_id, channel_id) > channel_messages.(id, channel_id) [delete: no action]
+Ref: meetings.group_id > study_groups.id [delete: cascade]
+Ref: meetings.channel_id > channels.id [delete: set null]
+Ref: meetings.(channel_id, group_id) > channels.(id, group_id) [delete: no action]
+Ref: meetings.organizer_id > users.id [delete: restrict]
+Ref: meeting_participants.meeting_id > meetings.id [delete: cascade]
+Ref: meeting_participants.user_id > users.id [delete: restrict]
+Ref: meeting_topics.meeting_id > meetings.id [delete: cascade]
+Ref: meeting_topics.subject_topic_id > subject_topics.id [delete: restrict]
+
+Ref: tutor_profiles.user_id > users.id [delete: restrict]
+Ref: tutor_subjects.tutor_user_id > tutor_profiles.user_id [delete: cascade]
+Ref: tutor_subjects.subject_id > subjects.id [delete: restrict]
+Ref: tutor_subject_topics.tutor_user_id > tutor_profiles.user_id [delete: cascade]
+Ref: tutor_subject_topics.subject_topic_id > subject_topics.id [delete: restrict]
+Ref: tutor_credentials.tutor_user_id > tutor_profiles.user_id [delete: restrict]
+Ref: tutor_credentials.decided_by > users.id [delete: restrict]
+Ref: materials.creator_user_id > tutor_profiles.user_id [delete: restrict]
+Ref: materials.subject_id > subjects.id [delete: restrict]
+Ref: materials.(class_section_id, subject_id) > class_sections.(id, subject_id) [delete: restrict]
+Ref: materials.file_id > files.id [delete: restrict]
+Ref: material_topics.material_id > materials.id [delete: cascade]
+Ref: material_topics.subject_topic_id > subject_topics.id [delete: restrict]
+Ref: tutor_sessions.tutor_user_id > tutor_profiles.user_id [delete: restrict]
+Ref: tutor_sessions.subject_id > subjects.id [delete: restrict]
+Ref: tutor_sessions.(class_section_id, subject_id) > class_sections.(id, subject_id) [delete: restrict]
+Ref: session_topics.session_id > tutor_sessions.id [delete: cascade]
+Ref: session_topics.subject_topic_id > subject_topics.id [delete: restrict]
+Ref: session_bookings.session_id > tutor_sessions.id [delete: restrict]
+Ref: session_bookings.user_id > users.id [delete: restrict]
+Ref: session_bookings.(session_id, attendance_recorded_by) > tutor_sessions.(id, tutor_user_id) [delete: restrict]
+Ref: transactions.buyer_id > users.id [delete: restrict]
+Ref: transactions.material_id > materials.id [delete: restrict]
+Ref: transactions.(session_booking_id, buyer_id) > session_bookings.(id, user_id) [delete: restrict]
+Ref: reviews.(transaction_id, session_booking_id) > transactions.(id, session_booking_id) [delete: restrict]
+Ref: reviews.(transaction_id, material_id) > transactions.(id, material_id) [delete: restrict]
+Ref: reviews.(session_booking_id, booking_status) > session_bookings.(id, status) [delete: restrict]
+
+//////////////////////////////////////////////
+// TABLE GROUPS
+//////////////////////////////////////////////
+
+TableGroup identity [color: #4F46E5, note: 'Conta, perfil e autenticacao'] {
+  users
+  user_profiles
+  auth_tokens
+}
+
+TableGroup media [color: #64748B, note: 'Referencias de arquivos externos'] {
+  files
+}
+
+TableGroup academic [color: #0284C7, note: 'Estrutura institucional e ofertas de disciplinas'] {
+  institutions
+  courses
+  subjects
+  course_subjects
+  academic_terms
+  teachers
+  class_sections
+  class_section_teachers
+  class_section_schedules
+}
+
+TableGroup academic_planning [color: #16A34A, note: 'Previsto, realizado e registros pessoais'] {
+  topics
+  subject_topics
+  teaching_plans
+  teaching_plan_imports
+  scheduled_lessons
+  scheduled_lesson_topics
+  lesson_occurrences
+  occurrence_topics
+  student_lesson_attendance
+  student_attendance_adjustments
+  student_topic_progress
+  planning_corrections
+}
+
+TableGroup community [color: #D97706, note: 'Grupos, canais, mensagens e encontros gratuitos'] {
+  study_groups
+  group_members
+  group_join_requests
+  group_topics
+  channels
+  channel_messages
+  meetings
+  meeting_participants
+  meeting_topics
+}
+
+TableGroup marketplace [color: #9333EA, note: 'Tutores, materiais, sessoes e transacoes simuladas'] {
+  tutor_profiles
+  tutor_subjects
+  tutor_subject_topics
+  tutor_credentials
+  materials
+  material_topics
+  tutor_sessions
+  session_topics
+  session_bookings
+  transactions
+  reviews
+}
