@@ -17,7 +17,7 @@ autenticação, persistência ou integração funcional com o frontend.
 ├── docs/
 ├── shared/
 ├── setup.ps1          # Setup do monorepo no Windows
-├── setup.sh           # Setup do monorepo no Linux/macOS ou Git Bash
+├── setup.sh           # Setup do monorepo no Linux ou Git Bash
 └── README.md
 ```
 
@@ -45,7 +45,7 @@ Na raiz, no PowerShell:
 .\setup.ps1 -Target Frontend
 ```
 
-Linux/macOS ou Git Bash:
+Linux ou Git Bash:
 
 ```bash
 bash ./setup.sh --check
@@ -65,6 +65,10 @@ em `Back-end/apps/api/.venv`. Um ambiente existente de outra versão é rejeitad
 revise-o e recrie-o manualmente, sem apagar ambientes automaticamente.
 O frontend usa `npm ci` e exige o `package-lock.json` versionado.
 
+Veja [sistemas validados, permissões, solução de falhas e testes de
+reexecução](docs/environment/setup.md). Os scripts não exigem administrador/sudo.
+macOS e Cygwin não são suportados nesta validação; WSL não tem evidência específica.
+
 ## Como executar o projeto (local)
 
 **Backend no Windows**, após o setup:
@@ -74,7 +78,7 @@ cd Back-end/apps/api
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-**Backend no Linux/macOS**, após o setup:
+**Backend no Linux**, após o setup:
 
 ```bash
 cd Back-end/apps/api

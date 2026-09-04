@@ -13,7 +13,7 @@ As dependências transitivas novas ainda são resolvidas pelo pip; isto não é 
 lock multiplataforma completo.
 
 Pela raiz do monorepo, `./setup.ps1 -Target Backend` (Windows) ou
-`bash ./setup.sh --target backend` (Linux/macOS) cria `.venv` nesta pasta e instala
+`bash ./setup.sh --target backend` (Linux) cria `.venv` nesta pasta e instala
 as dependências. Os scripts não alteram Python/Node globais, não usam sudo e não
 criam nem sobrescrevem `.env`. Veja opções no [README principal](../../../README.md).
 
@@ -29,7 +29,7 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
-Linux/macOS, a partir da raiz:
+Linux, a partir da raiz:
 
 ```bash
 cd Back-end/apps/api
