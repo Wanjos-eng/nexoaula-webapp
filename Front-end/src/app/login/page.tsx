@@ -1,7 +1,7 @@
 import { CalendarDots, NotePencil, UsersThree } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 
-import { AuthForm } from "@/components/auth/AuthForm";
+import { LoginForm } from "@/modules/auth";
 import { AuthShell } from "@/components/layout/AuthShell";
 
 export const metadata: Metadata = {
@@ -30,7 +30,7 @@ export default function LoginPage() {
       description="Acompanhe suas disciplinas, aulas, registros e grupos de estudo em um só lugar."
       title="Organize sua vida acadêmica"
     >
-      <AuthForm mode="login" />
+      <LoginForm />
     </AuthShell>
   );
 }

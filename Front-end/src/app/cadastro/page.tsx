@@ -1,7 +1,7 @@
 import { CalendarCheck, CheckCircle, UsersThree } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 
-import { AuthForm } from "@/components/auth/AuthForm";
+import { RegisterForm } from "@/modules/auth";
 import { AuthShell } from "@/components/layout/AuthShell";
 
 export const metadata: Metadata = {
@@ -32,7 +32,7 @@ export default function CadastroPage() {
       title="Comece a organizar sua vida acadêmica"
       titleSize="large"
     >
-      <AuthForm mode="signup" />
+      <RegisterForm />
     </AuthShell>
   );
 }

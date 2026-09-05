@@ -105,12 +105,12 @@ src/
 ├── app/                # Rotas, layouts e páginas do App Router
 ├── components/
 │   ├── layout/         # Estruturas visuais compartilhadas
-│   ├── auth/           # Formulários compartilhados de acesso
 │   └── ui/             # Componentes básicos reutilizáveis
 ├── lib/
 │   └── api/            # Cliente HTTP e contratos de integração futuros
 ├── mocks/              # Fixtures de desenvolvimento e testes
 └── modules/            # Funcionalidades organizadas por domínio
+│   ├── auth/           # Domínio de autenticação (LoginForm, RegisterForm, schemas)
 ```
 
 Não crie módulos de roadmap antes de existir uma Issue aprovada para eles.
