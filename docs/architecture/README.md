@@ -40,9 +40,14 @@ CORE não significa implementar todas as tabelas nesta Sprint. O núcleo gratuit
 
 - [Guia de modelagem e limites das garantias](data-model.md).
 - [DBML textual](../diagrams/nexoaula.dbml) e [diagramas gerados por módulo](../diagrams/README.md).
+- [Proposta de persistência e migrations](../decisions/ADR-0003-persistence.md).
 - [Fonte oficial no Notion](https://app.notion.com/p/3c9bb0fde01f806db3f3f09dc5a2d944).
 - [Revisão da modelagem #7](https://github.com/Wanjos-eng/nexoaula-webapp/issues/7) e [decisão de monetização #11](https://github.com/Wanjos-eng/nexoaula-webapp/issues/11).
 
 A documentação registra as decisões confirmadas e a revisão conjunta aceita por Wanjos-eng em 04/09/2026 como conclusão da #7, em substituição expressa ao critério de outro integrante. Não há aprovação atribuída a terceiros; publicar esta referência não autoriza migrations.
 
-ORM, estratégia concreta de migrations, provedor de autenticação e storage continuam pendentes. Também exigem decisão os papéis de publicação/correção, governança de conteúdo, saída de owner, credenciamento/comissão e retenção/anonimização. Não tratar essas escolhas como aprovadas neste PR.
+ORM e estratégia concreta de migrations possuem uma proposta na #20, ainda não
+aprovada. Provedor de autenticação e storage continuam pendentes. Também exigem
+decisão os papéis de publicação/correção, governança de conteúdo, saída de owner,
+credenciamento/comissão e retenção/anonimização. Não tratar essas escolhas como
+aprovadas antes do merge do ADR correspondente.
