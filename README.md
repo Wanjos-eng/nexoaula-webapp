@@ -91,6 +91,9 @@ O health não depende de banco. Configuração, instalação manual, testes e ad
 do Alembic estão no [README da API](Back-end/apps/api/README.md).
 PostgreSQL está definido; a decisão de ORM/migrations continua pendente. O scaffold
 legado foi preservado dentro da API, sem configurar conexão nem migration de domínio.
+A proposta em revisão está no
+[ADR-0003](docs/decisions/ADR-0003-persistence.md); ela só passa a valer após
+aprovação e merge da [#20](https://github.com/Wanjos-eng/nexoaula-webapp/issues/20).
 
 
 **Frontend**, em outro terminal:
