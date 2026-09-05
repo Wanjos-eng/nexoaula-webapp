@@ -1,3 +1,8 @@
+
+export function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export type LoginFormErrors = Partial<Record<"email" | "password", string>>;
 
 export type RegisterFormErrors = Partial<
@@ -13,7 +18,7 @@ export function validateLoginForm(data: FormData): {
   const email = String(data.get("email") ?? "").trim();
   const password = String(data.get("password") ?? "");
 
-  if (!email || !email.includes("@")) {
+  if (!email || !isValidEmail(email)) {
     errors.email = "Informe um e-mail válido.";
   }
 
@@ -45,7 +50,7 @@ export function validateRegisterForm(data: FormData): {
     errors.fullName = "Informe seu nome completo (mínimo de 3 caracteres).";
   }
 
-  if (!email || !email.includes("@")) {
+  if (!email || !isValidEmail(email)) {
     errors.email = "Informe um e-mail válido.";
   }
 

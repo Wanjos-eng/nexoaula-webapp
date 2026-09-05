@@ -12,6 +12,9 @@ import { validateRegisterForm, type RegisterFormErrors } from "../schemas/authSc
 
 import styles from "./AuthForm.module.css";
 
+/** E-mail que dispara a falha simulada (demonstração de erro genérico). */
+const DEMO_ERROR_EMAIL = "erro@demo.com";
+
 type BannerState = {
   type: "success" | "error" | "info";
   message: string;
@@ -22,7 +25,22 @@ export function RegisterForm() {
   const [errors, setErrors] = useState<RegisterFormErrors>({});
   const [banner, setBanner] = useState<BannerState>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const hasSimulatedError = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      if (navTimeoutRef.current) {
+        clearTimeout(navTimeoutRef.current);
+        navTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -37,6 +55,8 @@ export function RegisterForm() {
     event.preventDefault();
     if (timeoutRef.current !== null) return;
     setBanner(null);
+
+    if (isLoading) return;
 
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -53,9 +73,27 @@ export function RegisterForm() {
       return;
     }
 
+    const email = String(data.get("email") ?? "").trim();
+
+    // Erro genérico simulado: dispara uma única vez para demonstração
+    if (email === DEMO_ERROR_EMAIL && !hasSimulatedError.current) {
+      hasSimulatedError.current = true;
+      setIsLoading(true);
+      setBanner(null);
+
+      timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = null;
+        setIsLoading(false);
+        setBanner({
+          type: "error",
+          message: "Falha simulada na conexão. Tente novamente.",
+        });
+      }, 600);
+      return;
+    }
+
     setIsLoading(true);
 
-    // Simulação de submissão assíncrona com feedback visual
     timeoutRef.current = setTimeout(() => {
       timeoutRef.current = null;
       setIsLoading(false);
@@ -63,7 +101,11 @@ export function RegisterForm() {
         type: "success",
         message: "Conta demonstrativa criada com sucesso! Redirecionando para o painel...",
       });
-      router.push("/inicio");
+
+      // Atrasa a navegação para que o banner de sucesso seja perceptível
+      navTimeoutRef.current = setTimeout(() => {
+        router.push("/inicio");
+      }, 1500);
     }, 600);
   }
 
@@ -78,13 +120,12 @@ export function RegisterForm() {
       {banner ? (
         <div
           aria-live="polite"
-          className={`${styles.banner} ${
-            banner.type === "success"
-              ? styles.bannerSuccess
-              : banner.type === "error"
-                ? styles.bannerError
-                : styles.bannerInfo
-          }`}
+          className={`${styles.banner} ${banner.type === "success"
+            ? styles.bannerSuccess
+            : banner.type === "error"
+              ? styles.bannerError
+              : styles.bannerInfo
+            }`}
           role="status"
         >
           {banner.type === "success" && <CheckCircle aria-hidden size={20} />}

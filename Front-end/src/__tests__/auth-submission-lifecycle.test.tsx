@@ -59,7 +59,7 @@ describe("ciclo de vida da submissão demonstrativa", () => {
       const { form } = renderValidForm(kind);
       fireEvent.submit(form);
       fireEvent.submit(form);
-      act(() => vi.advanceTimersByTime(600));
+      act(() => vi.advanceTimersByTime(2100));
       expect(push).toHaveBeenCalledTimes(1);
       expect(screen.queryByText("Informe um e-mail válido.")).toBeNull();
     },

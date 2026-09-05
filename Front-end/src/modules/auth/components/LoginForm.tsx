@@ -12,6 +12,8 @@ import { validateLoginForm, type LoginFormErrors } from "../schemas/authSchemas"
 
 import styles from "./AuthForm.module.css";
 
+const DEMO_ERROR_EMAIL = "erro@demo.com";
+
 type BannerState = {
   type: "success" | "error" | "info";
   message: string;
@@ -22,7 +24,22 @@ export function LoginForm() {
   const [errors, setErrors] = useState<LoginFormErrors>({});
   const [banner, setBanner] = useState<BannerState>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const hasSimulatedError = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      if (navTimeoutRef.current) {
+        clearTimeout(navTimeoutRef.current);
+        navTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -38,6 +55,8 @@ export function LoginForm() {
     if (timeoutRef.current !== null) return;
     setBanner(null);
 
+    if (isLoading) return;
+
     const form = event.currentTarget;
     const data = new FormData(form);
 
@@ -49,9 +68,26 @@ export function LoginForm() {
       return;
     }
 
+    const email = String(data.get("email") ?? "").trim();
+
+    if (email === DEMO_ERROR_EMAIL && !hasSimulatedError.current) {
+      hasSimulatedError.current = true;
+      setIsLoading(true);
+      setBanner(null);
+
+      timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = null;
+        setIsLoading(false);
+        setBanner({
+          type: "error",
+          message: "Falha simulada na conexão. Tente novamente.",
+        });
+      }, 600);
+      return;
+    }
+
     setIsLoading(true);
 
-    // Simulação de submissão assíncrona com feedback visual
     timeoutRef.current = setTimeout(() => {
       timeoutRef.current = null;
       setIsLoading(false);
@@ -59,7 +95,10 @@ export function LoginForm() {
         type: "success",
         message: "Acesso demonstrativo confirmado. Redirecionando para o painel acadêmico...",
       });
-      router.push("/inicio");
+
+      navTimeoutRef.current = setTimeout(() => {
+        router.push("/inicio");
+      }, 1500);
     }, 600);
   }
 
@@ -81,13 +120,12 @@ export function LoginForm() {
       {banner ? (
         <div
           aria-live="polite"
-          className={`${styles.banner} ${
-            banner.type === "success"
-              ? styles.bannerSuccess
-              : banner.type === "error"
-                ? styles.bannerError
-                : styles.bannerInfo
-          }`}
+          className={`${styles.banner} ${banner.type === "success"
+            ? styles.bannerSuccess
+            : banner.type === "error"
+              ? styles.bannerError
+              : styles.bannerInfo
+            }`}
           role="status"
         >
           {banner.type === "success" && <CheckCircle aria-hidden size={20} />}
@@ -148,3 +186,4 @@ export function LoginForm() {
     </div>
   );
 }
+

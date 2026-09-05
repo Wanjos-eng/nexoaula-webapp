@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { LoginForm, RegisterForm, validateLoginForm, validateRegisterForm } from "@/modules/auth";
+import { LoginForm, RegisterForm, isValidEmail, validateLoginForm, validateRegisterForm } from "@/modules/auth";
 
 const push = vi.fn();
 
@@ -49,7 +49,7 @@ describe("LoginForm", () => {
     ).toBeDefined();
   });
 
-  it("simula loading, sucesso e navega para /inicio com credenciais preenchidas", () => {
+  it("simula loading, sucesso e navega para /inicio com credenciais preenchidas, respeitando o atraso", () => {
     render(<LoginForm />);
 
     fireEvent.change(screen.getByLabelText("E-mail"), {
@@ -70,7 +70,46 @@ describe("LoginForm", () => {
     expect(
       screen.getByText(/Acesso demonstrativo confirmado/i),
     ).toBeDefined();
+
+    expect(push).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+
     expect(push).toHaveBeenCalledWith("/inicio");
+  });
+
+  it("simula falha genérica e permite recuperação na segunda tentativa", () => {
+    render(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "erro@demo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), {
+      target: { value: "qualquer-senha" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+
+    expect(screen.getByText(/Falha simulada na conexão/i)).toBeDefined();
+    expect(push).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "lucas@exemplo.com" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+
+    expect(screen.getByText(/Acesso demonstrativo confirmado/i)).toBeDefined();
   });
 
   it("possui link para navegação para a página de cadastro", () => {
@@ -124,7 +163,7 @@ describe("RegisterForm", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("simula criação de conta com sucesso e navega para /inicio", () => {
+  it("simula criação de conta com sucesso e navega para /inicio, respeitando o atraso", () => {
     render(<RegisterForm />);
 
     fireEvent.change(screen.getByLabelText("Nome completo"), {
@@ -152,7 +191,53 @@ describe("RegisterForm", () => {
     expect(
       screen.getByText(/Conta demonstrativa criada com sucesso/i),
     ).toBeDefined();
+
+    expect(push).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+
     expect(push).toHaveBeenCalledWith("/inicio");
+  });
+
+  it("simula falha genérica e permite recuperação na segunda tentativa", () => {
+    render(<RegisterForm />);
+
+    fireEvent.change(screen.getByLabelText("Nome completo"), {
+      target: { value: "Lucas Silva" },
+    });
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "erro@demo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), {
+      target: { value: "senha1234" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirmar senha"), {
+      target: { value: "senha1234" },
+    });
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+
+    expect(screen.getByText(/Falha simulada na conexão/i)).toBeDefined();
+    expect(push).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "lucas@exemplo.com" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+
+    expect(screen.getByText(/Conta demonstrativa criada com sucesso/i)).toBeDefined();
   });
 
   it("possui link para navegação para a página de login", () => {
@@ -164,6 +249,18 @@ describe("RegisterForm", () => {
 });
 
 describe("authSchemas", () => {
+  describe("isValidEmail", () => {
+    it("valida emails corretamente", () => {
+      expect(isValidEmail("aluno@exemplo.com")).toBe(true);
+      expect(isValidEmail("")).toBe(false);
+      expect(isValidEmail("@")).toBe(false);
+      expect(isValidEmail("aluno@")).toBe(false);
+      expect(isValidEmail("@exemplo.com")).toBe(false);
+      expect(isValidEmail("aluno @exemplo.com")).toBe(false);
+      expect(isValidEmail("aluno@ exemplo.com")).toBe(false);
+    });
+  });
+
   it("valida dados de login corretamente", () => {
     const validData = new FormData();
     validData.set("email", "estudante@ufba.br");
