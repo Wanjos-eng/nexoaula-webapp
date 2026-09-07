@@ -5,8 +5,9 @@
 ## Visão do Produto
 Para estudantes universitários que precisam organizar os estudos e encontrar colegas com objetivos e horários compatíveis, o **nexoAula** conecta alunos através de grupos vinculados a disciplinas. Cada grupo possui seu próprio plano de ensino, aulas e correções; presença/falta é um registro individual ligado à aula realizada. Não há acompanhamento de PD avulso fora dos grupos.
 
-Estado atual: frontend demonstrativo navegável e API em setup técnico, ainda sem
-autenticação, persistência ou integração funcional com o frontend.
+Estado atual: frontend demonstrativo navegável e API com migration e persistência
+inicial de usuário/perfil, ainda sem autenticação HTTP ou integração funcional
+com o frontend.
 
 ## Estrutura do Monorepo
 

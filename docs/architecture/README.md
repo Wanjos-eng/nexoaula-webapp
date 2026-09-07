@@ -2,7 +2,9 @@
 
 Monorepositório com Next.js em `Front-end/`, FastAPI em `Back-end/apps/api/` e PostgreSQL. O backend segue arquitetura modular/em camadas, não microsserviços. Veja o [ADR-0001](../decisions/ADR-0001-monorepo.md).
 
-O frontend atual é uma demonstração navegável com mocks. O setup da API e a documentação do modelo não significam autenticação, persistência ou integração funcional já concluídas.
+O frontend atual é uma demonstração navegável com mocks. A API possui migration e
+persistência inicial de usuário/perfil, mas isso ainda não significa autenticação
+HTTP ou integração funcional concluída.
 
 ## Regra central do produto
 

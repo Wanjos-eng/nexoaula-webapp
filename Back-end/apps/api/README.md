@@ -1,8 +1,8 @@
 # nexoAula API — setup inicial
 
-FastAPI executável com router técnico, configuração centralizada e persistência
-inicial de identidade. Ainda não implementa cadastro, login ou regras de negócio.
-PostgreSQL, SQLAlchemy 2 e Alembic estão integrados no recorte da Issue #21.
+FastAPI executável com router técnico, configuração centralizada, migration e
+persistência de usuário/perfil. Ainda não implementa endpoints de cadastro ou
+login. PostgreSQL, SQLAlchemy 2 e Alembic estão integrados no recorte inicial.
 
 A decisão está documentada no
 [ADR-0003](../../../docs/decisions/ADR-0003-persistence.md). A primeira migration
@@ -113,4 +113,15 @@ preservadas em `user_profiles`, mas suas FKs dependem de tabelas de Media e
 Academic ainda fora do recorte. Elas serão criadas pelas migrations responsáveis.
 O downgrade é destrutivo e só deve ser testado em banco descartável. Veja
 [alembic/README](alembic/README).
+
+## Persistência de usuário e perfil
+
+O módulo [Users](app/modules/users/README.md) expõe `UserService`, schemas e erros
+estáveis. A implementação SQLAlchemy fica isolada em `infrastructure/` e usa uma
+unidade de trabalho explícita para commit/rollback. O perfil é opcional e, quando
+informado, é criado na mesma transação da identidade.
+
+Os testes unitários do service não exigem banco. Os testes de repository exigem
+PostgreSQL migrado e são executados no workflow `Identity migration checks`, com
+cobertura de `app.modules.users`. Nenhum endpoint HTTP é liberado por esta camada.
 
