@@ -100,11 +100,12 @@ python -m uvicorn app.main:app --reload
 ```
 
 Abra [health](http://127.0.0.1:8000/health) ou [Swagger](http://127.0.0.1:8000/docs).
-O health não depende de banco. Configuração, instalação manual, testes e adiamento
-do Alembic estão no [README da API](Back-end/apps/api/README.md).
+O health não depende de banco. Configuração, instalação manual e migrations estão
+no [README da API](Back-end/apps/api/README.md).
 PostgreSQL, SQLAlchemy 2 e Alembic foram definidos no
-[ADR-0003](docs/decisions/ADR-0003-persistence.md). O scaffold ainda não possui
-conexão nem migration de domínio; essa implementação pertence às issues de dados.
+[ADR-0003](docs/decisions/ADR-0003-persistence.md). A migration inicial libera
+somente `users`, `user_profiles` e `auth_tokens`; os demais módulos continuam
+pendentes e serão adicionados incrementalmente.
 O JWT em cookie `HttpOnly` para o primeiro fluxo web foi definido no
 [ADR-0002](docs/decisions/ADR-0002-authentication.md); os endpoints ainda não
 foram implementados.

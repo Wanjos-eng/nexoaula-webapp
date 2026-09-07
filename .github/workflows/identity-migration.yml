@@ -1,0 +1,84 @@
+name: Identity migration checks
+
+on:
+  pull_request:
+    paths:
+      - 'Back-end/apps/api/**'
+      - 'compose.yml'
+      - '.github/workflows/identity-migration.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Back-end/apps/api/**'
+      - 'compose.yml'
+      - '.github/workflows/identity-migration.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  identity-migration:
+    name: Upgrade, inspect, downgrade and upgrade
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql+psycopg2://nexoaula:nexoaula_local@localhost:5432/nexoaula
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: Back-end/apps/api/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: Back-end/apps/api
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip check
+
+      - name: Start clean PostgreSQL
+        run: |
+          docker compose down --volumes
+          docker compose up -d --wait
+
+      - name: Upgrade and inspect the identity schema
+        working-directory: Back-end/apps/api
+        run: |
+          python -m alembic upgrade head
+          python -m pytest -q \
+            tests/test_config.py \
+            tests/test_migration_scaffold.py \
+            tests/test_identity_migration.py
+          python -m alembic check
+
+      - name: Downgrade to the empty base
+        working-directory: Back-end/apps/api
+        run: |
+          python -m alembic downgrade base
+          test "$(docker compose -f ../../../compose.yml exec -T db psql \
+            --username nexoaula \
+            --dbname nexoaula \
+            --tuples-only \
+            --no-align \
+            --command "SELECT count(*) FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('users', 'user_profiles', 'auth_tokens');")" = "0"
+          test "$(docker compose -f ../../../compose.yml exec -T db psql \
+            --username nexoaula \
+            --dbname nexoaula \
+            --tuples-only \
+            --no-align \
+            --command "SELECT count(*) FROM pg_type WHERE typname = 'auth_token_type';")" = "0"
+
+      - name: Upgrade again from the empty base
+        working-directory: Back-end/apps/api
+        run: |
+          python -m alembic upgrade head
+          python -m pytest -q tests/test_identity_migration.py
+
+      - name: Show database diagnostics on failure
+        if: failure()
+        run: docker compose ps && docker compose logs db
+
+      - name: Remove CI database
+        if: always()
+        run: docker compose down --volumes

@@ -2,8 +2,8 @@
 
 O `compose.yml` da raiz inicia somente o banco PostgreSQL necessário ao
 desenvolvimento da API. Frontend e backend continuam sendo executados pelos seus
-próprios comandos. Migrations e tabelas de domínio serão adicionadas
-incrementalmente a partir da Issue #21.
+próprios comandos. A primeira migration libera somente o recorte de identidade;
+os demais módulos serão adicionados incrementalmente.
 
 ## Pré-requisitos
 
@@ -46,15 +46,15 @@ podem ser reutilizados em produção ou ambientes compartilhados.
 
 ## Conexão da API
 
-Quando a conexão for implementada na Issue #21, a URL local será:
+Para executar as migrations e os futuros acessos da API, a URL local é:
 
 ```text
 postgresql+psycopg2://nexoaula:nexoaula_local@localhost:5432/nexoaula
 ```
 
-Não inclua a URL real em código nem faça commit de `.env`. O health técnico atual
-da API ainda funciona sem banco; esta tarefa não antecipa a configuração ou as
-migrations da aplicação.
+Copie o exemplo da API para `.env` somente na sua máquina ou exporte a variável no
+terminal. Não inclua a URL real em código nem faça commit de `.env`. O health
+técnico da API continua funcionando sem banco; migrations exigem a URL.
 
 ## Sobrescrever valores locais
 
