@@ -1,17 +1,24 @@
-Scaffold legado do PR #2, reorganizado pela Issue #6.
+Ambiente Alembic oficial da API, conforme o ADR-0003.
 
-SQLAlchemy 2 e Alembic foram aprovados no ADR-0003. PostgreSQL permanece o banco
-definido pelo projeto; este scaffold ainda nao conecta banco nem cria schema.
+A revision `0001_identity` libera somente `users`, `user_profiles` e
+`auth_tokens`. A metadata agregada importa explicitamente apenas os modelos do
+recorte de identidade. Nao adicione todos os modelos do DBML de uma vez.
 
-alembic.ini aponta para esta pasta para permitir `python -m alembic history`.
-O resultado esperado e vazio: nao existem revisions de dominio.
-env.py bloqueia explicitamente comandos que inicializem o ambiente de migrations.
-Nao rode upgrade, downgrade ou revision --autogenerate antes da implementacao da
-migration inicial e da configuracao exigida pela Issue #21.
+`DATABASE_URL` e obrigatoria para `upgrade`, `downgrade`, `current` e `check`,
+vem do ambiente ou do `.env` local ignorado e deve usar PostgreSQL. A URL nao e
+armazenada em `alembic.ini`; SQLite nao e suportado.
 
-O template generico foi preservado para a futura decisao, sem modelos, URLs,
-credenciais ou fallback SQLite. Alembic e SQLAlchemy permanecem nas dependencias
-legadas; sua presenca isolada nao comprova que a integracao foi implementada.
+Antes de compartilhar uma nova revision, revise manualmente upgrade, downgrade,
+constraints, indices e operacoes especificas do PostgreSQL. Uma revision ja
+compartilhada nunca deve ser reescrita: correcoes usam uma migration aditiva.
 
-A decisao tecnica esta em docs/decisions/ADR-0003-persistence.md. A Issue #20 foi
-concluida; a Issue #21 deve substituir este bloqueio de forma testada.
+Com o banco local descartavel iniciado na raiz:
+
+    docker compose up -d --wait
+    cd Back-end/apps/api
+    python -m alembic upgrade head
+    python -m alembic check
+    python -m alembic downgrade base
+    python -m alembic upgrade head
+
+O downgrade destrutivo e permitido somente no banco local descartavel ou no CI.

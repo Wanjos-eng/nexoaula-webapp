@@ -10,13 +10,15 @@ from app.core.config import API_ROOT, Settings
 def clean_config_environment(monkeypatch):
     monkeypatch.delenv("PROJECT_NAME", raising=False)
     monkeypatch.delenv("VERSION", raising=False)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
 
 
 def test_defaults_need_no_database():
     settings = Settings(_env_file=None)
     assert settings.PROJECT_NAME == "nexoAula API"
     assert settings.VERSION == "0.1.0"
-    assert set(Settings.model_fields) == {"PROJECT_NAME", "VERSION"}
+    assert settings.DATABASE_URL is None
+    assert set(Settings.model_fields) == {"PROJECT_NAME", "VERSION", "DATABASE_URL"}
 
 
 def test_env_file_and_environment_precedence(tmp_path, monkeypatch):
@@ -40,3 +42,28 @@ def test_empty_options_report_the_field(field, monkeypatch):
     with pytest.raises(ValidationError) as error:
         Settings(_env_file=None)
     assert error.value.errors()[0]["loc"] == (field,)
+
+
+def test_database_url_is_required_only_for_database_operations():
+    settings = Settings(_env_file=None)
+
+    with pytest.raises(RuntimeError, match="DATABASE_URL é obrigatória"):
+        settings.require_database_url()
+
+
+@pytest.mark.parametrize(
+    "database_url",
+    ["sqlite:///local.db", "mysql://user:password@localhost/database"],
+)
+def test_database_url_rejects_non_postgresql_dialects(database_url):
+    settings = Settings(DATABASE_URL=database_url, _env_file=None)
+
+    with pytest.raises(RuntimeError, match="PostgreSQL"):
+        settings.require_database_url()
+
+
+def test_database_url_accepts_postgresql_driver():
+    database_url = "postgresql+psycopg2://user:secret@localhost:5432/nexoaula"
+    settings = Settings(DATABASE_URL=database_url, _env_file=None)
+
+    assert settings.require_database_url() == database_url
