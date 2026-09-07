@@ -1,6 +1,6 @@
 # ADR-0003: Persistência e migrations no backend
 
-- **Status:** Proposta — aguarda revisão da equipe
+- **Status:** Aceita — mesclada no PR #81 e concluída na Issue #20
 - **Data:** 2026-09-05
 - **Issue:** [#20 — Validar ORM e estratégia de migrations](https://github.com/Wanjos-eng/nexoaula-webapp/issues/20)
 
@@ -52,7 +52,7 @@ Ferramentas centradas apenas em SQL são viáveis, mas introduziriam outra cadei
 de ferramentas e deixariam sem solução o mapeamento dos objetos da aplicação.
 Não são escolhidas para o prazo atual.
 
-## Decisão proposta
+## Decisão
 
 Adotar:
 
@@ -65,9 +65,9 @@ Adotar:
    I/O assíncrono pode ser reavaliada com evidência de necessidade, sem misturar
    essa mudança à primeira migration.
 
-Essa decisão torna aceita a combinação de ferramentas quando este ADR for
-aprovado e mesclado. Enquanto estiver com status `Proposta`, o scaffold permanece
-bloqueado e a #21 não deve ser tratada como concluída.
+O merge deste ADR aprovou a combinação de ferramentas. Isso desbloqueia a
+implementação incremental da #21, mas não significa que conexão, modelos ou
+migrations já estejam implementados.
 
 ## Organização no monorepositório
 

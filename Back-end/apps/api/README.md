@@ -2,12 +2,16 @@
 
 FastAPI executável com router técnico e configuração centralizada. Não implementa
 cadastro, login, regras de negócio ou conexão com banco. PostgreSQL está definido;
-a decisão de ORM/migrations continua pendente.
+SQLAlchemy 2 e Alembic foram aprovados, mas ainda não estão integrados ao app.
 
-A proposta de SQLAlchemy 2 + Alembic está documentada no
-[ADR-0003](../../../docs/decisions/ADR-0003-persistence.md). Enquanto o documento
-estiver em revisão, o scaffold abaixo continua bloqueado e não representa uma
-decisão aceita.
+A decisão está documentada no
+[ADR-0003](../../../docs/decisions/ADR-0003-persistence.md). O scaffold abaixo
+continua bloqueado até a implementação da migration inicial; aprovação de uma
+ferramenta não equivale a conexão ou schema concluídos.
+
+O mecanismo JWT em cookie `HttpOnly` do primeiro fluxo está em revisão no
+[ADR-0002](../../../docs/decisions/ADR-0002-authentication.md). Nenhum endpoint,
+segredo ou cookie real é criado por este documento.
 
 ## Ambiente
 
