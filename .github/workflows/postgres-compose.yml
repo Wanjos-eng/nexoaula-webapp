@@ -1,0 +1,65 @@
+name: PostgreSQL Compose checks
+
+on:
+  pull_request:
+    paths:
+      - 'compose.yml'
+      - 'docs/environment/postgresql-local.md'
+      - '.github/workflows/postgres-compose.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'compose.yml'
+      - 'docs/environment/postgresql-local.md'
+      - '.github/workflows/postgres-compose.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-compose:
+    name: Start, persist and query PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+
+      - name: Start PostgreSQL and wait for health
+        run: docker compose up -d --wait
+
+      - name: Create smoke-test data
+        run: |
+          docker compose exec -T db psql \
+            --username nexoaula \
+            --dbname nexoaula \
+            --set ON_ERROR_STOP=1 \
+            --command "CREATE TABLE compose_smoke_test (id integer PRIMARY KEY);" \
+            --command "INSERT INTO compose_smoke_test (id) VALUES (1);"
+
+      - name: Recreate the container without deleting its volume
+        run: |
+          docker compose down
+          docker compose up -d --wait
+
+      - name: Confirm health and persisted data
+        run: |
+          docker compose exec -T db pg_isready \
+            --username nexoaula \
+            --dbname nexoaula
+          test "$(docker compose exec -T db psql \
+            --username nexoaula \
+            --dbname nexoaula \
+            --tuples-only \
+            --no-align \
+            --command 'SELECT count(*) FROM compose_smoke_test;')" = "1"
+
+      - name: Show diagnostics on failure
+        if: failure()
+        run: docker compose ps && docker compose logs db
+
+      - name: Remove CI resources
+        if: always()
+        run: docker compose down --volumes

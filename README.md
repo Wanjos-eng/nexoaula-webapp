@@ -14,6 +14,7 @@ autenticação, persistência ou integração funcional com o frontend.
 /
 ├── Back-end/apps/api/  # FastAPI, configuração, testes e Alembic adiado
 ├── Front-end/
+├── compose.yml         # PostgreSQL local para desenvolvimento e testes
 ├── docs/
 ├── shared/
 ├── setup.ps1          # Setup do monorepo no Windows
@@ -70,6 +71,18 @@ reexecução](docs/environment/setup.md). Os scripts não exigem administrador/s
 macOS e Cygwin não são suportados nesta validação; WSL não tem evidência específica.
 
 ## Como executar o projeto (local)
+
+**PostgreSQL**, na raiz do monorepositório e com o Docker em execução:
+
+```bash
+docker compose up -d --wait
+docker compose ps
+```
+
+O Compose inicia somente o banco. Ele usa valores públicos de desenvolvimento e
+mantém os dados em volume local; não reutilize essas credenciais fora da máquina
+de desenvolvimento. Consulte os comandos de conexão, configuração, parada e
+[cuidados com o volume](docs/environment/postgresql-local.md).
 
 **Backend no Windows**, após o setup:
 
