@@ -1,16 +1,17 @@
 Scaffold legado do PR #2, reorganizado pela Issue #6.
 
-A decisao de ORM/migrations continua pendente. PostgreSQL permanece o banco
-definido pelo projeto; este setup nao conecta banco nem escolhe ORM.
+SQLAlchemy 2 e Alembic foram aprovados no ADR-0003. PostgreSQL permanece o banco
+definido pelo projeto; este scaffold ainda nao conecta banco nem cria schema.
 
 alembic.ini aponta para esta pasta para permitir `python -m alembic history`.
 O resultado esperado e vazio: nao existem revisions de dominio.
 env.py bloqueia explicitamente comandos que inicializem o ambiente de migrations.
-Nao rode upgrade, downgrade ou revision --autogenerate nesta etapa.
+Nao rode upgrade, downgrade ou revision --autogenerate antes da implementacao da
+migration inicial e da configuracao exigida pela Issue #21.
 
 O template generico foi preservado para a futura decisao, sem modelos, URLs,
 credenciais ou fallback SQLite. Alembic e SQLAlchemy permanecem nas dependencias
-legadas; sua presenca nao representa aprovacao da estrategia de persistencia.
+legadas; sua presenca isolada nao comprova que a integracao foi implementada.
 
-A proposta tecnica esta em docs/decisions/ADR-0003-persistence.md e so deve
-desbloquear este ambiente depois de revisada e mesclada pela Issue #20.
+A decisao tecnica esta em docs/decisions/ADR-0003-persistence.md. A Issue #20 foi
+concluida; a Issue #21 deve substituir este bloqueio de forma testada.

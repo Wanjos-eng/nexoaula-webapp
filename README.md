@@ -89,11 +89,12 @@ python -m uvicorn app.main:app --reload
 Abra [health](http://127.0.0.1:8000/health) ou [Swagger](http://127.0.0.1:8000/docs).
 O health não depende de banco. Configuração, instalação manual, testes e adiamento
 do Alembic estão no [README da API](Back-end/apps/api/README.md).
-PostgreSQL está definido; a decisão de ORM/migrations continua pendente. O scaffold
-legado foi preservado dentro da API, sem configurar conexão nem migration de domínio.
-A proposta em revisão está no
-[ADR-0003](docs/decisions/ADR-0003-persistence.md); ela só passa a valer após
-aprovação e merge da [#20](https://github.com/Wanjos-eng/nexoaula-webapp/issues/20).
+PostgreSQL, SQLAlchemy 2 e Alembic foram definidos no
+[ADR-0003](docs/decisions/ADR-0003-persistence.md). O scaffold ainda não possui
+conexão nem migration de domínio; essa implementação pertence às issues de dados.
+O JWT em cookie `HttpOnly` para o primeiro fluxo web foi definido no
+[ADR-0002](docs/decisions/ADR-0002-authentication.md); os endpoints ainda não
+foram implementados.
 
 
 **Frontend**, em outro terminal:
@@ -112,6 +113,7 @@ npm run dev
 - [Arquitetura, módulos e recortes de entrega](docs/architecture/README.md).
 - [Modelagem revisada e validação](docs/architecture/data-model.md).
 - [Diagramas gerados do DBML](docs/diagrams/README.md).
+- [Decisões arquiteturais](docs/decisions/).
 
 ## Contribuição
 

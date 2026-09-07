@@ -4,6 +4,10 @@ Aplicação web do nexoAula construída com Next.js, TypeScript e App Router.
 A interface atual é um protótipo navegável com dados simulados; ela ainda não
 possui autenticação real nem integração com o FastAPI.
 
+O mecanismo definido para a integração é JWT curto em cookie `HttpOnly`, descrito
+no [ADR-0002](../docs/decisions/ADR-0002-authentication.md). O frontend não deverá
+ler, retornar ou persistir esse token em Web Storage.
+
 A criação de grupo em `/grupos/novo` valida e preserva um rascunho somente enquanto
 a tela está aberta. A conclusão é simulada e não cria grupos, canais ou convites.
 Veja a [organização, limites e evidências da issue #16](../docs/evidence/issue-16/README.md).
