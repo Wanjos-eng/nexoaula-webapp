@@ -4,6 +4,11 @@ FastAPI executável com router técnico e configuração centralizada. Não impl
 cadastro, login, regras de negócio ou conexão com banco. PostgreSQL está definido;
 a decisão de ORM/migrations continua pendente.
 
+A proposta de SQLAlchemy 2 + Alembic está documentada no
+[ADR-0003](../../../docs/decisions/ADR-0003-persistence.md). Enquanto o documento
+estiver em revisão, o scaffold abaixo continua bloqueado e não representa uma
+decisão aceita.
+
 ## Ambiente
 
 Use Python **3.11.x**. `requirements.txt` é a fonte única das dependências da API.

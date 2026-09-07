@@ -11,3 +11,6 @@ Nao rode upgrade, downgrade ou revision --autogenerate nesta etapa.
 O template generico foi preservado para a futura decisao, sem modelos, URLs,
 credenciais ou fallback SQLite. Alembic e SQLAlchemy permanecem nas dependencias
 legadas; sua presenca nao representa aprovacao da estrategia de persistencia.
+
+A proposta tecnica esta em docs/decisions/ADR-0003-persistence.md e so deve
+desbloquear este ambiente depois de revisada e mesclada pela Issue #20.
