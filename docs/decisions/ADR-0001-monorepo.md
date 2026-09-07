@@ -17,7 +17,7 @@ Manter frontend, backend, documentação e futuros componentes compartilhados em
 - Cada grupo tem plano, aulas e correções próprios; presença/falta é individual e ligada à aula realizada. A revisão técnica está na [modelagem](../architecture/data-model.md), com revisão conjunta aceita pelo proprietário na [#7](https://github.com/Wanjos-eng/nexoaula-webapp/issues/7), por decisão expressa em 04/09/2026.
 - Tutores/criadores, materiais, sessões profissionais e credenciamento pertencem ao recorte MONETIZATION, inicialmente com transações simuladas. A formulação antiga de premium baseado em escassez não é a decisão vigente.
 - Importação assistida de PDF e correções colaborativas estão em NEXT. Publicidade permanece em FUTURE, sem tabelas físicas. Isso não significa implementação concluída nem obriga criar todos os módulos agora.
-- Persistência foi definida no [ADR-0003](ADR-0003-persistence.md). O mecanismo do primeiro fluxo de autenticação está em revisão no [ADR-0002](ADR-0002-authentication.md). Provedor de storage permanece em aberto. O status deste ADR aprova a organização em monorepositório, não escolhas ainda pendentes em outros ADRs.
+- Persistência foi definida no [ADR-0003](ADR-0003-persistence.md) e o mecanismo do primeiro fluxo de autenticação no [ADR-0002](ADR-0002-authentication.md). Provedor de storage permanece em aberto. O status deste ADR aprova a organização em monorepositório, não escolhas ainda pendentes em outros ADRs.
 
 ## Benefícios
 

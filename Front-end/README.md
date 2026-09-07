@@ -4,7 +4,7 @@ Aplicação web do nexoAula construída com Next.js, TypeScript e App Router.
 A interface atual é um protótipo navegável com dados simulados; ela ainda não
 possui autenticação real nem integração com o FastAPI.
 
-O mecanismo proposto para a integração é JWT curto em cookie `HttpOnly`, descrito
+O mecanismo definido para a integração é JWT curto em cookie `HttpOnly`, descrito
 no [ADR-0002](../docs/decisions/ADR-0002-authentication.md). O frontend não deverá
 ler, retornar ou persistir esse token em Web Storage.
 

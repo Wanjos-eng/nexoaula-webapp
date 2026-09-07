@@ -92,8 +92,9 @@ do Alembic estão no [README da API](Back-end/apps/api/README.md).
 PostgreSQL, SQLAlchemy 2 e Alembic foram definidos no
 [ADR-0003](docs/decisions/ADR-0003-persistence.md). O scaffold ainda não possui
 conexão nem migration de domínio; essa implementação pertence às issues de dados.
-O JWT em cookie `HttpOnly` para o primeiro fluxo web está em revisão no
-[ADR-0002](docs/decisions/ADR-0002-authentication.md).
+O JWT em cookie `HttpOnly` para o primeiro fluxo web foi definido no
+[ADR-0002](docs/decisions/ADR-0002-authentication.md); os endpoints ainda não
+foram implementados.
 
 
 **Frontend**, em outro terminal:

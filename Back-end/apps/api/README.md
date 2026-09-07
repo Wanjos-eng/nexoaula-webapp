@@ -9,7 +9,7 @@ A decisão está documentada no
 continua bloqueado até a implementação da migration inicial; aprovação de uma
 ferramenta não equivale a conexão ou schema concluídos.
 
-O mecanismo JWT em cookie `HttpOnly` do primeiro fluxo está em revisão no
+O mecanismo JWT em cookie `HttpOnly` do primeiro fluxo foi definido no
 [ADR-0002](../../../docs/decisions/ADR-0002-authentication.md). Nenhum endpoint,
 segredo ou cookie real é criado por este documento.
 

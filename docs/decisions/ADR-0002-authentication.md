@@ -1,6 +1,6 @@
 # ADR-0002: Autenticação do primeiro fluxo web
 
-- **Status:** Proposta — mecanismo confirmado pelo proprietário; aguarda revisão da equipe
+- **Status:** Aceita — decisão do proprietário em 2026-09-07
 - **Data:** 2026-09-07
 - **Issue:** [#19 — Definir mecanismo de autenticação do primeiro fluxo](https://github.com/Wanjos-eng/nexoaula-webapp/issues/19)
 
@@ -207,4 +207,3 @@ revisions já compartilhadas.
 - [OWASP — Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
 - [OWASP — CSRF Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
 - [OWASP — JSON Web Token Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html)
-

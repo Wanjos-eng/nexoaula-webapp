@@ -41,14 +41,14 @@ CORE não significa implementar todas as tabelas nesta Sprint. O núcleo gratuit
 - [Guia de modelagem e limites das garantias](data-model.md).
 - [DBML textual](../diagrams/nexoaula.dbml) e [diagramas gerados por módulo](../diagrams/README.md).
 - [Persistência e migrations](../decisions/ADR-0003-persistence.md).
-- [Proposta de autenticação do primeiro fluxo](../decisions/ADR-0002-authentication.md).
+- [Autenticação do primeiro fluxo](../decisions/ADR-0002-authentication.md).
 - [Fonte oficial no Notion](https://app.notion.com/p/3c9bb0fde01f806db3f3f09dc5a2d944).
 - [Revisão da modelagem #7](https://github.com/Wanjos-eng/nexoaula-webapp/issues/7) e [decisão de monetização #11](https://github.com/Wanjos-eng/nexoaula-webapp/issues/11).
 
 A documentação registra as decisões confirmadas e a revisão conjunta aceita por Wanjos-eng em 04/09/2026 como conclusão da #7, em substituição expressa ao critério de outro integrante. Não há aprovação atribuída a terceiros; publicar esta referência não autoriza migrations.
 
 SQLAlchemy 2 e Alembic foram aprovados no ADR-0003. O JWT em cookie `HttpOnly`
-para o primeiro fluxo está em revisão no ADR-0002. Provedor de storage continua
+para o primeiro fluxo foi definido no ADR-0002. Provedor de storage continua
 pendente. Também exigem decisão os papéis de publicação/correção, governança de
 conteúdo, saída de owner, credenciamento/comissão e retenção/anonimização. Não
 tratar uma proposta como aprovada antes do merge do ADR correspondente.
