@@ -18,15 +18,19 @@ import type {
   PersonalAttendanceStatus,
 } from "@/modules/academic/types";
 
+import { academicReferenceTime, groupPlans } from "@/mocks/academic/academicCatalog";
+import { canRecordAttendance } from "../attendance";
+import { AcademicPreviewState, type AcademicViewState } from "./AcademicPreviewState";
 import styles from "./DisciplineDetailPage.module.css";
 
 type DisciplineDetailPageProps = {
   discipline: AcademicDiscipline | null;
+  state?: AcademicViewState;
 };
 
 const tabs = ["Cronograma & Aulas", "Ementa & Plano", "Notas", "Materiais"] as const;
 
-export function DisciplineDetailPage({ discipline }: DisciplineDetailPageProps) {
+export function DisciplineDetailPage({ discipline, state = "ready" }: DisciplineDetailPageProps) {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("Cronograma & Aulas");
   const [personalAttendanceMap, setPersonalAttendanceMap] = useState<
     Record<string, PersonalAttendanceStatus>
@@ -41,6 +45,8 @@ export function DisciplineDetailPage({ discipline }: DisciplineDetailPageProps) 
 
   const [feedbackNotice, setFeedbackNotice] = useState("");
 
+  if (state === "loading" || state === "error") return <AcademicPreviewState state={state} />;
+  if (discipline && !discipline.isMember) return <section role="alert">Entre no grupo para acessar seu plano e registros pessoais.</section>;
   if (!discipline) {
     return (
       <div className={styles.page}>
@@ -59,15 +65,17 @@ export function DisciplineDetailPage({ discipline }: DisciplineDetailPageProps) 
   }
 
   function handleToggleAttendance(occurrenceId: string, status: PersonalAttendanceStatus) {
+    const occurrence = discipline?.occurrences.find((item) => item.id === occurrenceId);
+    if (!discipline?.isMember || !occurrence || !canRecordAttendance(occurrence, academicReferenceTime)) return;
     setPersonalAttendanceMap((prev) => ({
       ...prev,
       [occurrenceId]: status,
     }));
     setFeedbackNotice(
       status === "present"
-        ? "Presença registrada no seu controle pessoal (não oficial)."
+        ? "Presença simulada no seu controle pessoal (não oficial, sem persistência)."
         : status === "absent"
-        ? "Falta registrada no seu controle pessoal (não oficial)."
+        ? "Falta simulada no seu controle pessoal (não oficial, sem persistência)."
         : "Registro pessoal atualizado.",
     );
   }
@@ -78,6 +86,14 @@ export function DisciplineDetailPage({ discipline }: DisciplineDetailPageProps) 
         <ArrowLeft aria-hidden size={17} /> Voltar às disciplinas
       </Link>
 
+      <p>Prévia demonstrativa: dados fictícios em 08/09/2026; alterações não são persistidas.</p>
+      <p>Plano do grupo: <strong>{discipline.groupName}</strong></p>
+      <nav aria-label="Planos dos meus grupos">
+        {groupPlans.filter((plan) => plan.id === discipline.id && plan.isMember).map((plan) =>
+          <Link key={plan.groupId} href={`/disciplinas/${plan.id}?group=${plan.groupId}`} style={{ marginRight: 16 }}>
+            {plan.groupName}
+          </Link>)}
+      </nav>
       {/* Header */}
       <header className={styles.disciplineHeader}>
         <div className={styles.titleBlock}>
@@ -163,10 +179,13 @@ export function DisciplineDetailPage({ discipline }: DisciplineDetailPageProps) 
             </div>
 
             <div className={styles.timeline}>
-              {discipline.occurrences.map((occ) => {
-                const planned = discipline.plannedLessons.find(
-                  (p) => p.id === occ.plannedLessonId,
-                );
+              {discipline.plannedLessons.length === 0 ? <p>Sem aulas previstas neste grupo.</p> : null}
+              {[...discipline.plannedLessons]
+                .sort((left, right) => left.sequenceNumber - right.sequenceNumber)
+                .map((planned) => {
+                const occurrence = discipline.occurrences.find((item) => item.plannedLessonId === planned.id);
+                const occ = occurrence ?? { id: planned.id, plannedLessonId: planned.id, title: planned.title,
+                  status: "scheduled" as const, displayDate: "Data a definir", time: "", date: "" };
                 const currentStatus = personalAttendanceMap[occ.id] || "unrecorded";
 
                 const statusBadgeStyle =
@@ -181,7 +200,7 @@ export function DisciplineDetailPage({ discipline }: DisciplineDetailPageProps) 
                     ? "Aula Realizada"
                     : occ.status === "cancelled"
                     ? "Aula Cancelada"
-                    : "Aula Adiada";
+                    : occ.status === "postponed" ? "Aula Adiada" : "Aula Prevista";
 
                 return (
                   <article className={styles.lessonCard} key={occ.id}>
@@ -196,9 +215,11 @@ export function DisciplineDetailPage({ discipline }: DisciplineDetailPageProps) 
                       <span>
                         <CalendarBlank aria-hidden size={15} /> {occ.displayDate}
                       </span>
-                      <span>
-                        <Clock aria-hidden size={15} /> {occ.time}
-                      </span>
+                      {occ.time ? (
+                        <span>
+                          <Clock aria-hidden size={15} /> {occ.time}
+                        </span>
+                      ) : null}
                     </div>
 
                     {planned ? (
@@ -222,11 +243,12 @@ export function DisciplineDetailPage({ discipline }: DisciplineDetailPageProps) 
                     ) : null}
 
                     {/* MEU REGISTRO Attendance Box */}
-                    {occ.status === "held" ? (
+                    {canRecordAttendance(occ, academicReferenceTime) ? (
                       <div className={styles.personalBox}>
                         <span>
                           <UserCheck aria-hidden size={16} /> Meu Registro (Não oficial):
                         </span>
+                        {currentStatus === "unrecorded" ? <span>Sem registro pessoal.</span> : null}
                         <div className={styles.attendanceButtons}>
                           <button
                             className={
@@ -254,7 +276,7 @@ export function DisciplineDetailPage({ discipline }: DisciplineDetailPageProps) 
                       </div>
                     ) : (
                       <p className={styles.lessonDesc}>
-                        <em>Frequência pessoal desabilitada para aulas adiadas ou canceladas.</em>
+                        <em>Frequência disponível somente após uma aula realizada e encerrada.</em>
                       </p>
                     )}
                   </article>
@@ -292,7 +314,7 @@ export function DisciplineDetailPage({ discipline }: DisciplineDetailPageProps) 
             <BookOpenText aria-hidden size={22} />
           </div>
           <p className={styles.lessonDesc}>
-            Plano pedagógico oficial fornecido para a turma no início do período:
+            Plano demonstrativo deste grupo, independente dos demais grupos da turma:
           </p>
           <div className={styles.topicList}>
             {discipline.syllabus.map((item) => (
@@ -362,7 +384,7 @@ export function DisciplineDetailPage({ discipline }: DisciplineDetailPageProps) 
           </div>
           <div className={styles.materialList}>
             {discipline.materials.map((mat) => (
-              <button key={mat.title} type="button">
+              <button key={mat.title} type="button" disabled title="Material demonstrativo, sem download">
                 <FileText aria-hidden size={18} />
                 <span>
                   <strong>{mat.title}</strong>

@@ -18,6 +18,7 @@ import "react-day-picker/style.css";
 
 import { calendarEventsList } from "@/mocks/academic/academicCatalog";
 import type { AcademicCalendarEvent } from "@/modules/academic/types";
+import { AcademicPreviewState, type AcademicViewState } from "./AcademicPreviewState";
 import styles from "@/components/academic/AcademicPage.module.css";
 
 function formatDateKey(date: Date): string {
@@ -31,18 +32,18 @@ function parseDateKey(key: string): Date {
   return new Date(year, month - 1, day);
 }
 
-export function AcademicCalendarView() {
+export function AcademicCalendarView({ state = "ready" }: { state?: AcademicViewState }) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date(2026, 7, 31));
   const [month, setMonth] = useState<Date>(new Date(2026, 7, 1));
 
   const eventsByDate = useMemo(() => {
     const map: Record<string, AcademicCalendarEvent[]> = {};
-    calendarEventsList.forEach((evt) => {
+    (state === "empty" ? [] : calendarEventsList).forEach((evt) => {
       if (!map[evt.date]) map[evt.date] = [];
       map[evt.date].push(evt);
     });
     return map;
-  }, []);
+  }, [state]);
 
   const eventDays = useMemo(
     () => Object.keys(eventsByDate).map((key) => parseDateKey(key)),
@@ -70,8 +71,10 @@ export function AcademicCalendarView() {
     setSelectedDate(today);
   }
 
+  if (state === "loading" || state === "error") return <AcademicPreviewState state={state} />;
   return (
     <div className={styles.page}>
+      <p>Prévia demonstrativa: agenda fictícia de 31/08/2026, sem persistência.</p>
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>Agenda acadêmica</p>
@@ -87,7 +90,7 @@ export function AcademicCalendarView() {
       <section aria-label="Controles do calendário" className={styles.calendarToolbar}>
         <div className={styles.calendarToolbarGroup}>
           <button className={styles.outlineButton} onClick={goToToday} type="button">
-            Hoje
+            Hoje (31/08, demonstração)
           </button>
           <div className={styles.calendarNav}>
             <button
@@ -205,13 +208,13 @@ export function AcademicCalendarView() {
                           ? " (Adiada)"
                           : event.occurrenceStatus === "held"
                           ? " (Realizada)"
-                          : ""}
+                          : event.occurrenceStatus === "cancelled" ? " (Cancelada)" : ""}
                       </span>
                       <h4>{event.title}</h4>
                       <p>
                         <Clock aria-hidden size={15} /> {event.time}
                       </p>
-                      <small>{event.context}</small>
+                      <small>{event.context} · {event.groupName}</small>
                     </div>
                   </article>
                 ))}

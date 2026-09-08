@@ -7,6 +7,7 @@ import type {
 export const disciplinesMap: Record<string, AcademicDiscipline> = {
   "modelagem-simulacao": {
     id: "modelagem-simulacao",
+    groupId: "comunidade-msd-c8", groupName: "Comunidade MSD — C8", isMember: true,
     code: "CS-401",
     name: "Modelagem e Simulação Discreta",
     professor: "Brauliro Gonçalves Leal",
@@ -39,6 +40,8 @@ export const disciplinesMap: Record<string, AcademicDiscipline> = {
       { name: "Lista de Exercícios M/M/1", weight: "10%", grade: "10.0", status: "Entregue" },
     ],
     plannedLessons: [
+      { id: "plan-cancelled", sequenceNumber: 5, title: "Laboratório de validação",
+        description: "Aplicação prática do conteúdo.", topics: ["Validação"], estimatedHours: 2 },
       {
         id: "plan-1",
         sequenceNumber: 1,
@@ -73,11 +76,16 @@ export const disciplinesMap: Record<string, AcademicDiscipline> = {
       },
     ],
     occurrences: [
+      { id: "occ-cancelled", plannedLessonId: "plan-cancelled", title: "Laboratório de validação",
+        date: "2026-09-04", displayDate: "04/09/2026", time: "14h–16h", status: "cancelled",
+        notes: "Encontro cancelado neste exemplo; nenhuma presença pode ser registrada." },
       {
         id: "occ-1",
         plannedLessonId: "plan-1",
         title: "Introdução à Simulação Discreta e Variáveis de Estado",
         date: "2026-08-24",
+        actualStartsAt: "2026-08-24T14:00:00-03:00",
+        actualEndsAt: "2026-08-24T16:00:00-03:00",
         displayDate: "24/08/2026",
         time: "14h–16h",
         status: "held",
@@ -88,6 +96,8 @@ export const disciplinesMap: Record<string, AcademicDiscipline> = {
         plannedLessonId: "plan-2",
         title: "Modelo Conceitual de Sistemas de Fila M/M/1",
         date: "2026-08-31",
+        actualStartsAt: "2026-08-31T14:00:00-03:00",
+        actualEndsAt: "2026-08-31T16:00:00-03:00",
         displayDate: "31/08/2026",
         time: "14h–16h",
         status: "held",
@@ -105,13 +115,13 @@ export const disciplinesMap: Record<string, AcademicDiscipline> = {
       },
     ],
     personalRecords: {
-      "occ-1": { id: "rec-1", lessonOccurrenceId: "occ-1", status: "present", recordedAt: "24/08/2026 14:15", isPrivate: true },
-      "occ-2": { id: "rec-2", lessonOccurrenceId: "occ-2", status: "present", recordedAt: "31/08/2026 14:10", isPrivate: true },
+      "occ-1": { id: "rec-1", lessonOccurrenceId: "occ-1", status: "present", recordedAt: "24/08/2026 16:15", isPrivate: true },
       "occ-3": { id: "rec-3", lessonOccurrenceId: "occ-3", status: "unrecorded", isPrivate: true },
     },
   },
   "engenharia-software-ii": {
     id: "engenharia-software-ii",
+    groupId: "engenharia-software-sprint-1", groupName: "Engenharia de Software · Sprint 1", isMember: true,
     code: "CS-402",
     name: "Engenharia de Software II",
     professor: "Ana Carolina Mota",
@@ -151,6 +161,8 @@ export const disciplinesMap: Record<string, AcademicDiscipline> = {
         plannedLessonId: "es-p1",
         title: "Requisitos de Software e Histórias de Usuário",
         date: "2026-08-25",
+        actualStartsAt: "2026-08-25T10:00:00-03:00",
+        actualEndsAt: "2026-08-25T12:00:00-03:00",
         displayDate: "25/08/2026",
         time: "10h–12h",
         status: "held",
@@ -162,6 +174,7 @@ export const disciplinesMap: Record<string, AcademicDiscipline> = {
   },
   "banco-dados-avancado": {
     id: "banco-dados-avancado",
+    groupId: "banco-dados-estudos", groupName: "Banco de Dados — Estudos", isMember: true,
     code: "CS-403",
     name: "Banco de Dados Avançado",
     professor: "Ricardo Souza",
@@ -201,6 +214,8 @@ export const disciplinesMap: Record<string, AcademicDiscipline> = {
         plannedLessonId: "bd-p1",
         title: "Índices PostgreSQL e Planos de Execução EXPLAIN",
         date: "2026-08-28",
+        actualStartsAt: "2026-08-28T08:00:00-03:00",
+        actualEndsAt: "2026-08-28T10:00:00-03:00",
         displayDate: "28/08/2026",
         time: "08h–10h",
         status: "held",
@@ -215,6 +230,7 @@ export const disciplinesMap: Record<string, AcademicDiscipline> = {
 export const calendarEventsList: AcademicCalendarEvent[] = [
   {
     id: "cal-1",
+    groupName: "Comunidade MSD — C8",
     title: "Modelo Conceitual de Sistemas de Fila M/M/1",
     type: "Aula",
     date: "2026-08-31",
@@ -225,6 +241,7 @@ export const calendarEventsList: AcademicCalendarEvent[] = [
   },
   {
     id: "cal-2",
+    groupName: "Comunidade MSD — C8",
     title: "Revisão de Filas M/M/1",
     type: "Encontro",
     date: "2026-08-31",
@@ -234,6 +251,7 @@ export const calendarEventsList: AcademicCalendarEvent[] = [
   },
   {
     id: "cal-3",
+    groupName: "Comunidade MSD — C8",
     title: "Modelo Conceitual de Sistemas de Fila M/M/1 e seus algoritmos",
     type: "Aula",
     date: "2026-09-02",
@@ -244,6 +262,7 @@ export const calendarEventsList: AcademicCalendarEvent[] = [
   },
   {
     id: "cal-4",
+    groupName: "Comunidade MSD — C8",
     title: "Modelo Computacional de Fila M/M/1",
     type: "Aula",
     date: "2026-09-07",
@@ -254,6 +273,7 @@ export const calendarEventsList: AcademicCalendarEvent[] = [
   },
   {
     id: "cal-5",
+    groupName: "Engenharia de Software · Sprint 1",
     title: "Entrega do Projeto Sprint 1",
     type: "Entrega",
     date: "2026-09-08",
@@ -263,46 +283,46 @@ export const calendarEventsList: AcademicCalendarEvent[] = [
   },
 ];
 
-export const academicProgressSummaries: AcademicProgressSummary[] = [
+
+export const academicReferenceTime = "2026-09-08T12:00:00-03:00";
+
+// Each plan is owned by a group, including two independent plans for the same class.
+export const groupPlans: AcademicDiscipline[] = [
+  ...Object.values(disciplinesMap),
   {
-    disciplineId: "modelagem-simulacao",
-    disciplineName: "Modelagem e Simulação Discreta",
-    classGroup: "C8",
-    period: "2026.2",
-    progressPercentage: 45,
-    heldLessonsCount: 2,
-    pendingTopicsCount: 1,
-    attendanceStatusLabel: "Frequência pessoal registrada (não oficial)",
-    nextFocusTopic: "Modelo Analítico de Sistemas de Fila M/M/1",
-  },
-  {
-    disciplineId: "engenharia-software-ii",
-    disciplineName: "Engenharia de Software II",
-    classGroup: "ES3",
-    period: "2026.2",
-    progressPercentage: 62,
-    heldLessonsCount: 4,
-    pendingTopicsCount: 0,
-    attendanceStatusLabel: "Frequência pessoal registrada (não oficial)",
-    nextFocusTopic: "Arquitetura Hexagonal e Padrões Domain-Driven Design",
-  },
-  {
-    disciplineId: "banco-dados-avancado",
-    disciplineName: "Banco de Dados Avançado",
-    classGroup: "A1",
-    period: "2026.2",
-    progressPercentage: 30,
-    heldLessonsCount: 1,
-    pendingTopicsCount: 2,
-    attendanceStatusLabel: "Frequência pessoal registrada (não oficial)",
-    nextFocusTopic: "Planos de Execução EXPLAIN e Otimização de Consultas",
+    ...disciplinesMap["modelagem-simulacao"],
+    groupId: "msd-revisao-c8", groupName: "MSD — Revisão C8", isMember: true,
+    syllabus: ["Revisão independente de simulação da Turma C8"],
+    plannedLessons: [{ id: "revisao-1", sequenceNumber: 1, title: "Revisão de simulação em dupla",
+      description: "Plano próprio deste grupo, independente da Comunidade MSD.", topics: ["Revisão"], estimatedHours: 2 }],
+    occurrences: [], personalRecords: {}, progressPercentage: 0, heldLessons: 0,
   },
 ];
 
-export function getDisciplineDetail(id: string): AcademicDiscipline | null {
-  return disciplinesMap[id] || null;
+export const academicProgressSummaries: AcademicProgressSummary[] = groupPlans
+  .filter((plan) => plan.isMember)
+  .map((plan) => ({
+    groupId: plan.groupId, groupName: plan.groupName, disciplineId: plan.id,
+    disciplineName: plan.name, classGroup: plan.classGroup, period: plan.period,
+    progressPercentage: plan.progressPercentage,
+    heldLessonsCount: plan.occurrences.filter((item) => item.status === "held").length,
+    pendingTopicsCount: plan.pendingTopicsCount,
+    attendanceStatusLabel: "Frequência pessoal registrada (não oficial)",
+    nextFocusTopic: plan.plannedLessons.at(-1)?.title ?? "Nenhum conteúdo previsto",
+  }));
+
+export function getDisciplineDetail(id: string, groupId?: string): AcademicDiscipline | null {
+  return groupPlans.find((plan) => plan.id === id && plan.isMember && (!groupId || plan.groupId === groupId)) ?? null;
 }
 
 export function getAllDisciplines(): AcademicDiscipline[] {
-  return Object.values(disciplinesMap);
+  return groupPlans.filter((plan) => plan.isMember);
+}
+
+export function getDisciplinePreview(id: string, groupId?: string, state?: string): AcademicDiscipline | null {
+  const plan = getDisciplineDetail(id, groupId);
+  if (!plan) return null;
+  if (state === "empty") return { ...plan, plannedLessons: [], occurrences: [], personalRecords: {} };
+  if (state === "restricted") return { ...plan, isMember: false };
+  return plan;
 }

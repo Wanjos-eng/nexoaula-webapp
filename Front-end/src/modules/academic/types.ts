@@ -18,6 +18,8 @@ export type LessonOccurrence = {
   displayDate: string;
   time: string;
   status: OccurrenceStatus;
+  actualStartsAt?: string;
+  actualEndsAt?: string;
   notes?: string;
 };
 
@@ -31,6 +33,9 @@ export type PersonalRecord = {
 };
 
 export type AcademicDiscipline = {
+  groupId: string;
+  groupName: string;
+  isMember: boolean;
   id: string;
   code: string;
   name: string;
@@ -53,6 +58,7 @@ export type AcademicDiscipline = {
 };
 
 export type AcademicCalendarEvent = {
+  groupName: string;
   id: string;
   title: string;
   type: "Aula" | "Encontro" | "Entrega";
@@ -64,6 +70,8 @@ export type AcademicCalendarEvent = {
 };
 
 export type AcademicProgressSummary = {
+  groupId: string;
+  groupName: string;
   disciplineId: string;
   disciplineName: string;
   classGroup: string;

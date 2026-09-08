@@ -11,23 +11,21 @@ import Link from "next/link";
 import { useState } from "react";
 import { academicProgressSummaries } from "@/mocks/academic/academicCatalog";
 
+import { AcademicPreviewState, type AcademicViewState } from "./AcademicPreviewState";
 import styles from "@/components/academic/AcademicPage.module.css";
 
-export function AcademicProgressView() {
+export function AcademicProgressView({ state = "ready" }: { state?: AcademicViewState }) {
   const [reviewedTopics, setReviewedTopics] = useState<Record<string, boolean>>({});
   const [feedback, setFeedback] = useState("");
 
   function toggleReview(disciplineId: string) {
-    setReviewedTopics((prev) => {
-      const next = !prev[disciplineId];
-      setFeedback(
-        next
-          ? "Conteúdo marcado como revisado no seu progresso pessoal."
-          : "Marcação de revisão removida.",
-      );
-      return { ...prev, [disciplineId]: next };
-    });
+    const next = !reviewedTopics[disciplineId];
+    setReviewedTopics((prev) => ({ ...prev, [disciplineId]: next }));
+    setFeedback(next ? "Revisão simulada no seu progresso pessoal, sem persistência." : "Marcação simulada removida.");
   }
+
+  if (state === "loading" || state === "error") return <AcademicPreviewState state={state} />;
+  const summaries = state === "empty" ? [] : academicProgressSummaries;
 
   return (
     <div className={styles.page}>
@@ -39,6 +37,8 @@ export function AcademicProgressView() {
         </div>
       </header>
 
+      <p>Prévia demonstrativa: dados fictícios, sem persistência.</p>
+      {summaries.length === 0 ? <p>Sem registros pessoais nos seus grupos.</p> : null}
       {/* Non-official Disclaimer */}
       <div className={styles.disclaimerBox} role="status">
         <Info aria-hidden size={18} />
@@ -54,15 +54,16 @@ export function AcademicProgressView() {
       ) : null}
 
       <div className={styles.progressGrid}>
-        {academicProgressSummaries.map((summary) => {
-          const isReviewed = reviewedTopics[summary.disciplineId];
+        {summaries.map((summary) => {
+          const isReviewed = reviewedTopics[summary.groupId];
 
           return (
-            <section className={styles.progressCard} key={summary.disciplineId}>
+            <section className={styles.progressCard} key={summary.groupId}>
               <div className={styles.cardTitle}>
                 <div>
                   <p className={styles.label}>Disciplina</p>
                   <h3>{summary.disciplineName}</h3>
+                  <p>{summary.groupName}</p>
                   <p>
                     {summary.classGroup} · {summary.period}
                   </p>
@@ -92,7 +93,7 @@ export function AcademicProgressView() {
                 <p>Reserve um tempo para revisar este conteúdo antes da próxima aula.</p>
                 <button
                   className={styles.outlineButton}
-                  onClick={() => toggleReview(summary.disciplineId)}
+                  onClick={() => toggleReview(summary.groupId)}
                   type="button"
                 >
                   {isReviewed ? "✓ Revisado (Pessoal)" : "Marcar como revisado"}
@@ -101,7 +102,7 @@ export function AcademicProgressView() {
 
               <Link
                 className={styles.linkAction}
-                href={`/disciplinas/${summary.disciplineId}`}
+                href={`/disciplinas/${summary.disciplineId}?group=${summary.groupId}`}
               >
                 Abrir disciplina <ArrowRight aria-hidden size={16} />
               </Link>
