@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LoginForm, RegisterForm } from "@/modules/auth";
+import { authService } from "@/modules/auth/services/auth.service";
 
 const push = vi.fn();
 
@@ -32,34 +33,48 @@ function renderValidForm(kind: "login" | "register") {
 }
 
 describe("ciclo de vida da submissão demonstrativa", () => {
+  let registerSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.useFakeTimers();
     push.mockReset();
+    registerSpy = vi.spyOn(authService, "register").mockResolvedValue({ status: 201, data: null });
   });
 
   afterEach(() => {
     vi.clearAllTimers();
     vi.useRealTimers();
+    registerSpy.mockRestore();
   });
 
   it.each(["login", "register"] as const)(
     "%s não redireciona depois de sair da tela",
-    (kind) => {
+    async (kind) => {
       const { form, unmount } = renderValidForm(kind);
       fireEvent.submit(form);
       unmount();
-      act(() => vi.advanceTimersByTime(600));
+      
+      await act(async () => {
+        await Promise.resolve();
+        vi.advanceTimersByTime(600);
+      });
+      
       expect(push).not.toHaveBeenCalled();
     },
   );
 
   it.each(["login", "register"] as const)(
     "%s ignora submissões concorrentes",
-    (kind) => {
+    async (kind) => {
       const { form } = renderValidForm(kind);
       fireEvent.submit(form);
       fireEvent.submit(form);
-      act(() => vi.advanceTimersByTime(2100));
+      
+      await act(async () => {
+        await Promise.resolve();
+        vi.advanceTimersByTime(2100);
+      });
+      
       expect(push).toHaveBeenCalledTimes(1);
       expect(screen.queryByText("Informe um e-mail válido.")).toBeNull();
     },
@@ -73,10 +88,15 @@ describe("ciclo de vida da submissão demonstrativa", () => {
     expect(screen.getByText("Informe um e-mail válido.")).toBeDefined();
   });
 
-  it("não mantém sucesso antigo quando o cadastro passa a ser inválido", () => {
+  it("não mantém sucesso antigo quando o cadastro passa a ser inválido", async () => {
     const { form } = renderValidForm("register");
     fireEvent.submit(form);
-    act(() => vi.advanceTimersByTime(600));
+    
+    await act(async () => {
+      await Promise.resolve();
+      vi.advanceTimersByTime(600);
+    });
+    
     fireEvent.change(screen.getByLabelText("Nome completo"), {
       target: { value: "" },
     });

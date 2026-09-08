@@ -8,12 +8,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { ApiError, NetworkError } from "@/lib/api";
 import { validateRegisterForm, type RegisterFormErrors } from "../schemas/authSchemas";
+import { authService } from "../services/auth.service";
 
 import styles from "./AuthForm.module.css";
 
-/** E-mail que dispara a falha simulada (demonstração de erro genérico). */
-const DEMO_ERROR_EMAIL = "erro@demo.com";
 
 type BannerState = {
   type: "success" | "error" | "info";
@@ -25,7 +25,6 @@ export function RegisterForm() {
   const [errors, setErrors] = useState<RegisterFormErrors>({});
   const [banner, setBanner] = useState<BannerState>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const hasSimulatedError = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -51,7 +50,7 @@ export function RegisterForm() {
     };
   }, []);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (timeoutRef.current !== null) return;
     setBanner(null);
@@ -73,46 +72,66 @@ export function RegisterForm() {
       return;
     }
 
+    const fullName = String(data.get("fullName") ?? "").trim();
     const email = String(data.get("email") ?? "").trim();
-
-    // Erro genérico simulado: dispara uma única vez para demonstração
-    if (email === DEMO_ERROR_EMAIL && !hasSimulatedError.current) {
-      hasSimulatedError.current = true;
-      setIsLoading(true);
-      setBanner(null);
-
-      timeoutRef.current = setTimeout(() => {
-        timeoutRef.current = null;
-        setIsLoading(false);
-        setBanner({
-          type: "error",
-          message: "Falha simulada na conexão. Tente novamente.",
-        });
-      }, 600);
-      return;
-    }
+    const password = String(data.get("password") ?? "");
 
     setIsLoading(true);
 
-    timeoutRef.current = setTimeout(() => {
-      timeoutRef.current = null;
+    try {
+      await authService.register({ fullName, email, password });
+
       setIsLoading(false);
       setBanner({
         type: "success",
-        message: "Conta demonstrativa criada com sucesso! Redirecionando para o painel...",
+        message: "Conta criada com sucesso! Redirecionando para login...",
       });
 
       // Atrasa a navegação para que o banner de sucesso seja perceptível
       navTimeoutRef.current = setTimeout(() => {
-        router.push("/inicio");
+        router.push("/login");
       }, 1500);
-    }, 600);
+    } catch (error) {
+      setIsLoading(false);
+
+      if (error instanceof ApiError) {
+        if (error.status === 409) {
+          setBanner({
+            type: "error",
+            message: "Este e-mail já está em uso.",
+          });
+          setErrors((prev) => ({ ...prev, email: "Este e-mail já está em uso." }));
+          form.querySelector<HTMLElement>('[name="email"]')?.focus();
+          return;
+        }
+
+        if (error.status === 422) {
+          setBanner({
+            type: "error",
+            message: "Os dados enviados são inválidos. Verifique os campos.",
+          });
+          return;
+        }
+      }
+
+      if (error instanceof NetworkError) {
+        setBanner({
+          type: "error",
+          message: "Falha na conexão. Verifique sua internet e tente novamente.",
+        });
+        return;
+      }
+
+      setBanner({
+        type: "error",
+        message: "Ocorreu um erro inesperado. Tente novamente mais tarde.",
+      });
+    }
   }
 
   return (
     <div>
       <div className={styles.header}>
-        <span className={styles.demoBadge}>Ambiente de demonstração</span>
         <h2>Crie sua conta</h2>
         <p>Preencha seus dados para começar a usar o nexoAula.</p>
       </div>
