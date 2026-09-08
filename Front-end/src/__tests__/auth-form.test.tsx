@@ -6,17 +6,28 @@ import { authService } from "@/modules/auth/services/auth.service";
 import { ApiError, NetworkError } from "@/lib/api";
 
 const push = vi.fn();
+const replace = vi.fn();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, replace }),
 }));
 
 describe("LoginForm", () => {
   let loginSpy: ReturnType<typeof vi.spyOn>;
+  const loginResponse = {
+    status: 200,
+    data: {
+      id: "user-1",
+      email: "lucas@exemplo.com",
+      fullName: "Lucas Silva",
+      createdAt: "2026-09-08T12:00:00Z",
+    },
+  };
 
   beforeEach(() => {
     vi.useFakeTimers();
     push.mockReset();
+    replace.mockReset();
     loginSpy = vi.spyOn(authService, "login");
   });
 
@@ -56,7 +67,7 @@ describe("LoginForm", () => {
   });
 
   it("simula loading, sucesso e navega para /inicio com credenciais preenchidas, respeitando o atraso", async () => {
-    loginSpy.mockResolvedValueOnce({ status: 200, data: null });
+    loginSpy.mockResolvedValueOnce(loginResponse);
 
     render(<LoginForm />);
 
@@ -85,7 +96,7 @@ describe("LoginForm", () => {
       vi.advanceTimersByTime(1500);
     });
 
-    expect(push).toHaveBeenCalledWith("/inicio");
+    expect(replace).toHaveBeenCalledWith("/inicio");
   });
 
   it("simula falha genérica e permite recuperação na segunda tentativa", async () => {
@@ -109,7 +120,7 @@ describe("LoginForm", () => {
     expect(screen.getByText(/Erro de conexão/i)).toBeDefined();
     expect(push).not.toHaveBeenCalled();
 
-    loginSpy.mockResolvedValueOnce({ status: 200, data: null });
+    loginSpy.mockResolvedValueOnce(loginResponse);
 
     fireEvent.change(screen.getByLabelText("E-mail"), {
       target: { value: "lucas@exemplo.com" },
@@ -146,7 +157,7 @@ describe("LoginForm", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("exibe mensagem genérica ao receber erro 403", async () => {
+  it("diferencia falha de proteção CSRF de credenciais inválidas", async () => {
     loginSpy.mockRejectedValueOnce(new ApiError(403, "Forbidden", {}));
 
     render(<LoginForm />);
@@ -164,8 +175,24 @@ describe("LoginForm", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/E-mail ou senha incorretos/i)).toBeDefined();
+    expect(screen.getByText(/Não foi possível validar esta solicitação/i)).toBeDefined();
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it("exibe indisponibilidade temporária do servidor", async () => {
+    loginSpy.mockRejectedValueOnce(new ApiError(503, "Service Unavailable", {}));
+    render(<LoginForm />);
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "lucas@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), {
+      target: { value: "senha1234" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await act(async () => Promise.resolve());
+
+    expect(screen.getByText(/temporariamente indisponível/i)).toBeDefined();
   });
 
   it("exibe mensagem de erro inesperado para exceções desconhecidas", async () => {
@@ -213,6 +240,7 @@ describe("RegisterForm", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     push.mockReset();
+    replace.mockReset();
     registerSpy = vi.spyOn(authService, "register");
   });
 

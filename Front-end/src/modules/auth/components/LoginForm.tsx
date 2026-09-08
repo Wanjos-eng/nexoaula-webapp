@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
-import { ApiError, NetworkError, TimeoutError } from "@/lib/api";
+import { ApiError, NetworkError, RequestAbortedError, TimeoutError } from "@/lib/api";
 import { authService } from "../services/auth.service";
 import { validateLoginForm, type LoginFormErrors } from "../schemas/authSchemas";
 
@@ -25,15 +25,17 @@ export function LoginForm() {
   const [errors, setErrors] = useState<LoginFormErrors>({});
   const [banner, setBanner] = useState<BannerState>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+  const submissionRef = useRef(false);
   const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+      isMountedRef.current = false;
+      abortRef.current?.abort();
+      abortRef.current = null;
       if (navTimeoutRef.current) {
         clearTimeout(navTimeoutRef.current);
         navTimeoutRef.current = null;
@@ -43,7 +45,7 @@ export function LoginForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (timeoutRef.current !== null) return;
+    if (submissionRef.current) return;
     setBanner(null);
 
     if (isLoading) return;
@@ -61,27 +63,42 @@ export function LoginForm() {
 
     const email = String(data.get("email") ?? "").trim();
     const password = String(data.get("password") ?? "");
+    const controller = new AbortController();
 
+    submissionRef.current = true;
+    abortRef.current = controller;
     setIsLoading(true);
 
     try {
-      await authService.login({ email, password });
-      
+      await authService.login({ email, password }, controller.signal);
+      if (!isMountedRef.current) return;
+
       setBanner({
         type: "success",
         message: "Autenticado com sucesso. Redirecionando para o painel acadêmico...",
       });
 
       navTimeoutRef.current = setTimeout(() => {
-        router.push("/inicio");
+        router.replace("/inicio");
       }, 1500);
     } catch (error) {
+      if (!isMountedRef.current || error instanceof RequestAbortedError) return;
       setIsLoading(false);
-      
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+
+      if (error instanceof ApiError && error.status === 401) {
         setBanner({
           type: "error",
           message: "E-mail ou senha incorretos.",
+        });
+      } else if (error instanceof ApiError && error.status === 403) {
+        setBanner({
+          type: "error",
+          message: "Não foi possível validar esta solicitação. Atualize a página e tente novamente.",
+        });
+      } else if (error instanceof ApiError && error.status === 503) {
+        setBanner({
+          type: "error",
+          message: "O acesso está temporariamente indisponível. Tente novamente mais tarde.",
         });
       } else if (error instanceof NetworkError || error instanceof TimeoutError) {
         setBanner({
@@ -94,6 +111,9 @@ export function LoginForm() {
           message: "Ocorreu um erro inesperado. Tente novamente mais tarde.",
         });
       }
+    } finally {
+      submissionRef.current = false;
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }
 
@@ -107,7 +127,6 @@ export function LoginForm() {
   return (
     <div>
       <div className={styles.header}>
-        <span className={styles.demoBadge}>Ambiente de demonstração</span>
         <h2>Acesse sua conta</h2>
         <p>Entre para acompanhar suas disciplinas, aulas e grupos de estudo.</p>
       </div>
@@ -156,10 +175,7 @@ export function LoginForm() {
         />
 
         <div className={styles.actionsRow}>
-          <label className={styles.checkboxLabel}>
-            <input disabled={isLoading} name="remember" type="checkbox" />
-            <span>Manter-me conectado</span>
-          </label>
+          <span>Sessão segura de curta duração.</span>
           <button
             className={styles.textButton}
             disabled={isLoading}
@@ -181,4 +197,3 @@ export function LoginForm() {
     </div>
   );
 }
-
