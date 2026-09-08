@@ -9,6 +9,13 @@ export interface RegisterRequest {
   password: string;
 }
 
+export interface RegisterResponse {
+  id: string;
+  email: string;
+  fullName: string;
+  createdAt: string;
+}
+
 /**
  * Payload para realizar o login do usuário.
  */
@@ -31,9 +38,10 @@ export const authService = {
    * @throws {NetworkError} caso não consiga acessar o servidor
    * @throws {TimeoutError} caso a requisição demore muito
    */
-  async register(data: RegisterRequest): Promise<ApiResponse<unknown>> {
+  async register(data: RegisterRequest, signal?: AbortSignal): Promise<ApiResponse<RegisterResponse>> {
     return apiClient.post("/v1/auth/register", {
       body: data,
+      signal,
     });
   },
 

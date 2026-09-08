@@ -48,14 +48,22 @@ export function validateRegisterForm(data: FormData): {
 
   if (fullName.length < 3) {
     errors.fullName = "Informe seu nome completo (mínimo de 3 caracteres).";
+  } else if (fullName.length > 120) {
+    errors.fullName = "O nome deve ter no máximo 120 caracteres.";
   }
 
   if (!email || !isValidEmail(email)) {
     errors.email = "Informe um e-mail válido.";
+  } else if (email.length > 320) {
+    errors.email = "O e-mail deve ter no máximo 320 caracteres.";
   }
 
   if (password.length < 8) {
     errors.password = "A senha deve ter pelo menos 8 caracteres.";
+  } else if (!password.trim()) {
+    errors.password = "A senha não pode conter apenas espaços.";
+  } else if (new TextEncoder().encode(password).length > 72) {
+    errors.password = "A senha deve ter no máximo 72 bytes.";
   }
 
   if (password && confirmPassword && password !== confirmPassword) {

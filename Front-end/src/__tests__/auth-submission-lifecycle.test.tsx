@@ -34,12 +34,21 @@ function renderValidForm(kind: "login" | "register") {
 
 describe("ciclo de vida da submissão demonstrativa", () => {
   let registerSpy: ReturnType<typeof vi.spyOn>;
+  const registerResponse = {
+    status: 201,
+    data: {
+      id: "user-1",
+      email: "estudante@example.com",
+      fullName: "Estudante Exemplo",
+      createdAt: "2026-09-08T12:00:00Z",
+    },
+  };
   let loginSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
     push.mockReset();
-    registerSpy = vi.spyOn(authService, "register").mockResolvedValue({ status: 201, data: null });
+    registerSpy = vi.spyOn(authService, "register").mockResolvedValue(registerResponse);
     loginSpy = vi.spyOn(authService, "login").mockResolvedValue({ status: 200, data: null });
   });
 
@@ -112,5 +121,17 @@ describe("ciclo de vida da submissão demonstrativa", () => {
     fireEvent.submit(form);
     expect(screen.queryByRole("status")).toBeNull();
     expect(screen.getByText(/Informe seu nome completo/)).toBeDefined();
+  });
+
+  it("cancela a requisição de cadastro ao sair da tela", () => {
+    registerSpy.mockImplementationOnce(() => new Promise(() => undefined));
+    const { form, unmount } = renderValidForm("register");
+
+    fireEvent.submit(form);
+    const signal = registerSpy.mock.calls[0][1];
+    expect(signal?.aborted).toBe(false);
+
+    unmount();
+    expect(signal?.aborted).toBe(true);
   });
 });
