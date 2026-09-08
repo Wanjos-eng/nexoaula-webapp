@@ -28,7 +28,7 @@ await apiClient.del("/v1/auth/logout");
 ## Tratamento de erros
 
 ```ts
-import { apiClient, ApiError, NetworkError, TimeoutError } from "@/lib/api";
+import { apiClient, ApiError, NetworkError, RequestAbortedError, TimeoutError } from "@/lib/api";
 
 try {
   const { data } = await apiClient.get<User>("/v1/auth/me");
@@ -41,6 +41,9 @@ try {
   }
   if (error instanceof TimeoutError) {
     // Requisição excedeu o timeout
+  }
+  if (error instanceof RequestAbortedError) {
+    // O chamador cancelou explicitamente a requisição
   }
 }
 ```

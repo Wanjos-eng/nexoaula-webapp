@@ -11,7 +11,13 @@
  * - O frontend não lê token, não monta `Authorization` e não persiste credenciais
  */
 
-import { ApiError, NetworkError, ParseError, TimeoutError } from "./errors";
+import {
+  ApiError,
+  NetworkError,
+  ParseError,
+  RequestAbortedError,
+  TimeoutError,
+} from "./errors";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,11 +61,24 @@ const MUTATING_METHODS: ReadonlySet<HttpMethod> = new Set(["POST", "PUT", "PATCH
 async function request<T>(method: HttpMethod, path: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
   const { body, headers: extraHeaders, timeout = DEFAULT_TIMEOUT_MS, signal: externalSignal } = options;
 
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    throw new TypeError("API path must start with a single slash");
+  }
+
+  if (!Number.isFinite(timeout) || timeout <= 0) {
+    throw new TypeError("Request timeout must be a positive number");
+  }
+
   const url = `${API_PREFIX}${path}`;
+  const serializedBody = body !== undefined ? JSON.stringify(body) : undefined;
 
   // Timeout via AbortController
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  let didTimeout = false;
+  const timeoutId = setTimeout(() => {
+    didTimeout = true;
+    controller.abort();
+  }, timeout);
 
   // Combina sinais: timeout + externo (se fornecido)
   const signals = [controller.signal];
@@ -70,19 +89,17 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
     : AbortSignal.any(signals);
 
   // Headers base
-  const requestHeaders: Record<string, string> = {
-    Accept: "application/json",
-    ...extraHeaders,
-  };
+  const requestHeaders = new Headers(extraHeaders);
+  requestHeaders.set("Accept", "application/json");
 
   // CSRF header para mutações (ADR-0002)
   if (MUTATING_METHODS.has(method)) {
-    requestHeaders[CSRF_HEADER] = CSRF_VALUE;
+    requestHeaders.set(CSRF_HEADER, CSRF_VALUE);
   }
 
   // Content-Type para requests com body
   if (body !== undefined) {
-    requestHeaders["Content-Type"] = "application/json";
+    requestHeaders.set("Content-Type", "application/json");
   }
 
   let response: Response;
@@ -91,29 +108,33 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
     response = await fetch(url, {
       method,
       headers: requestHeaders,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: serializedBody,
       credentials: "same-origin",
       signal: combinedSignal,
     });
   } catch (error: unknown) {
     clearTimeout(timeoutId);
 
-    if (error instanceof DOMException && error.name === "AbortError") {
+    if (didTimeout) {
       throw new TimeoutError(timeout);
     }
+
+    if (combinedSignal.aborted) throw new RequestAbortedError(error);
 
     throw new NetworkError(error);
   } finally {
     clearTimeout(timeoutId);
   }
 
+  const rawBody = await response.text();
+
   // Erros HTTP
   if (!response.ok) {
-    let errorBody: unknown;
+    let errorBody: unknown = null;
     try {
-      errorBody = await response.json();
+      errorBody = rawBody ? JSON.parse(rawBody) : null;
     } catch {
-      errorBody = null;
+      // O cliente não transforma texto técnico em mensagem de domínio.
     }
     throw new ApiError(response.status, response.statusText, errorBody);
   }
@@ -126,10 +147,9 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
   // Parse JSON
   let data: T;
   try {
-    data = await response.json() as T;
+    data = JSON.parse(rawBody) as T;
   } catch (cause) {
-    const raw = await response.text().catch(() => "");
-    throw new ParseError(response.status, raw, cause);
+    throw new ParseError(response.status, rawBody, cause);
   }
 
   return { data, status: response.status };
