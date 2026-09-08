@@ -1,9 +1,5 @@
-import type { Metadata } from "next";
-
-import { AcademicPage } from "@/components/academic/AcademicPage";
-
-export const metadata: Metadata = { title: "Meu progresso" };
+import { AcademicProgressView } from "@/modules/academic/components/AcademicProgressView";
 
 export default function ProgressoPage() {
-  return <AcademicPage variant="progress" />;
+  return <AcademicProgressView />;
 }

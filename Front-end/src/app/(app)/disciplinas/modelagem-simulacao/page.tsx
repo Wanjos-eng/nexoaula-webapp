@@ -1,11 +1,7 @@
-import type { Metadata } from "next";
-
-import { DisciplineDetailPage } from "@/components/discipline/DisciplineDetailPage";
-
-export const metadata: Metadata = {
-  title: "Modelagem e Simulação Discreta",
-};
+import { getDisciplineDetail } from "@/mocks/academic/academicCatalog";
+import { DisciplineDetailPage } from "@/modules/academic/components/DisciplineDetailPage";
 
 export default function ModelagemSimulacaoPage() {
-  return <DisciplineDetailPage />;
+  const discipline = getDisciplineDetail("modelagem-simulacao");
+  return <DisciplineDetailPage key="modelagem-simulacao" discipline={discipline} />;
 }
