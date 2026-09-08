@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
-import { ApiError, NetworkError } from "@/lib/api";
+import { ApiError, NetworkError, RequestAbortedError, TimeoutError } from "@/lib/api";
 import { validateRegisterForm, type RegisterFormErrors } from "../schemas/authSchemas";
 import { authService } from "../services/auth.service";
 
@@ -25,15 +25,17 @@ export function RegisterForm() {
   const [errors, setErrors] = useState<RegisterFormErrors>({});
   const [banner, setBanner] = useState<BannerState>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const isMountedRef = useRef(true);
+  const submissionRef = useRef(false);
   const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+      isMountedRef.current = false;
+      abortRef.current?.abort();
+      abortRef.current = null;
       if (navTimeoutRef.current) {
         clearTimeout(navTimeoutRef.current);
         navTimeoutRef.current = null;
@@ -41,18 +43,9 @@ export function RegisterForm() {
     };
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current !== null) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-    };
-  }, []);
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (timeoutRef.current !== null) return;
+    if (submissionRef.current) return;
     setBanner(null);
 
     if (isLoading) return;
@@ -75,11 +68,15 @@ export function RegisterForm() {
     const fullName = String(data.get("fullName") ?? "").trim();
     const email = String(data.get("email") ?? "").trim();
     const password = String(data.get("password") ?? "");
+    const controller = new AbortController();
 
+    submissionRef.current = true;
+    abortRef.current = controller;
     setIsLoading(true);
 
     try {
-      await authService.register({ fullName, email, password });
+      await authService.register({ fullName, email, password }, controller.signal);
+      if (!isMountedRef.current) return;
 
       setIsLoading(false);
       setBanner({
@@ -92,6 +89,7 @@ export function RegisterForm() {
         router.push("/login");
       }, 1500);
     } catch (error) {
+      if (!isMountedRef.current || error instanceof RequestAbortedError) return;
       setIsLoading(false);
 
       if (error instanceof ApiError) {
@@ -112,9 +110,17 @@ export function RegisterForm() {
           });
           return;
         }
+
+        if (error.status === 503) {
+          setBanner({
+            type: "error",
+            message: "O cadastro está temporariamente indisponível. Tente novamente mais tarde.",
+          });
+          return;
+        }
       }
 
-      if (error instanceof NetworkError) {
+      if (error instanceof NetworkError || error instanceof TimeoutError) {
         setBanner({
           type: "error",
           message: "Falha na conexão. Verifique sua internet e tente novamente.",
@@ -126,6 +132,9 @@ export function RegisterForm() {
         type: "error",
         message: "Ocorreu um erro inesperado. Tente novamente mais tarde.",
       });
+    } finally {
+      submissionRef.current = false;
+      if (abortRef.current === controller) abortRef.current = null;
     }
   }
 
@@ -161,6 +170,7 @@ export function RegisterForm() {
           error={errors.fullName}
           id="fullName"
           label="Nome completo"
+          maxLength={120}
           name="fullName"
           placeholder="Digite seu nome completo"
           required
@@ -173,6 +183,7 @@ export function RegisterForm() {
           error={errors.email}
           id="email"
           label="E-mail"
+          maxLength={320}
           name="email"
           placeholder="seuemail@exemplo.com"
           required
@@ -186,6 +197,7 @@ export function RegisterForm() {
           hint="Use pelo menos 8 caracteres."
           id="password"
           label="Senha"
+          maxLength={72}
           minLength={8}
           name="password"
           placeholder="Crie uma senha"

@@ -124,6 +124,15 @@ describe("LoginForm", () => {
 
 describe("RegisterForm", () => {
   let registerSpy: ReturnType<typeof vi.spyOn>;
+  const registerResponse = {
+    status: 201,
+    data: {
+      id: "user-1",
+      email: "lucas@exemplo.com",
+      fullName: "Lucas Silva",
+      createdAt: "2026-09-08T12:00:00Z",
+    },
+  };
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -170,7 +179,7 @@ describe("RegisterForm", () => {
   });
 
   it("cria conta com sucesso e navega para /login, respeitando o atraso", async () => {
-    registerSpy.mockResolvedValueOnce({ status: 201, data: null });
+    registerSpy.mockResolvedValueOnce(registerResponse);
 
     render(<RegisterForm />);
 
@@ -238,7 +247,7 @@ describe("RegisterForm", () => {
     expect(screen.getAllByText(/Este e-mail já está em uso/i).length).toBeGreaterThan(0);
     expect(push).not.toHaveBeenCalled();
 
-    registerSpy.mockResolvedValueOnce({ status: 201, data: null });
+    registerSpy.mockResolvedValueOnce(registerResponse);
     
     fireEvent.change(screen.getByLabelText("E-mail"), {
       target: { value: "novo@exemplo.com" },
@@ -279,6 +288,30 @@ describe("RegisterForm", () => {
     });
 
     expect(screen.getByText(/Falha na conexão/i)).toBeDefined();
+  });
+
+  it("mostra indisponibilidade temporária retornada pela API", async () => {
+    registerSpy.mockRejectedValueOnce(new ApiError(503, "Service Unavailable", {}));
+
+    render(<RegisterForm />);
+    fireEvent.change(screen.getByLabelText("Nome completo"), {
+      target: { value: "Lucas Silva" },
+    });
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "lucas@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), {
+      target: { value: "senha1234" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirmar senha"), {
+      target: { value: "senha1234" },
+    });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+
+    await act(async () => Promise.resolve());
+
+    expect(screen.getByText(/temporariamente indisponível/i)).toBeDefined();
   });
 
   it("possui link para navegação para a página de login", () => {
@@ -323,5 +356,19 @@ describe("authSchemas", () => {
     const result = validateRegisterForm(validData);
     expect(result.isValid).toBe(true);
     expect(result.errors).toEqual({});
+  });
+
+  it("aplica no cliente os limites públicos do contrato de cadastro", () => {
+    const invalidData = new FormData();
+    invalidData.set("fullName", "Nome válido");
+    invalidData.set("email", "aluno@exemplo.com");
+    invalidData.set("password", "🔒".repeat(19));
+    invalidData.set("confirmPassword", "🔒".repeat(19));
+    invalidData.set("terms", "on");
+
+    const result = validateRegisterForm(invalidData);
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors.password).toBe("A senha deve ter no máximo 72 bytes.");
   });
 });
