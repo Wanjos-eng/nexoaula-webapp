@@ -52,6 +52,9 @@ jobs:
             tests/test_identity_migration.py \
             tests/unit/users \
             tests/integration/users \
+            tests/unit/auth \
+            tests/integration/auth \
+            --cov=app.modules.auth \
             --cov=app.modules.users \
             --cov-report=term-missing \
             --cov-fail-under=90
@@ -78,7 +81,10 @@ jobs:
         working-directory: Back-end/apps/api
         run: |
           python -m alembic upgrade head
-          python -m pytest -q tests/test_identity_migration.py tests/integration/users
+          python -m pytest -q \
+            tests/test_identity_migration.py \
+            tests/integration/users \
+            tests/integration/auth
 
       - name: Show database diagnostics on failure
         if: failure()

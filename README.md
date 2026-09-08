@@ -5,9 +5,9 @@
 ## Visão do Produto
 Para estudantes universitários que precisam organizar os estudos e encontrar colegas com objetivos e horários compatíveis, o **nexoAula** conecta alunos através de grupos vinculados a disciplinas. Cada grupo possui seu próprio plano de ensino, aulas e correções; presença/falta é um registro individual ligado à aula realizada. Não há acompanhamento de PD avulso fora dos grupos.
 
-Estado atual: frontend demonstrativo navegável e API com migration e persistência
-inicial de usuário/perfil, ainda sem autenticação HTTP ou integração funcional
-com o frontend.
+Estado atual: frontend demonstrativo navegável e API com migration, persistência
+de usuário/perfil e endpoint de cadastro. Login, sessão e integração funcional
+com o frontend continuam pendentes.
 
 ## Estrutura do Monorepo
 
@@ -108,8 +108,8 @@ PostgreSQL, SQLAlchemy 2 e Alembic foram definidos no
 somente `users`, `user_profiles` e `auth_tokens`; os demais módulos continuam
 pendentes e serão adicionados incrementalmente.
 O JWT em cookie `HttpOnly` para o primeiro fluxo web foi definido no
-[ADR-0002](docs/decisions/ADR-0002-authentication.md); os endpoints ainda não
-foram implementados.
+[ADR-0002](docs/decisions/ADR-0002-authentication.md). O cadastro já está
+disponível sem autenticação automática; login e sessão continuam pendentes.
 
 
 **Frontend**, em outro terminal:
