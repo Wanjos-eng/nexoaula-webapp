@@ -29,3 +29,49 @@ export type GroupFilters = {
 };
 
 export type DirectoryStatus = "ready" | "loading" | "error";
+
+export type GroupChannel = {
+  id: string;
+  name: string;
+  description?: string;
+};
+
+export type GroupMessage = {
+  id: string;
+  authorName: string;
+  authorInitials: string;
+  timestamp: string;
+  content: string;
+  isOwn?: boolean;
+  avatarColor?: string;
+};
+
+export type GroupMeeting = {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  mode: "online" | "presencial";
+  description?: string;
+};
+
+export type GroupParticipant = {
+  id: string;
+  name: string;
+  initials: string;
+  role: StudyGroupRole;
+  avatarColor?: string;
+};
+
+export type GroupDetailData = StudyGroup & {
+  role?: StudyGroupRole;
+  isMember: boolean;
+  channels: GroupChannel[];
+  messagesByChannel: Record<string, GroupMessage[]>;
+  nextMeetingDetail?: GroupMeeting;
+  participants: GroupParticipant[];
+  pendingRequestsCount?: number;
+  hasPublishedPlan?: boolean;
+  planPublishedDate?: string;
+};
