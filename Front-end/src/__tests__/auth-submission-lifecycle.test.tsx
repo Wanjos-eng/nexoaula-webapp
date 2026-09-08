@@ -40,7 +40,7 @@ describe("ciclo de vida da submissão demonstrativa", () => {
     vi.useFakeTimers();
     push.mockReset();
     registerSpy = vi.spyOn(authService, "register").mockResolvedValue({ status: 201, data: null });
-    loginSpy = vi.spyOn(authService, "login").mockResolvedValue({ status: 204, data: null });
+    loginSpy = vi.spyOn(authService, "login").mockResolvedValue({ status: 200, data: null });
   });
 
   afterEach(() => {

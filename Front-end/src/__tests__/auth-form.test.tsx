@@ -56,7 +56,7 @@ describe("LoginForm", () => {
   });
 
   it("simula loading, sucesso e navega para /inicio com credenciais preenchidas, respeitando o atraso", async () => {
-    loginSpy.mockResolvedValueOnce({ status: 204, data: null });
+    loginSpy.mockResolvedValueOnce({ status: 200, data: null });
 
     render(<LoginForm />);
 
@@ -109,7 +109,7 @@ describe("LoginForm", () => {
     expect(screen.getByText(/Erro de conexão/i)).toBeDefined();
     expect(push).not.toHaveBeenCalled();
 
-    loginSpy.mockResolvedValueOnce({ status: 204, data: null });
+    loginSpy.mockResolvedValueOnce({ status: 200, data: null });
 
     fireEvent.change(screen.getByLabelText("E-mail"), {
       target: { value: "lucas@exemplo.com" },
@@ -122,6 +122,72 @@ describe("LoginForm", () => {
     });
 
     expect(screen.getByText(/Autenticado com sucesso/i)).toBeDefined();
+  });
+
+  it("exibe mensagem genérica ao receber erro 401 de credenciais inválidas", async () => {
+    loginSpy.mockRejectedValueOnce(new ApiError(401, "Unauthorized", {}));
+
+    render(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "lucas@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), {
+      target: { value: "senha-errada" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/E-mail ou senha incorretos/i)).toBeDefined();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("exibe mensagem genérica ao receber erro 403", async () => {
+    loginSpy.mockRejectedValueOnce(new ApiError(403, "Forbidden", {}));
+
+    render(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "bloqueado@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), {
+      target: { value: "senha1234" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/E-mail ou senha incorretos/i)).toBeDefined();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("exibe mensagem de erro inesperado para exceções desconhecidas", async () => {
+    loginSpy.mockRejectedValueOnce(new Error("unknown failure"));
+
+    render(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "lucas@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), {
+      target: { value: "senha1234" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText(/Ocorreu um erro inesperado/i)).toBeDefined();
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("possui link para navegação para a página de cadastro", () => {

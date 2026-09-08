@@ -39,8 +39,8 @@ export const authService = {
 
   /**
    * Envia as credenciais para realizar login.
-   * O sucesso (204) define o cookie HttpOnly contendo a sessão. O frontend não
-   * lê token do response.
+   * O sucesso (200) define o cookie HttpOnly contendo a sessão e retorna a
+   * representação pública do usuário. O frontend não lê token do response.
    *
    * @throws {ApiError} 401 caso as credenciais sejam inválidas
    * @throws {NetworkError} caso não consiga acessar o servidor
