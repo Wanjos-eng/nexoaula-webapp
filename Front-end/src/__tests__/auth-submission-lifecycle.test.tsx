@@ -5,8 +5,9 @@ import { LoginForm, RegisterForm } from "@/modules/auth";
 import { authService } from "@/modules/auth/services/auth.service";
 
 const push = vi.fn();
+const replace = vi.fn();
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push, replace }) }));
 
 function renderValidForm(kind: "login" | "register") {
   const result = render(kind === "login" ? <LoginForm /> : <RegisterForm />);
@@ -44,12 +45,22 @@ describe("ciclo de vida da submissão demonstrativa", () => {
     },
   };
   let loginSpy: ReturnType<typeof vi.spyOn>;
+  const loginResponse = {
+    status: 200,
+    data: {
+      id: "user-1",
+      email: "estudante@example.com",
+      fullName: "Estudante Exemplo",
+      createdAt: "2026-09-08T12:00:00Z",
+    },
+  };
 
   beforeEach(() => {
     vi.useFakeTimers();
     push.mockReset();
+    replace.mockReset();
     registerSpy = vi.spyOn(authService, "register").mockResolvedValue(registerResponse);
-    loginSpy = vi.spyOn(authService, "login").mockResolvedValue({ status: 200, data: null });
+    loginSpy = vi.spyOn(authService, "login").mockResolvedValue(loginResponse);
   });
 
   afterEach(() => {
@@ -91,7 +102,9 @@ describe("ciclo de vida da submissão demonstrativa", () => {
         vi.advanceTimersByTime(2100);
       });
       
-      expect(push).toHaveBeenCalledTimes(1);
+      const navigation = kind === "login" ? replace : push;
+      expect(navigation).toHaveBeenCalledTimes(1);
+      expect(kind === "login" ? loginSpy : registerSpy).toHaveBeenCalledTimes(1);
       expect(screen.queryByText("Informe um e-mail válido.")).toBeNull();
     },
   );
@@ -129,6 +142,18 @@ describe("ciclo de vida da submissão demonstrativa", () => {
 
     fireEvent.submit(form);
     const signal = registerSpy.mock.calls[0][1];
+    expect(signal?.aborted).toBe(false);
+
+    unmount();
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("cancela a requisição de login ao sair da tela", () => {
+    loginSpy.mockImplementationOnce(() => new Promise(() => undefined));
+    const { form, unmount } = renderValidForm("login");
+
+    fireEvent.submit(form);
+    const signal = loginSpy.mock.calls[0][1];
     expect(signal?.aborted).toBe(false);
 
     unmount();

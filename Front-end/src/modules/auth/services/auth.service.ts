@@ -24,6 +24,13 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface PublicUser {
+  id: string;
+  email: string;
+  fullName: string | null;
+  createdAt: string;
+}
+
 /**
  * Serviço de Autenticação
  * Encapsula as chamadas de integração da jornada de usuário não-autenticado.
@@ -54,9 +61,15 @@ export const authService = {
    * @throws {NetworkError} caso não consiga acessar o servidor
    * @throws {TimeoutError} caso a requisição demore muito
    */
-  async login(data: LoginRequest): Promise<ApiResponse<unknown>> {
+  async login(data: LoginRequest, signal?: AbortSignal): Promise<ApiResponse<PublicUser>> {
     return apiClient.post("/v1/auth/login", {
       body: data,
+      signal,
     });
+  },
+
+  /** Restaura a identidade pública da sessão transportada pelo cookie HttpOnly. */
+  async me(signal?: AbortSignal): Promise<ApiResponse<PublicUser>> {
+    return apiClient.get("/v1/auth/me", { signal });
   },
 };
