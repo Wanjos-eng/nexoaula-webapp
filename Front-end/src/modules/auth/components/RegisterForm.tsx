@@ -110,7 +110,6 @@ export function RegisterForm() {
           });
           return;
         }
-
         if (error.status === 503) {
           setBanner({
             type: "error",
