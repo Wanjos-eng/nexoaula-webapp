@@ -58,3 +58,31 @@ class RegisterResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr = Field(max_length=320)
+    password: SecretStr = Field(min_length=1, max_length=72)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def strip_email(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_bytes(cls, value: SecretStr) -> SecretStr:
+        if len(value.get_secret_value().encode("utf-8")) > 72:
+            raise ValueError("A senha deve ter no máximo 72 bytes.")
+        return value
+
+
+class PublicUserResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+
+    id: UUID
+    email: EmailStr
+    full_name: str | None = Field(serialization_alias="fullName")
+    created_at: datetime = Field(serialization_alias="createdAt")

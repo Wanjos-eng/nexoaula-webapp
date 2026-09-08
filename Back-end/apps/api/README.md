@@ -1,8 +1,8 @@
 # nexoAula API — setup inicial
 
 FastAPI executável com router técnico, configuração centralizada, migration,
-persistência de usuário/perfil e cadastro HTTP protegido por bcrypt. Login e
-sessão ainda não foram implementados. PostgreSQL, SQLAlchemy 2 e Alembic estão
+persistência de usuário/perfil, cadastro e login HTTP protegido por bcrypt,
+sessão JWT em cookie HttpOnly, consulta de usuário atual e logout. PostgreSQL, SQLAlchemy 2 e Alembic estão
 integrados no recorte inicial.
 
 A decisão está documentada no
@@ -12,7 +12,7 @@ continuam fora deste recorte.
 
 O mecanismo JWT em cookie `HttpOnly` do primeiro fluxo foi definido no
 [ADR-0002](../../../docs/decisions/ADR-0002-authentication.md). O cadastro não
-emite JWT nem cookie; o estado autenticado será implementado no login.
+emite JWT nem cookie; somente o login cria o estado autenticado.
 
 ## Ambiente
 
@@ -75,6 +75,10 @@ arquivo existente. Nunca versione `.env` nem segredos.
 | `PROJECT_NAME` | `nexoAula API` | Título da documentação |
 | `VERSION` | `0.1.0` | Versão da API no OpenAPI |
 | `DATABASE_URL` | nenhum | Conexão PostgreSQL exigida por migrations e persistência |
+| `ENVIRONMENT` | `production` | `development` explícito permite HTTP local |
+| `AUTH_JWT_SECRET` | nenhum | Segredo aleatório de pelo menos 32 bytes para login e validação JWT |
+| `AUTH_COOKIE_SECURE` | `true` | `false` permitido somente em `development` |
+| `AUTH_ALLOWED_ORIGINS` | `[]` | Lista JSON de origens exatas autorizadas nas mutações |
 
 Variáveis de ambiente têm precedência sobre `.env`. O caminho do arquivo é
 relativo à API, independentemente do diretório de execução. Valores vazios de
@@ -135,10 +139,30 @@ Swagger. Exemplo local, depois de iniciar e migrar o PostgreSQL:
 ```bash
 curl -i http://127.0.0.1:8000/api/v1/auth/register \
   -H "Content-Type: application/json" \
+  -H "Origin: http://127.0.0.1:8000" \
+  -H "X-NexoAula-CSRF: 1" \
   --data '{"fullName":"Lucas Almeida","email":"lucas@example.com","password":"uma-senha-segura"}'
 ```
 
 O sucesso `201` não contém senha, hash, token ou cookie. O usuário deve seguir
-para o login, ainda pendente. A validação também não reflete a senha recebida em
+para o login. A validação também não reflete a senha recebida em
 respostas de erro.
 
+
+## Configurar autenticação
+
+Use `.env.example` apenas no desenvolvimento HTTP local. Em ambiente publicado,
+configure `ENVIRONMENT=production`, mantenha `AUTH_COOKIE_SECURE=true` e use
+somente origens HTTPS exatas em `AUTH_ALLOWED_ORIGINS`. Origem inclui a porta,
+sem barra final ou caminho. Não use curingas.
+
+Gere `AUTH_JWT_SECRET` fora do repositório com
+`python -c "import secrets; print(secrets.token_urlsafe(32))"` e armazene o valor
+no ambiente ou `.env` local ignorado. Não cole esse valor em issues ou logs.
+Configuração insegura de cookie ou segredo curto é rejeitada ao carregar a API.
+Sem segredo, health continua disponível, mas login/validação de sessão retornam
+`503`; sem origens autorizadas, mutações retornam `403`.
+
+Veja os contratos, os exemplos de login/me/logout, a política CSRF e a limitação
+de revogação no [README de Auth](app/modules/auth/README.md). O cadastro também
+exige os headers CSRF. A integração do frontend continua fora desta entrega.

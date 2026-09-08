@@ -19,6 +19,13 @@ from app.modules.users.infrastructure.unit_of_work import SqlAlchemyUserUnitOfWo
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 
+@pytest.fixture(autouse=True)
+def csrf_client(monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "AUTH_ALLOWED_ORIGINS", ["https://testserver"])
+
+
 class StubRegistrationService:
     def __init__(self, result: RegisterResponse | Exception) -> None:
         self.result = result
@@ -36,7 +43,9 @@ def client_with_override():
     def build(result: RegisterResponse | Exception):
         service = StubRegistrationService(result)
         app.dependency_overrides[get_registration_service] = lambda: service
-        return TestClient(app), service
+        return TestClient(
+            app, headers={"Origin": "https://testserver", "X-NexoAula-CSRF": "1"}
+        ), service
 
     yield build
     app.dependency_overrides.clear()
@@ -113,18 +122,31 @@ def test_invalid_payload_is_not_forwarded_and_does_not_reflect_plain_password(
 
 
 def test_openapi_documents_registration_payload_and_errors():
-    document = TestClient(app).get("/openapi.json").json()
+    document = (
+        TestClient(
+            app, headers={"Origin": "https://testserver", "X-NexoAula-CSRF": "1"}
+        )
+        .get("/openapi.json")
+        .json()
+    )
     operation = document["paths"]["/api/v1/auth/register"]["post"]
     request_schema = document["components"]["schemas"]["RegisterRequest"]
     response_schema = document["components"]["schemas"]["RegisterResponse"]
 
     assert operation["responses"].keys() >= {"201", "409", "422", "503"}
     assert request_schema["required"] == ["fullName", "email", "password"]
-    assert set(response_schema["properties"]) == {"id", "email", "fullName", "createdAt"}
+    assert set(response_schema["properties"]) == {
+        "id",
+        "email",
+        "fullName",
+        "createdAt",
+    }
     assert "password" not in response_schema["properties"]
 
 
-@pytest.mark.skipif(not DATABASE_URL, reason="DATABASE_URL is required for PostgreSQL tests")
+@pytest.mark.skipif(
+    not DATABASE_URL, reason="DATABASE_URL is required for PostgreSQL tests"
+)
 def test_register_persists_a_bcrypt_hash_and_rejects_case_insensitive_duplicate():
     engine = create_engine(DATABASE_URL, pool_pre_ping=True)
     session_factory = sessionmaker(bind=engine, expire_on_commit=False)
@@ -138,7 +160,9 @@ def test_register_persists_a_bcrypt_hash_and_rejects_case_insensitive_duplicate(
         with session_factory.begin() as session:
             session.execute(text("TRUNCATE auth_tokens, user_profiles, users CASCADE"))
 
-        with TestClient(app) as client:
+        with TestClient(
+            app, headers={"Origin": "https://testserver", "X-NexoAula-CSRF": "1"}
+        ) as client:
             created = client.post("/api/v1/auth/register", json=valid_payload())
             duplicate = client.post(
                 "/api/v1/auth/register",
