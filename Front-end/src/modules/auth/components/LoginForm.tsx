@@ -8,11 +8,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { ApiError, NetworkError, TimeoutError } from "@/lib/api";
+import { authService } from "../services/auth.service";
 import { validateLoginForm, type LoginFormErrors } from "../schemas/authSchemas";
 
 import styles from "./AuthForm.module.css";
 
-const DEMO_ERROR_EMAIL = "erro@demo.com";
 
 type BannerState = {
   type: "success" | "error" | "info";
@@ -50,7 +51,7 @@ export function LoginForm() {
     };
   }, []);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (timeoutRef.current !== null) return;
     setBanner(null);
@@ -69,37 +70,41 @@ export function LoginForm() {
     }
 
     const email = String(data.get("email") ?? "").trim();
-
-    if (email === DEMO_ERROR_EMAIL && !hasSimulatedError.current) {
-      hasSimulatedError.current = true;
-      setIsLoading(true);
-      setBanner(null);
-
-      timeoutRef.current = setTimeout(() => {
-        timeoutRef.current = null;
-        setIsLoading(false);
-        setBanner({
-          type: "error",
-          message: "Falha simulada na conexão. Tente novamente.",
-        });
-      }, 600);
-      return;
-    }
+    const password = String(data.get("password") ?? "");
 
     setIsLoading(true);
 
-    timeoutRef.current = setTimeout(() => {
-      timeoutRef.current = null;
-      setIsLoading(false);
+    try {
+      await authService.login({ email, password });
+      
       setBanner({
         type: "success",
-        message: "Acesso demonstrativo confirmado. Redirecionando para o painel acadêmico...",
+        message: "Autenticado com sucesso. Redirecionando para o painel acadêmico...",
       });
 
       navTimeoutRef.current = setTimeout(() => {
         router.push("/inicio");
       }, 1500);
-    }, 600);
+    } catch (error) {
+      setIsLoading(false);
+      
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        setBanner({
+          type: "error",
+          message: "E-mail ou senha incorretos.",
+        });
+      } else if (error instanceof NetworkError || error instanceof TimeoutError) {
+        setBanner({
+          type: "error",
+          message: "Erro de conexão. Verifique sua internet e tente novamente.",
+        });
+      } else {
+        setBanner({
+          type: "error",
+          message: "Ocorreu um erro inesperado. Tente novamente mais tarde.",
+        });
+      }
+    }
   }
 
   function handleForgotPassword() {

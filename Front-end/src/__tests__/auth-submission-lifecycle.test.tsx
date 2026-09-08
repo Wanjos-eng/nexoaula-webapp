@@ -34,17 +34,20 @@ function renderValidForm(kind: "login" | "register") {
 
 describe("ciclo de vida da submissão demonstrativa", () => {
   let registerSpy: ReturnType<typeof vi.spyOn>;
+  let loginSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.useFakeTimers();
     push.mockReset();
     registerSpy = vi.spyOn(authService, "register").mockResolvedValue({ status: 201, data: null });
+    loginSpy = vi.spyOn(authService, "login").mockResolvedValue({ status: 204, data: null });
   });
 
   afterEach(() => {
     vi.clearAllTimers();
     vi.useRealTimers();
     registerSpy.mockRestore();
+    loginSpy.mockRestore();
   });
 
   it.each(["login", "register"] as const)(
@@ -56,6 +59,8 @@ describe("ciclo de vida da submissão demonstrativa", () => {
       
       await act(async () => {
         await Promise.resolve();
+      });
+      act(() => {
         vi.advanceTimersByTime(600);
       });
       
@@ -72,6 +77,8 @@ describe("ciclo de vida da submissão demonstrativa", () => {
       
       await act(async () => {
         await Promise.resolve();
+      });
+      act(() => {
         vi.advanceTimersByTime(2100);
       });
       
@@ -94,6 +101,8 @@ describe("ciclo de vida da submissão demonstrativa", () => {
     
     await act(async () => {
       await Promise.resolve();
+    });
+    act(() => {
       vi.advanceTimersByTime(600);
     });
     

@@ -10,6 +10,14 @@ export interface RegisterRequest {
 }
 
 /**
+ * Payload para realizar o login do usuário.
+ */
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+/**
  * Serviço de Autenticação
  * Encapsula as chamadas de integração da jornada de usuário não-autenticado.
  */
@@ -25,6 +33,21 @@ export const authService = {
    */
   async register(data: RegisterRequest): Promise<ApiResponse<unknown>> {
     return apiClient.post("/v1/auth/register", {
+      body: data,
+    });
+  },
+
+  /**
+   * Envia as credenciais para realizar login.
+   * O sucesso (204) define o cookie HttpOnly contendo a sessão. O frontend não
+   * lê token do response.
+   *
+   * @throws {ApiError} 401 caso as credenciais sejam inválidas
+   * @throws {NetworkError} caso não consiga acessar o servidor
+   * @throws {TimeoutError} caso a requisição demore muito
+   */
+  async login(data: LoginRequest): Promise<ApiResponse<unknown>> {
+    return apiClient.post("/v1/auth/login", {
       body: data,
     });
   },

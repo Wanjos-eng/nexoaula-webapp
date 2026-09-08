@@ -12,13 +12,17 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("LoginForm", () => {
+  let loginSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.useFakeTimers();
     push.mockReset();
+    loginSpy = vi.spyOn(authService, "login");
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    loginSpy.mockRestore();
   });
 
   it("alterna a visibilidade da senha com um controle rotulado", () => {
@@ -51,7 +55,9 @@ describe("LoginForm", () => {
     ).toBeDefined();
   });
 
-  it("simula loading, sucesso e navega para /inicio com credenciais preenchidas, respeitando o atraso", () => {
+  it("simula loading, sucesso e navega para /inicio com credenciais preenchidas, respeitando o atraso", async () => {
+    loginSpy.mockResolvedValueOnce({ status: 204, data: null });
+
     render(<LoginForm />);
 
     fireEvent.change(screen.getByLabelText("E-mail"), {
@@ -65,12 +71,12 @@ describe("LoginForm", () => {
 
     expect(screen.getByRole("button", { name: "Entrando..." })).toBeDefined();
 
-    act(() => {
-      vi.advanceTimersByTime(600);
+    await act(async () => {
+      await Promise.resolve();
     });
 
     expect(
-      screen.getByText(/Acesso demonstrativo confirmado/i),
+      screen.getByText(/Autenticado com sucesso/i),
     ).toBeDefined();
 
     expect(push).not.toHaveBeenCalled();
@@ -82,7 +88,9 @@ describe("LoginForm", () => {
     expect(push).toHaveBeenCalledWith("/inicio");
   });
 
-  it("simula falha genérica e permite recuperação na segunda tentativa", () => {
+  it("simula falha genérica e permite recuperação na segunda tentativa", async () => {
+    loginSpy.mockRejectedValueOnce(new NetworkError());
+
     render(<LoginForm />);
 
     fireEvent.change(screen.getByLabelText("E-mail"), {
@@ -94,12 +102,14 @@ describe("LoginForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    act(() => {
-      vi.advanceTimersByTime(600);
+    await act(async () => {
+      await Promise.resolve();
     });
 
-    expect(screen.getByText(/Falha simulada na conexão/i)).toBeDefined();
+    expect(screen.getByText(/Erro de conexão/i)).toBeDefined();
     expect(push).not.toHaveBeenCalled();
+
+    loginSpy.mockResolvedValueOnce({ status: 204, data: null });
 
     fireEvent.change(screen.getByLabelText("E-mail"), {
       target: { value: "lucas@exemplo.com" },
@@ -107,11 +117,11 @@ describe("LoginForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    act(() => {
-      vi.advanceTimersByTime(600);
+    await act(async () => {
+      await Promise.resolve();
     });
 
-    expect(screen.getByText(/Acesso demonstrativo confirmado/i)).toBeDefined();
+    expect(screen.getByText(/Autenticado com sucesso/i)).toBeDefined();
   });
 
   it("possui link para navegação para a página de cadastro", () => {
