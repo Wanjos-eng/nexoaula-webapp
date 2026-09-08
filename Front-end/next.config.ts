@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { getApiBaseUrl } from "./src/lib/env";
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Vercel applies its own Next.js output tracing. Self-hosted and Docker
@@ -12,7 +14,7 @@ const nextConfig: NextConfig = {
   // (ADR-0002). Em produção, o deploy pode substituir esse rewrite por um
   // reverse proxy na infraestrutura.
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    const apiUrl = getApiBaseUrl();
     return [
       {
         source: "/api/:path*",

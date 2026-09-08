@@ -45,8 +45,10 @@ configuração local. Nunca versione `.env.local`, tokens ou credenciais.
 cp .env.example .env.local
 ```
 
-Nesta fundação nenhuma variável é obrigatória. `NEXT_PUBLIC_API_URL` está
-reservada para a integração com o backend em uma task posterior.
+`API_BASE_URL` configura, somente no servidor, a origem do FastAPI usada pelo
+rewrite de mesma origem. Quando omitida, o desenvolvimento usa
+`http://localhost:8000`. A configuração aceita apenas uma origem HTTP(S), sem
+credenciais, caminho, query ou fragmento.
 
 ## Comandos
 

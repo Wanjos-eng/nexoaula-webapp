@@ -44,6 +44,15 @@ export class TimeoutError extends Error {
   }
 }
 
+/** A requisição foi cancelada explicitamente pelo chamador. */
+export class RequestAbortedError extends Error {
+  constructor(cause?: unknown) {
+    super("Request was aborted");
+    this.name = "RequestAbortedError";
+    this.cause = cause;
+  }
+}
+
 /** A resposta não pôde ser parseada como JSON. */
 export class ParseError extends Error {
   readonly status: number;

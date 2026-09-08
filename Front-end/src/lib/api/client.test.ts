@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiClient } from "./client";
-import { ApiError, NetworkError, ParseError, TimeoutError } from "./errors";
+import {
+  ApiError,
+  NetworkError,
+  ParseError,
+  RequestAbortedError,
+  TimeoutError,
+} from "./errors";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -67,8 +73,8 @@ describe("apiClient.get", () => {
     await apiClient.get("/v1/auth/me");
 
     const [, init] = mockFetch.mock.calls[0];
-    const headers = init?.headers as Record<string, string>;
-    expect(headers["X-NexoAula-CSRF"]).toBeUndefined();
+    const headers = new Headers(init?.headers);
+    expect(headers.has("X-NexoAula-CSRF")).toBe(false);
   });
 
   it("envia credentials: same-origin", async () => {
@@ -94,8 +100,8 @@ describe("apiClient.post", () => {
     });
 
     const [, init] = mockFetch.mock.calls[0];
-    const headers = init?.headers as Record<string, string>;
-    expect(headers["X-NexoAula-CSRF"]).toBe("1");
+    const headers = new Headers(init?.headers);
+    expect(headers.get("X-NexoAula-CSRF")).toBe("1");
   });
 
   it("envia body JSON serializado e Content-Type correto", async () => {
@@ -105,8 +111,8 @@ describe("apiClient.post", () => {
     await apiClient.post("/v1/auth/login", { body: loginBody });
 
     const [, init] = mockFetch.mock.calls[0];
-    const headers = init?.headers as Record<string, string>;
-    expect(headers["Content-Type"]).toBe("application/json");
+    const headers = new Headers(init?.headers);
+    expect(headers.get("Content-Type")).toBe("application/json");
     expect(init?.body).toBe(JSON.stringify(loginBody));
   });
 
@@ -136,8 +142,8 @@ describe("métodos de mutação enviam CSRF", () => {
 
     const [, init] = mockFetch.mock.calls[0];
     expect(init?.method).toBe(httpMethod);
-    const headers = init?.headers as Record<string, string>;
-    expect(headers["X-NexoAula-CSRF"]).toBe("1");
+    const headers = new Headers(init?.headers);
+    expect(headers.get("X-NexoAula-CSRF")).toBe("1");
   });
 });
 
@@ -148,19 +154,6 @@ describe("métodos de mutação enviam CSRF", () => {
 describe("erros HTTP", () => {
   it("lança ApiError com status, statusText e body para 4xx", async () => {
     const errorBody = { detail: "Credenciais inválidas" };
-    mockFetch.mockResolvedValueOnce(
-      jsonResponse(errorBody, { status: 401, statusText: "Unauthorized" }),
-    );
-
-    await expect(apiClient.get("/v1/auth/me")).rejects.toThrow(ApiError);
-
-    try {
-      await apiClient.get("/v1/auth/me");
-    } catch (error) {
-      // O mock já foi consumido, vamos verificar com o primeiro throw
-    }
-
-    // Verificação detalhada
     mockFetch.mockResolvedValueOnce(
       jsonResponse(errorBody, { status: 401, statusText: "Unauthorized" }),
     );
@@ -242,6 +235,26 @@ describe("TimeoutError", () => {
   });
 });
 
+describe("cancelamento externo", () => {
+  it("não classifica um cancelamento do chamador como timeout", async () => {
+    const controller = new AbortController();
+    mockFetch.mockImplementationOnce((_input, init) => {
+      return new Promise((_, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(new DOMException("The operation was aborted.", "AbortError"));
+        });
+      });
+    });
+
+    const request = apiClient.get("/v1/auth/me", {
+      signal: controller.signal,
+    });
+    controller.abort();
+
+    await expect(request).rejects.toBeInstanceOf(RequestAbortedError);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Parse error
 // ---------------------------------------------------------------------------
@@ -263,6 +276,7 @@ describe("ParseError", () => {
       expect(error).toBeInstanceOf(ParseError);
       const parseError = error as ParseError;
       expect(parseError.status).toBe(200);
+      expect(parseError.rawBody).toBe("<html>not json</html>");
     }
   });
 });
@@ -280,8 +294,49 @@ describe("headers customizados", () => {
     });
 
     const [, init] = mockFetch.mock.calls[0];
-    const headers = init?.headers as Record<string, string>;
-    expect(headers["X-Custom"]).toBe("value");
-    expect(headers["Accept"]).toBe("application/json");
+    const headers = new Headers(init?.headers);
+    expect(headers.get("X-Custom")).toBe("value");
+    expect(headers.get("Accept")).toBe("application/json");
   });
+
+  it("impede sobrescrever headers obrigatórios", async () => {
+    mockFetch.mockResolvedValueOnce(jsonResponse({}));
+
+    await apiClient.post("/v1/auth/login", {
+      body: {},
+      headers: {
+        Accept: "text/html",
+        "Content-Type": "text/plain",
+        "X-NexoAula-CSRF": "0",
+      },
+    });
+
+    const [, init] = mockFetch.mock.calls[0];
+    const headers = new Headers(init?.headers);
+    expect(headers.get("Accept")).toBe("application/json");
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(headers.get("X-NexoAula-CSRF")).toBe("1");
+  });
+});
+
+describe("validação da requisição", () => {
+  it.each(["v1/auth/me", "//example.com/escape"])(
+    "rejeita caminho fora do prefixo interno: %s",
+    async (path) => {
+      await expect(apiClient.get(path)).rejects.toThrow(
+        "API path must start with a single slash",
+      );
+      expect(mockFetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejeita timeout inválido: %s",
+    async (timeout) => {
+      await expect(apiClient.get("/v1/auth/me", { timeout })).rejects.toThrow(
+        "Request timeout must be a positive number",
+      );
+      expect(mockFetch).not.toHaveBeenCalled();
+    },
+  );
 });
