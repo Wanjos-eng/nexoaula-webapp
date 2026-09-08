@@ -1,8 +1,9 @@
 # nexoAula API — setup inicial
 
-FastAPI executável com router técnico, configuração centralizada, migration e
-persistência de usuário/perfil. Ainda não implementa endpoints de cadastro ou
-login. PostgreSQL, SQLAlchemy 2 e Alembic estão integrados no recorte inicial.
+FastAPI executável com router técnico, configuração centralizada, migration,
+persistência de usuário/perfil e cadastro HTTP protegido por bcrypt. Login e
+sessão ainda não foram implementados. PostgreSQL, SQLAlchemy 2 e Alembic estão
+integrados no recorte inicial.
 
 A decisão está documentada no
 [ADR-0003](../../../docs/decisions/ADR-0003-persistence.md). A primeira migration
@@ -10,8 +11,8 @@ cria somente `users`, `user_profiles` e `auth_tokens`; os demais módulos do DBM
 continuam fora deste recorte.
 
 O mecanismo JWT em cookie `HttpOnly` do primeiro fluxo foi definido no
-[ADR-0002](../../../docs/decisions/ADR-0002-authentication.md). Nenhum endpoint,
-segredo ou cookie real é criado por este documento.
+[ADR-0002](../../../docs/decisions/ADR-0002-authentication.md). O cadastro não
+emite JWT nem cookie; o estado autenticado será implementado no login.
 
 ## Ambiente
 
@@ -55,6 +56,7 @@ usar o executável diretamente evita depender da política de ativação do shel
 
 - Health: <http://127.0.0.1:8000/health> — HTTP 200,
   `{"status":"ok","message":"API is running"}`.
+- Cadastro: `POST http://127.0.0.1:8000/api/v1/auth/register` — HTTP 201.
 - Swagger: <http://127.0.0.1:8000/docs>.
 - OpenAPI: <http://127.0.0.1:8000/openapi.json>.
 - ReDoc: <http://127.0.0.1:8000/redoc>.
@@ -123,5 +125,20 @@ informado, é criado na mesma transação da identidade.
 
 Os testes unitários do service não exigem banco. Os testes de repository exigem
 PostgreSQL migrado e são executados no workflow `Identity migration checks`, com
-cobertura de `app.modules.users`. Nenhum endpoint HTTP é liberado por esta camada.
+cobertura dos módulos `users` e `auth`.
+
+## Cadastro
+
+O contrato completo está no [README de Auth](app/modules/auth/README.md) e no
+Swagger. Exemplo local, depois de iniciar e migrar o PostgreSQL:
+
+```bash
+curl -i http://127.0.0.1:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  --data '{"fullName":"Lucas Almeida","email":"lucas@example.com","password":"uma-senha-segura"}'
+```
+
+O sucesso `201` não contém senha, hash, token ou cookie. O usuário deve seguir
+para o login, ainda pendente. A validação também não reflete a senha recebida em
+respostas de erro.
 

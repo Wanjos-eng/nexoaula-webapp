@@ -16,6 +16,7 @@ O service recebe uma factory de `UserUnitOfWork`, o que permite testes unitário
 sem banco. A implementação `SqlAlchemyUserUnitOfWork` gerencia sessão, commit,
 rollback e tradução da constraint `uq_users_email_ci` para erro público estável.
 
-Cadastro HTTP, validação de senha, hashing, cookies e JWT pertencem às tarefas de
-Auth e não são implementados aqui. O `password_hash` é um valor opaco recebido do
-caso de uso de cadastro; este módulo nunca recebe ou persiste senha em texto puro.
+Cadastro HTTP, validação de senha e hashing pertencem ao módulo Auth. O
+`password_hash` é um valor opaco recebido desse caso de uso; Users nunca recebe
+ou persiste senha em texto puro. Cookies e JWT permanecem reservados ao fluxo de
+login definido no ADR-0002.
