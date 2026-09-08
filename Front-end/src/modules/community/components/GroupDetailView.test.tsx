@@ -88,6 +88,42 @@ describe("GroupDetailView", () => {
 
     expect(screen.getByRole("alert")).toBeDefined();
     expect(screen.getByText(/Você está em modo de pré-visualização/i)).toBeDefined();
-    expect(screen.getByRole("button", { name: "Entrar no grupo" })).toBeDefined();
+    expect(screen.getAllByRole("button", { name: "Entrar no grupo" }).length).toBeGreaterThan(0);
   });
+});
+
+it("bloqueia mensagens, interesse e plano para visitante", () => {
+  render(<GroupDetailView group={{ ...groupDetailsMap["comunidade-msd-c8"], isMember: false, role: undefined }} />);
+  expect(screen.getByRole("button", { name: "Enviar mensagem" }).hasAttribute("disabled")).toBe(true);
+  expect(screen.getByRole("button", { name: "Tenho interesse" }).hasAttribute("disabled")).toBe(true);
+  expect(screen.getByRole("button", { name: "Plano e cronograma" }).hasAttribute("disabled")).toBe(true);
+  expect(screen.queryByText("Plano publicado")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Gerenciar grupo" })).toBeNull();
+  fireEvent.submit(screen.getByRole("button", { name: "Enviar mensagem" }).closest("form")!);
+  expect(screen.queryByText(/Mensagem adicionada ao protótipo/)).toBeNull();
+});
+
+it("move o foco para o modal, contém Tab e restaura o acionador", () => {
+  render(<GroupDetailView group={groupDetailsMap["comunidade-msd-c8"]} />);
+  const trigger = screen.getByRole("button", { name: "Ver participantes" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const close = screen.getByRole("button", { name: "Fechar painel" });
+  expect(document.activeElement).toBe(close);
+  fireEvent.keyDown(close, { key: "Tab" });
+  expect(document.activeElement).toBe(close);
+  fireEvent.keyDown(close, { key: "Escape" });
+  expect(document.activeElement).toBe(trigger);
+});
+
+it.each(["loading", "error"] as const)("expõe estado demonstrativo %s", (state) => {
+  render(<GroupDetailView group={groupDetailsMap["comunidade-msd-c8"]} state={state} />);
+  expect(screen.getByRole(state === "loading" ? "status" : "alert")).toBeDefined();
+  expect(screen.queryByRole("button", { name: "Enviar mensagem" })).toBeNull();
+});
+
+it("trata assuntos e encontros vazios", () => {
+  render(<GroupDetailView group={{ ...groupDetailsMap["comunidade-msd-c8"], channels: [], nextMeetingDetail: undefined }} />);
+  expect(screen.getByText("Nenhum assunto criado neste grupo.")).toBeDefined();
+  expect(screen.getByText("Nenhum encontro agendado no momento.")).toBeDefined();
 });

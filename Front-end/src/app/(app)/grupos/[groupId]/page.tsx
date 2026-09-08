@@ -1,14 +1,12 @@
-import { use } from "react";
-import { getGroupDetail } from "@/mocks/community/group-detail";
+import { getGroupDetailPreview } from "@/mocks/community/group-detail";
 import { GroupDetailView } from "@/modules/community/components/GroupDetailView";
 
-type GroupDetailPageProps = {
+export default async function GroupPage({ params, searchParams }: {
   params: Promise<{ groupId: string }>;
-};
-
-export default function GroupDetailPage({ params }: GroupDetailPageProps) {
-  const { groupId } = use(params);
-  const group = getGroupDetail(groupId);
-
-  return <GroupDetailView key={groupId} group={group} />;
+  searchParams: Promise<{ state?: string }>;
+}) {
+  const { state } = await searchParams;
+  const groupId = (await params).groupId;
+  return <GroupDetailView key={`${groupId}-${state}`} group={getGroupDetailPreview(groupId, state === "empty")}
+    state={state === "loading" || state === "error" ? state : "ready"} />;
 }

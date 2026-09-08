@@ -12,6 +12,7 @@ import styles from "./GroupDetailView.module.css";
 
 type ChannelListProps = {
   channels: GroupChannel[];
+  canInteract?: boolean;
   activeChannelId: string;
   onSelectChannel: (channelId: string) => void;
   onOpenPanel: (panel: "participants" | "manage" | "meetings" | "plan") => void;
@@ -21,6 +22,7 @@ type ChannelListProps = {
 
 export function ChannelList({
   channels,
+  canInteract = true,
   activeChannelId,
   onSelectChannel,
   onOpenPanel,
@@ -31,6 +33,7 @@ export function ChannelList({
     <aside className={styles.channelSidebar} aria-label="Canais do grupo">
       <p className={styles.channelHeading}>Assuntos em discussão</p>
       <div className={styles.channelList} role="tablist" aria-label="Lista de tópicos">
+        {channels.length === 0 ? <p>Nenhum assunto criado neste grupo.</p> : null}
         {channels.map((channel) => {
           const isActive = channel.id === activeChannelId;
           return (
@@ -41,6 +44,16 @@ export function ChannelList({
               key={channel.id}
               onClick={() => onSelectChannel(channel.id)}
               role="tab"
+              tabIndex={isActive ? 0 : -1}
+              onKeyDown={(event) => {
+                if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                event.preventDefault();
+                const index = channels.findIndex((item) => item.id === channel.id);
+                const next = event.key === "Home" ? 0 : event.key === "End" ? channels.length - 1
+                  : (index + (event.key === "ArrowRight" ? 1 : -1) + channels.length) % channels.length;
+                onSelectChannel(channels[next].id);
+                (event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next])?.focus();
+              }}
               type="button"
             >
               <Hash aria-hidden size={17} /> #{channel.name}
@@ -48,7 +61,7 @@ export function ChannelList({
           );
         })}
       </div>
-      <button className={styles.createTopic} onClick={onCreateTopicClick} type="button">
+      <button disabled={!canInteract} className={styles.createTopic} onClick={onCreateTopicClick} type="button">
         <Plus aria-hidden size={16} /> Criar assunto
       </button>
       <div className={styles.channelDivider} />
@@ -78,6 +91,7 @@ export function ChannelList({
       ) : null}
       <button
         className={styles.utilityChannel}
+        disabled={!canInteract}
         onClick={() => onOpenPanel("plan")}
         type="button"
       >

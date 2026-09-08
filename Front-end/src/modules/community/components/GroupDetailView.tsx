@@ -13,7 +13,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import type { GroupDetailData, GroupMessage } from "@/modules/community/types";
 
 import { ChannelList } from "./ChannelList";
@@ -24,11 +24,13 @@ import { MeetingList } from "./MeetingList";
 type GroupDetailViewProps = {
   group: GroupDetailData | null;
   initialTopicId?: string;
+  state?: "ready" | "loading" | "error";
 };
 
 export function GroupDetailView({
   group,
   initialTopicId,
+  state = "ready",
 }: GroupDetailViewProps) {
   const [activeTopic, setActiveTopic] = useState<string>(() => {
     if (!group || group.channels.length === 0) return "geral";
@@ -49,16 +51,44 @@ export function GroupDetailView({
     "participants" | "manage" | "meetings" | "plan" | null
   >(null);
 
-  // Handle Escape key to close active modal
+  const modalRef = useRef<HTMLElement>(null);
+
+  // Keep keyboard navigation inside the modal and restore the trigger.
   useEffect(() => {
+    if (!activePanel) return;
+    const trigger = document.activeElement as HTMLElement | null;
+    const modal = modalRef.current;
+    const focusable = () => Array.from(modal?.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), a[href], input:not(:disabled), [tabindex="0"]',
+    ) ?? []);
+    focusable()[0]?.focus();
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && activePanel) {
-        setActivePanel(null);
+      if (event.key === "Escape") setActivePanel(null);
+      if (event.key === "Tab") {
+        const items = focusable();
+        const first = items[0];
+        const last = items.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault(); last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first?.focus();
+        }
       }
     }
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      trigger?.focus();
+    };
   }, [activePanel]);
+
+  if (state !== "ready") return <div className={styles.page}>
+    <p>Prévia demonstrativa, sem persistência.</p>
+    <p role={state === "error" ? "alert" : "status"}>
+      {state === "loading" ? "Carregando grupo…" : "Não foi possível carregar o grupo nesta simulação."}
+    </p>
+    <Link href={group ? `/grupos/${group.id}` : "/grupos"}>Voltar à prévia</Link>
+  </div>;
 
   if (!group) {
     return (
@@ -80,10 +110,11 @@ export function GroupDetailView({
   }
 
   const activeChannel = group.channels.find((c) => c.id === activeTopic);
-  const messagesForChannel = localMessages[activeTopic] || [];
+  const messagesForChannel = group.isMember ? localMessages[activeTopic] || [] : [];
 
   function handleSendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!group?.isMember || !group.channels.length) return;
     if (!messageText.trim()) {
       setComposerFeedback("Escreva uma mensagem para iniciar a discussão.");
       return;
@@ -118,6 +149,7 @@ export function GroupDetailView({
 
   return (
     <div className={styles.page}>
+      <p className={styles.feedback}>Prévia demonstrativa: mensagens, encontros e ações não são persistidos.</p>
       {/* Mobile Header */}
       <header className={styles.mobileHeader}>
         <Link aria-label="Voltar aos grupos" className={styles.mobileBack} href="/grupos">
@@ -139,16 +171,23 @@ export function GroupDetailView({
             </span>
           </div>
         </div>
-        <button
+        {group.isMember && group.role === "Organizador" ? <button
           aria-label="Gerenciar grupo"
           className={styles.mobileManage}
           onClick={() => setActivePanel("manage")}
           type="button"
         >
           <GearSix aria-hidden size={20} />
-        </button>
+        </button> : null}
       </header>
 
+      <div className={styles.mobileContext}>
+        <p>{group.discipline} · {group.classGroup} · {group.period}</p>
+        {!group.isMember ? <button type="button" className={styles.primaryButton} onClick={handleJoinClick}>
+          {group.entryMode === "approval" ? "Solicitar entrada" : "Entrar no grupo"}
+        </button> : null}
+        {joinFeedback ? <p role="status">{joinFeedback}</p> : null}
+      </div>
       {/* Desktop Header & Hero */}
       <Link className={styles.back} href="/grupos">
         <ArrowLeft aria-hidden size={17} /> Voltar aos grupos
@@ -175,7 +214,8 @@ export function GroupDetailView({
             setActiveTopic(topicId);
             setComposerFeedback("");
           }}
-          pendingRequestsCount={group.pendingRequestsCount}
+          canInteract={group.isMember}
+          pendingRequestsCount={group.role === "Organizador" ? group.pendingRequestsCount : 0}
         />
 
         {/* Center Column: Thread / Chat Panel */}
@@ -244,12 +284,13 @@ export function GroupDetailView({
               Escreva uma mensagem
             </label>
             <input
+              disabled={!group.isMember || group.channels.length === 0}
               id="new-message"
               onChange={(e) => setMessageText(e.target.value)}
               placeholder={`Escreva em #${activeTopic}...`}
               value={messageText}
             />
-            <button aria-label="Enviar mensagem" type="submit">
+            <button aria-label="Enviar mensagem" disabled={!group.isMember || group.channels.length === 0} type="submit">
               <PaperPlaneRight aria-hidden size={19} />
             </button>
           </form>
@@ -263,13 +304,14 @@ export function GroupDetailView({
         {/* Right Column: Info Sidebar */}
         <aside className={styles.infoSidebar} aria-label="Informações do grupo">
           <MeetingList
+            canInteract={group.isMember}
             meeting={group.nextMeetingDetail}
             onViewMeetings={() => setActivePanel("meetings")}
           />
 
           <section className={styles.sideCard} id="plano">
             <h3>Plano e cronograma</h3>
-            {group.hasPublishedPlan ? (
+            {!group.isMember ? <p>Entre no grupo para acessar o plano e cronograma.</p> : group.hasPublishedPlan ? (
               <div className={styles.planStatus}>
                 <Check aria-hidden size={17} weight="bold" />
                 <div>
@@ -287,6 +329,7 @@ export function GroupDetailView({
             <div className={styles.sideLinks}>
               <button
                 className={styles.details}
+                disabled={!group.isMember}
                 onClick={() => setActivePanel("plan")}
                 type="button"
               >
@@ -335,6 +378,7 @@ export function GroupDetailView({
             className={styles.modal}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
+            ref={modalRef}
           >
             <div className={styles.modalHeader}>
               <div>
@@ -374,7 +418,8 @@ export function GroupDetailView({
                       <small>{person.role}</small>
                     </span>
                     <button
-                      aria-label={`Abrir conversa com ${person.name}`}
+                      disabled
+                      aria-label={`Conversa com ${person.name} indisponível nesta prévia`}
                       type="button"
                     >
                       Mensagem
@@ -390,7 +435,7 @@ export function GroupDetailView({
                 <p className={styles.modalIntro}>
                   Ações disponíveis somente para o organizador, sem misturar configurações com a experiência de quem participa.
                 </p>
-                <button type="button">
+                <button type="button" disabled>
                   <GearSix aria-hidden size={18} />
                   <span>
                     <strong>Configurações do grupo</strong>
@@ -398,7 +443,7 @@ export function GroupDetailView({
                   </span>
                   <ArrowLeft aria-hidden className={styles.rotate} size={16} />
                 </button>
-                <button type="button">
+                <button type="button" disabled>
                   <UserPlus aria-hidden size={18} />
                   <span>
                     <strong>Solicitações de entrada</strong>
@@ -408,7 +453,7 @@ export function GroupDetailView({
                   </span>
                   <ArrowLeft aria-hidden className={styles.rotate} size={16} />
                 </button>
-                <button type="button">
+                <button type="button" disabled>
                   <ListBullets aria-hidden size={18} />
                   <span>
                     <strong>Plano e cronograma</strong>

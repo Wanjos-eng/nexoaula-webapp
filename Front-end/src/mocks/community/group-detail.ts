@@ -172,5 +172,10 @@ export const groupDetailsMap: Record<string, GroupDetailData> = {
 };
 
 export function getGroupDetail(groupId: string): GroupDetailData | null {
-  return groupDetailsMap[groupId] || null;
+  return Object.hasOwn(groupDetailsMap, groupId) ? groupDetailsMap[groupId] : null;
+}
+
+export function getGroupDetailPreview(groupId: string, empty: boolean): GroupDetailData | null {
+  const group = getGroupDetail(groupId);
+  return group && empty ? { ...group, channels: [], messagesByChannel: {}, nextMeetingDetail: undefined } : group;
 }

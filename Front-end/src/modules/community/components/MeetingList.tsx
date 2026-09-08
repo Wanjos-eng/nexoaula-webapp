@@ -7,10 +7,11 @@ import styles from "./GroupDetailView.module.css";
 
 type MeetingListProps = {
   meeting?: GroupMeeting;
+  canInteract?: boolean;
   onViewMeetings?: () => void;
 };
 
-export function MeetingList({ meeting, onViewMeetings }: MeetingListProps) {
+export function MeetingList({ meeting, onViewMeetings, canInteract = true }: MeetingListProps) {
   const [interested, setInterested] = useState(false);
   const [feedback, setFeedback] = useState("");
 
@@ -49,6 +50,7 @@ export function MeetingList({ meeting, onViewMeetings }: MeetingListProps) {
         <MapPin aria-hidden size={16} /> {meeting.location}
       </p>
       <button
+        disabled={!canInteract}
         aria-pressed={interested}
         className={interested ? styles.interestActive : styles.interest}
         onClick={toggleInterest}
