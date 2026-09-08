@@ -1,7 +1,7 @@
 /**
  * Validação de variáveis de ambiente do frontend.
  *
- * Em desenvolvimento, `NEXT_PUBLIC_API_URL` define para onde o proxy
+ * Em desenvolvimento, `API_BASE_URL` define para onde o proxy
  * de mesma origem encaminha as chamadas `/api`. Em produção, o rewrite
  * do Next.js ou a infraestrutura de deploy faz o encaminhamento.
  *
@@ -9,19 +9,10 @@
  * apenas o rewrite server-side do Next.js.
  */
 
-function requiredEnv(key: string): string {
-  const value = process.env[key];
-  if (!value) {
-    throw new Error(
-      `Missing required environment variable: ${key}. ` +
-        `Check .env.example and create a .env.local with the correct value.`,
-    );
-  }
-  return value;
-}
+const DEFAULT_API_BASE_URL = "http://localhost:8000";
 
 /**
- * URL do backend para o rewrite do Next.js.
+ * URL do backend para o rewrite do Next.js. Usa localhost:8000 por padrão.
  *
  * Essa variável é usada **apenas no servidor** (next.config.ts / rewrites).
  * O navegador envia chamadas para `/api` na mesma origem e o Next.js
@@ -31,5 +22,22 @@ function requiredEnv(key: string): string {
  * Em produção: configurado via variável de ambiente do deploy
  */
 export function getApiBaseUrl(): string {
-  return requiredEnv("NEXT_PUBLIC_API_URL");
+  const configuredValue = process.env.API_BASE_URL?.trim() || DEFAULT_API_BASE_URL;
+
+  let url: URL;
+  try {
+    url = new URL(configuredValue);
+  } catch {
+    throw new Error("API_BASE_URL must be a valid absolute URL");
+  }
+
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("API_BASE_URL must use http or https");
+  }
+
+  if (url.username || url.password || url.search || url.hash || url.pathname !== "/") {
+    throw new Error("API_BASE_URL must contain only the backend origin");
+  }
+
+  return url.origin;
 }

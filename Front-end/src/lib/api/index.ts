@@ -17,4 +17,4 @@
 
 export { apiClient, get, post, put, patch, del } from "./client";
 export type { RequestOptions, ApiResponse } from "./client";
-export { ApiError, NetworkError, TimeoutError, ParseError } from "./errors";
+export { ApiError, NetworkError, ParseError, RequestAbortedError, TimeoutError } from "./errors";

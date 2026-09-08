@@ -1,9 +1,5 @@
-import type { Metadata } from "next";
-
-import { AcademicPage } from "@/components/academic/AcademicPage";
-
-export const metadata: Metadata = { title: "Meu progresso" };
-
-export default function ProgressoPage() {
-  return <AcademicPage variant="progress" />;
+import { AcademicProgressView } from "@/modules/academic/components/AcademicProgressView";
+import type { AcademicViewState } from "@/modules/academic/components/AcademicPreviewState";
+export default async function Page({ searchParams }: { searchParams: Promise<{ state?: AcademicViewState }> }) {
+  return <AcademicProgressView state={(await searchParams).state} />;
 }
