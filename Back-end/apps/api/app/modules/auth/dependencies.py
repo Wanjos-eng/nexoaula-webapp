@@ -71,11 +71,9 @@ def authenticated_subject(
     if not token:
         raise InvalidCredentialsError()
 
-    try:
-        tokens: SessionTokens = get_session_tokens(request)
-        return tokens.subject(token)
-    except (InvalidCredentialsError, HTTPException):
-        raise
-    except Exception:
-        raise InvalidCredentialsError()
+    tokens_dep = request.app.dependency_overrides.get(
+        get_session_tokens, get_session_tokens
+    )
+    tokens: SessionTokens = tokens_dep()
+    return tokens.subject(token)
 

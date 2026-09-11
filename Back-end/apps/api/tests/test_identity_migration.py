@@ -121,23 +121,32 @@ def test_constraints_indexes_and_enum_match_the_approved_model(database_engine):
 
 def test_email_is_unique_without_case_sensitivity(database_engine):
     first_id = uuid4()
-    with database_engine.begin() as connection:
-        connection.execute(
-            text(
-                "INSERT INTO users (id, email, password_hash) "
-                "VALUES (:id, 'Aluno@NexoAula.test', 'hash-seguro')"
-            ),
-            {"id": first_id},
-        )
-
-    with pytest.raises(IntegrityError):
+    email_base = f"aluno-{uuid4()}"
+    upper_email = f"{email_base.upper()}@nexoaula.test"
+    lower_email = f"{email_base.lower()}@nexoaula.test"
+    try:
         with database_engine.begin() as connection:
             connection.execute(
                 text(
                     "INSERT INTO users (id, email, password_hash) "
-                    "VALUES (:id, 'aluno@nexoaula.test', 'outro-hash')"
+                    "VALUES (:id, :email, 'hash-seguro')"
                 ),
-                {"id": uuid4()},
+                {"id": first_id, "email": upper_email},
+            )
+
+        with pytest.raises(IntegrityError):
+            with database_engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "INSERT INTO users (id, email, password_hash) "
+                        "VALUES (:id, :email, 'outro-hash')"
+                    ),
+                    {"id": uuid4(), "email": lower_email},
+                )
+    finally:
+        with database_engine.begin() as connection:
+            connection.execute(
+                text("DELETE FROM users WHERE id = :id"), {"id": first_id}
             )
 
 

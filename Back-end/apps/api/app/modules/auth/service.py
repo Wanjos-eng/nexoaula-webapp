@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from pydantic import SecretStr
-
+from fastapi import HTTPException, status
 from app.modules.auth.passwords import PasswordHasher
 from app.modules.auth.schemas import (
     LoginRequest,
@@ -60,6 +60,12 @@ class AuthenticationService:
             # Perform the same expensive bcrypt operation for unknown accounts.
             self._password_hasher.verify(request.password, self._dummy_hash)
             raise InvalidCredentialsError() from None
+        except UserPersistenceError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Autenticação temporariamente indisponível.",
+            ) from None
+
         matches = self._password_hasher.verify(request.password, user.password_hash)
         if not matches or not user.is_active or user.deleted_at is not None:
             raise InvalidCredentialsError()
@@ -70,6 +76,12 @@ class AuthenticationService:
             user = self._users.get_by_id(user_id)
         except UserNotFoundError:
             raise InvalidCredentialsError() from None
+        except UserPersistenceError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Autenticação temporariamente indisponível.",
+            ) from None
+
         if not user.is_active or user.deleted_at is not None:
             raise InvalidCredentialsError()
         return self._public_user(user)
