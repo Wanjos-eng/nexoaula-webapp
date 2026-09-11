@@ -3,6 +3,7 @@ from secrets import token_urlsafe
 from typing import Annotated
 from uuid import UUID
 
+
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import APIKeyCookie
 from pydantic import SecretStr
@@ -64,12 +65,17 @@ cookie_session = APIKeyCookie(name=settings.auth_cookie_name, auto_error=False)
 
 def authenticated_subject(
     request: Request,
-    tokens: Annotated[SessionTokens, Depends(get_session_tokens)],
     _cookie: Annotated[str | None, Depends(cookie_session)] = None,
 ) -> UUID:
     token = request.cookies.get(settings.auth_cookie_name) or _cookie
     if not token:
         raise InvalidCredentialsError()
-    return tokens.subject(token)
 
+    try:
+        tokens: SessionTokens = get_session_tokens(request)
+        return tokens.subject(token)
+    except (InvalidCredentialsError, HTTPException):
+        raise
+    except Exception:
+        raise InvalidCredentialsError()
 
