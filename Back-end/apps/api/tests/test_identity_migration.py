@@ -34,7 +34,8 @@ def test_only_identity_tables_are_released(database_engine):
         "group_members", 
         "class_sections",
         "institutions", 
-        "study_groups",
+        "class_section_enrollments",
+        "study_groups"
         # Add any other tables that are being created in your migration
     }
 
