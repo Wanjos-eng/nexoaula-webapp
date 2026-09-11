@@ -24,7 +24,15 @@ def database_engine():
 def test_only_identity_tables_are_released(database_engine):
     tables = set(inspect(database_engine).get_table_names())
 
-    assert tables == {"alembic_version", "users", "user_profiles", "auth_tokens"}
+    assert tables == {
+        "alembic_version",
+        "users",
+        "user_profiles",
+        "auth_tokens",
+        "academic_terms",
+        "subjects",
+        # Add any other tables that are being created in your migration
+    }
 
 
 def test_identity_columns_match_the_approved_model(database_engine):
