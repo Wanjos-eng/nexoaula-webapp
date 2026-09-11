@@ -52,6 +52,8 @@ class MemoryUsers:
 def auth(monkeypatch):
     monkeypatch.setattr(settings, "AUTH_JWT_SECRET", SecretStr(token_urlsafe(32)))
     monkeypatch.setattr(settings, "AUTH_ALLOWED_ORIGINS", ["https://testserver"])
+    monkeypatch.setattr(settings, "AUTH_COOKIE_SECURE", True)
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
     hasher = BcryptPasswordHasher(rounds=4)
     now = datetime.now(UTC)
     users = MemoryUsers(

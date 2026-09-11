@@ -120,3 +120,24 @@ class ClassSection(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class ClassSectionEnrollment(Base):
+    __tablename__ = "class_section_enrollments"
+    __table_args__ = (
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(
+            ["class_section_id"], ["class_sections.id"], ondelete="RESTRICT"
+        ),
+        Index("ix_class_section_enrollments_class_section_id", "class_section_id"),
+    )
+
+    user_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True
+    )
+    class_section_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True
+    )
+    enrolled_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
