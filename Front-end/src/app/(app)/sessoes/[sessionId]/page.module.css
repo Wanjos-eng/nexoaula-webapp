@@ -1,0 +1,324 @@
+.page {
+  display: grid;
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+}
+
+.back {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: 0.85rem;
+  gap: 6px;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.back:hover {
+  color: var(--color-green);
+}
+
+.simulationBanner {
+  background: color-mix(in srgb, var(--color-green) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-green) 30%, transparent);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+  padding: 10px 16px;
+}
+
+.layout {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: 1fr 340px;
+}
+
+@media (max-width: 768px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.main {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.subject {
+  background: color-mix(in srgb, var(--color-green) 12%, transparent);
+  border-radius: 20px;
+  color: var(--color-green);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  width: fit-content;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.tutor {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.description {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.facts {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.facts > div {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.facts dt {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: 0.82rem;
+  gap: 5px;
+  min-width: 90px;
+}
+
+.facts dd {
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Sidebar */
+.sidebar {
+  align-self: start;
+  position: sticky;
+  top: 80px;
+}
+
+.priceCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  display: grid;
+  gap: 10px;
+  padding: 24px;
+}
+
+.priceLabel {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.priceValue {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.priceNote {
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 4px 0;
+}
+
+.enrollButton {
+  background: var(--color-green);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 14px;
+  width: 100%;
+  transition: opacity 0.15s;
+}
+
+.enrollButton:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.enrollButton:disabled {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+/* Confirm box */
+.confirmBox {
+  background: color-mix(in srgb, var(--color-green) 6%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-green) 25%, transparent);
+  border-radius: 10px;
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.confirmText {
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.simulationNote {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: 0.78rem;
+  gap: 5px;
+  margin: 0;
+}
+
+.confirmActions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.cancelButton {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 10px;
+}
+
+.confirmButton {
+  background: var(--color-green);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 10px;
+}
+
+.failureButton {
+  background: transparent;
+  border: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-decoration: underline;
+}
+
+/* Receipt */
+.receipt {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
+.receiptIcon {
+  color: var(--color-green);
+  margin: 0 auto;
+}
+
+.receiptTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.receiptDetails {
+  background: var(--color-background);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.receiptDetails > div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.receiptDetails dt {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.receiptDetails dd {
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.receiptNotice {
+  background: color-mix(in srgb, var(--color-green) 8%, transparent);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  margin: 0;
+  padding: 8px;
+}
+
+.cancelEnrollButton {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 8px 12px;
+  width: 100%;
+}
+
+/* Cancelled */
+.cancelledBox {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
+.cancelledBox p {
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.errorBox {
+  align-items: center;
+  color: var(--color-danger, #b42318);
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
+.errorBox p {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+}
