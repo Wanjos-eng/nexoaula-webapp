@@ -4,7 +4,7 @@ from typing import Annotated
 from uuid import UUID
 
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import APIKeyCookie
 from pydantic import SecretStr
 from sqlalchemy.orm import Session, sessionmaker
@@ -64,11 +64,17 @@ cookie_session = APIKeyCookie(name=settings.auth_cookie_name, auto_error=False)
 
 
 def authenticated_subject(
-    token: Annotated[str | None, Depends(cookie_session)],
-    tokens: Annotated[SessionTokens, Depends(get_session_tokens)],
+    request: Request,
+    _cookie: Annotated[str | None, Depends(cookie_session)] = None,
 ) -> UUID:
+    token = request.cookies.get(settings.auth_cookie_name) or _cookie
     if not token:
         raise InvalidCredentialsError()
+
+    tokens_dep = request.app.dependency_overrides.get(
+        get_session_tokens, get_session_tokens
+    )
+    tokens: SessionTokens = tokens_dep()
     return tokens.subject(token)
 
 
