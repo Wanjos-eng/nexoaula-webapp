@@ -20,5 +20,45 @@ services:
       retries: 10
       start_period: 10s
 
+  api:
+    build:
+      context: ./Back-end/apps/api
+    environment:
+      DATABASE_URL: postgresql+psycopg2://nexoaula:nexoaula_local@db:5432/nexoaula
+      ENVIRONMENT: development
+      AUTH_COOKIE_SECURE: "false"
+      AUTH_JWT_SECRET: e2e-only-secret-change-me-32-bytes-minimum
+      AUTH_ALLOWED_ORIGINS: '["http://localhost:3000"]'
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8000}:8000"
+    command: >-
+      sh -c "python -m alembic upgrade head &&
+      python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/health')
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  web:
+    build:
+      context: ./Front-end
+    environment:
+      API_BASE_URL: http://api:8000
+      NODE_ENV: production
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
 volumes:
   postgres_data:
