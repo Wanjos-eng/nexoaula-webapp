@@ -60,7 +60,7 @@ def api(monkeypatch):
             with TestClient(
                 app, base_url="https://testserver", headers=HEADERS
             ) as client:
-                email = f"{uuid4()}@example.test"
+                email = f"{uuid4()}@example.com"
                 res = client.post(
                     "/api/v1/auth/register",
                     json={
@@ -271,7 +271,7 @@ def test_profile_isolation_with_two_real_accounts(api):
     assert (
         client.patch(f"{PREFIX}/profile", json={"bio": "Private A"}).status_code == 200
     )
-    email = f"{uuid4()}@example.test"
+    email = f"{uuid4()}@example.com"
     assert (
         client.post(
             "/api/v1/auth/register",
