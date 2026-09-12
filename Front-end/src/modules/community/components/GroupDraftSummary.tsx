@@ -40,14 +40,6 @@ export function GroupDraftSummary({
             ?.label ?? "Não informada",
         ],
         [
-          "Plano da comunidade",
-            : "Gratuito · grupo aberto",
-        ],
-        [
-          "Acesso do participante",
-            : "Sem taxa de acesso",
-        ],
-        [
           "Capacidade",
           draft.capacity.trim()
             ? `${Number(draft.capacity)} participantes (incluindo organizador)`

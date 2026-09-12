@@ -198,7 +198,7 @@ export function GroupAccessFields({ draft, errors, onChange }: Props) {
           id="capacity"
           label="Capacidade de participantes (opcional)"
           error={errors.capacity}
-          hint="Inclui o organizador. Vazio significa sem capacidade definida."
+          hint="Inclui o organizador. Vazio significa sem capacidade definida; não há cobrança por grupo ou quantidade de membros."
           full
         >
           <input

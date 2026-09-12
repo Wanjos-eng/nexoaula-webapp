@@ -11,23 +11,24 @@ import {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { mockSessions } from "@/modules/marketplace/marketplace.mock";
+import { useDemoSessions } from "@/modules/marketplace/marketplace.demo";
 import { formatCents } from "@/modules/marketplace/marketplace.types";
 import styles from "./page.module.css";
 
 export default function SessoesPage() {
   const [query, setQuery] = useState("");
+  const { sessions: allSessions } = useDemoSessions();
 
   const sessions = useMemo(() => {
-    if (!query.trim()) return mockSessions;
+    if (!query.trim()) return allSessions;
     const q = query.toLowerCase();
-    return mockSessions.filter(
+    return allSessions.filter(
       (s) =>
         s.title.toLowerCase().includes(q) ||
         s.subject_name.toLowerCase().includes(q) ||
         s.tutor_name.toLowerCase().includes(q),
     );
-  }, [query]);
+  }, [allSessions, query]);
 
   const scheduled = sessions.filter((s) => s.status === "scheduled");
 
@@ -51,6 +52,10 @@ export default function SessoesPage() {
           🎓 <strong>Demonstração acadêmica.</strong> Nenhum pagamento real
           será realizado. Os valores exibidos são apenas demonstrativos.
         </div>
+        <nav className={styles.headerActions} aria-label="Atalhos de sessões">
+          <Link href="/sessoes/minhas">Minhas inscrições</Link>
+          <Link href="/tutor">Área do tutor</Link>
+        </nav>
       </header>
 
       <div className={styles.searchBar}>

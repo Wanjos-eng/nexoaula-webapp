@@ -47,6 +47,22 @@
   padding: 10px 16px;
 }
 
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.headerActions a {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-green);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 8px 12px;
+  text-decoration: none;
+}
+
 .searchBar {
   max-width: 480px;
 }

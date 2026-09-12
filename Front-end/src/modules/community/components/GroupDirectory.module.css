@@ -67,17 +67,6 @@
   border-bottom: 1px solid var(--color-border);
 }
 
-.monetizationNotice {
-  margin: 14px 0 20px;
-  padding: 11px 14px;
-  color: var(--color-green);
-  background: #edf8f2;
-  border: 1px solid #cde9d8;
-  border-radius: 8px;
-  font-size: 0.78rem;
-  line-height: 1.45;
-}
-
 .tab,
 .tabActive {
   position: relative;

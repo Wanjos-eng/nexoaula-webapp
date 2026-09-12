@@ -36,13 +36,6 @@
   margin-bottom: 5px;
 }
 
-.premiumInfo {
-  margin: 0 0 10px;
-  color: var(--color-green);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
 .hero h2 {
   font-size: clamp(1.45rem, 2.7vw, 2rem);
   letter-spacing: -0.025em;

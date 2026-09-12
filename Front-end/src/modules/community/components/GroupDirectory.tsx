@@ -198,9 +198,6 @@ export function GroupDirectory({
           Descobrir grupos
         </button>
       </div>
-      <p className={styles.monetizationNotice}>
-        Grupos abertos são gratuitos. Tutores podem simular uma comunidade privada premium com conteúdos, aulas e canais exclusivos para participantes.
-      </p>
 
       {view === "mine" ? (
         <section aria-labelledby="my-groups-tab" id="my-groups-panel" role="tabpanel" tabIndex={0}>

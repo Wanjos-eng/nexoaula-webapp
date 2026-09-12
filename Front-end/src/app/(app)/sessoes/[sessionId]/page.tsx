@@ -11,26 +11,36 @@ import {
   XCircle,
 } from "@phosphor-icons/react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { useState } from "react";
 
-import { mockSessions } from "@/modules/marketplace/marketplace.mock";
+import { useAuthSession } from "@/modules/auth";
+import { cancelDemoBooking, enrollDemoSession, readDemoBookings, useDemoSessions } from "@/modules/marketplace/marketplace.demo";
 import {
   calcCommission,
   formatCents,
 } from "@/modules/marketplace/marketplace.types";
 import styles from "./page.module.css";
 
-type Props = { params: { sessionId: string } };
+type EnrollState = "idle" | "confirming" | "done" | "cancelled" | "error";
 
-type EnrollState = "idle" | "confirming" | "done" | "cancelled";
-
-export default function SessionDetailPage({ params }: Props) {
-  const session = mockSessions.find((s) => s.id === params.sessionId);
-  if (!session) notFound();
-
+export default function SessionDetailPage() {
+  const { user } = useAuthSession();
+  const { sessionId } = useParams<{ sessionId: string }>();
+  const { sessions, loaded } = useDemoSessions();
   const [enrollState, setEnrollState] = useState<EnrollState>("idle");
+  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [failureMessage, setFailureMessage] = useState("");
+  const [now] = useState(() => Date.now());
+  const session = sessions.find((s) => s.id === sessionId);
+
+  if (!session) {
+    if (!loaded) return <main>Carregando sessão simulada…</main>;
+    notFound();
+  }
+
   const isFull = session.enrolled_count >= session.capacity;
+  const isUnavailable = isFull || session.status !== "scheduled" || new Date(session.starts_at).getTime() <= now;
   const commission = calcCommission(session.price_cents);
   const netTutor = session.price_cents - commission;
 
@@ -42,7 +52,20 @@ export default function SessionDetailPage({ params }: Props) {
   }
 
   function handleConfirm() {
-    setEnrollState("done");
+    if (!session) return;
+    if (readDemoBookings(user.id).some((booking) => booking.session.id === session.id && booking.status === "confirmed")) {
+      setFailureMessage("Você já possui inscrição ativa nesta sessão simulada.");
+      setEnrollState("error");
+      return;
+    }
+    try {
+      const booking = enrollDemoSession(user.id, session);
+      setBookingId(booking.id);
+      setEnrollState("done");
+    } catch {
+      setFailureMessage("Não foi possível salvar a inscrição simulada neste navegador.");
+      setEnrollState("error");
+    }
   }
 
   function handleCancel() {
@@ -50,7 +73,13 @@ export default function SessionDetailPage({ params }: Props) {
   }
 
   function handleCancelEnrollment() {
+    if (bookingId) cancelDemoBooking(user.id, bookingId);
     setEnrollState("cancelled");
+  }
+
+  function handleFailure() {
+    setFailureMessage("Não foi possível concluir a inscrição simulada. Sua sessão pode ter expirado ou a operação pode estar duplicada.");
+    setEnrollState("error");
   }
 
   return (
@@ -147,7 +176,7 @@ export default function SessionDetailPage({ params }: Props) {
               <strong>{formatCents(commission, session.currency)}</strong>
             </p>
             <p className={styles.priceNote}>
-              Repasse líquido ao tutor:{" "}
+              Repasse líquido simulado ao tutor:{" "}
               <strong>{formatCents(netTutor, session.currency)}</strong>
             </p>
             <hr className={styles.divider} />
@@ -155,11 +184,11 @@ export default function SessionDetailPage({ params }: Props) {
             {enrollState === "idle" && (
               <button
                 className={styles.enrollButton}
-                disabled={isFull}
+                disabled={isUnavailable}
                 onClick={handleEnroll}
                 type="button"
               >
-                {isFull ? "Vagas esgotadas" : "Simular Inscrição"}
+                {isFull ? "Vagas esgotadas" : isUnavailable ? "Sessão indisponível" : "Simular Inscrição"}
               </button>
             )}
 
@@ -190,6 +219,13 @@ export default function SessionDetailPage({ params }: Props) {
                     Confirmar
                   </button>
                 </div>
+                <button
+                  className={styles.failureButton}
+                  onClick={handleFailure}
+                  type="button"
+                >
+                  Simular falha da operação
+                </button>
               </div>
             )}
 
@@ -217,7 +253,7 @@ export default function SessionDetailPage({ params }: Props) {
                     <dd>{formatCents(commission, session.currency)}</dd>
                   </div>
                   <div>
-                    <dt>Repasse ao tutor</dt>
+                    <dt>Repasse simulado ao tutor</dt>
                     <dd>{formatCents(netTutor, session.currency)}</dd>
                   </div>
                 </dl>
@@ -249,6 +285,20 @@ export default function SessionDetailPage({ params }: Props) {
                   type="button"
                 >
                   Inscrever-se novamente
+                </button>
+              </div>
+            )}
+
+            {enrollState === "error" && (
+              <div className={styles.errorBox} role="alert">
+                <WarningCircle aria-hidden size={28} weight="fill" />
+                <p>{failureMessage}</p>
+                <button
+                  className={styles.enrollButton}
+                  onClick={handleEnroll}
+                  type="button"
+                >
+                  Tentar novamente
                 </button>
               </div>
             )}

@@ -4,7 +4,7 @@
  * Os campos price_cents, commission_cents e currency seguem o modelo do DBML.
  * Nenhum dado bancário, PIX ou cartão é usado.
  */
-import type { SessionBooking, TutorSession } from "./marketplace.types";
+import type { TutorSession } from "./marketplace.types";
 
 export const mockSessions: TutorSession[] = [
   {
@@ -66,15 +66,5 @@ export const mockSessions: TutorSession[] = [
     price_cents: 2000,
     currency: "BRL",
     status: "scheduled",
-  },
-];
-
-export const mockMyBookings: SessionBooking[] = [
-  {
-    id: "booking-001",
-    session: mockSessions[0],
-    status: "confirmed",
-    booked_at: "2026-09-11T22:10:00-03:00",
-    cancelled_at: null,
   },
 ];

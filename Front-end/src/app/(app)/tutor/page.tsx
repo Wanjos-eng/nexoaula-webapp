@@ -11,23 +11,35 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 
-import { mockMyBookings } from "@/modules/marketplace/marketplace.mock";
+import { useAuthSession } from "@/modules/auth";
+import { activateDemoTutorProfile, useDemoBookings, useDemoTutorProfile } from "@/modules/marketplace/marketplace.demo";
 import { formatCents } from "@/modules/marketplace/marketplace.types";
 import styles from "./page.module.css";
 
 type TutorActivationState = "inactive" | "activating" | "active";
 
 export default function TutorPage() {
+  const { user } = useAuthSession();
   const [activation, setActivation] =
     useState<TutorActivationState>("inactive");
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
+  const [activationError, setActivationError] = useState("");
+  const savedProfile = useDemoTutorProfile(user.id);
 
-  const myBookings = mockMyBookings;
+  const myBookings = useDemoBookings(user.id);
 
   function handleActivate() {
-    setActivation("active");
+    try {
+      activateDemoTutorProfile(user.id, { headline, bio });
+      setActivationError("");
+      setActivation("active");
+    } catch {
+      setActivationError("Não foi possível ativar o perfil simulado neste navegador.");
+    }
   }
+
+  const isActive = activation === "active" || savedProfile !== null;
 
   return (
     <main className={styles.page}>
@@ -56,7 +68,7 @@ export default function TutorPage() {
           Perfil profissional
         </h2>
 
-        {activation === "inactive" ? (
+        {activation === "inactive" && !isActive ? (
           <div className={styles.activationCard}>
             <WarningCircle aria-hidden size={32} weight="fill" className={styles.warningIcon} />
             <p>
@@ -128,16 +140,17 @@ export default function TutorPage() {
             />
             <div>
               <p className={styles.activeTitle}>
-                {headline || "Perfil profissional ativo"}
+                {savedProfile?.headline || headline || "Perfil profissional ativo"}
               </p>
-              {bio && <p className={styles.activeBio}>{bio}</p>}
+              {(savedProfile?.bio || bio) && <p className={styles.activeBio}>{savedProfile?.bio || bio}</p>}
             </div>
           </div>
         )}
+        {activationError ? <p role="alert">{activationError}</p> : null}
       </section>
 
       {/* My sessions — would be listed from API */}
-      {activation === "active" && (
+      {isActive && (
         <section className={styles.section} aria-labelledby="sessions-heading">
           <div className={styles.sectionHeader}>
             <h2 id="sessions-heading" className={styles.sectionTitle}>

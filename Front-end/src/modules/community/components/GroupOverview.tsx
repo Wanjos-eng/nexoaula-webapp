@@ -5,7 +5,6 @@ import {
   Tag,
   UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
-import Link from "next/link";
 import type { GroupDetailData } from "@/modules/community/types";
 
 import styles from "./GroupDetailView.module.css";
@@ -66,14 +65,9 @@ export function GroupOverview({
             onClick={onJoinClick}
             type="button"
           >
+            {group.isMember ? "Membro da comunidade" : group.entryMode === "approval" ? "Solicitar entrada" : "Entrar no grupo"}
           </button>
         )}
-        {group.isMember ? (
-          <Link className={styles.outlineButton} href={`/grupos/${group.id}`}>
-            Ir para o grupo
-          </Link>
-        ) : null}
-
         {joinFeedback ? (
           <p aria-live="polite" className={styles.joinFeedback}>
             {joinFeedback}

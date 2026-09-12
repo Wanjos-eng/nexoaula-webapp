@@ -220,6 +220,15 @@
   padding: 10px;
 }
 
+.failureButton {
+  background: transparent;
+  border: 0;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-decoration: underline;
+}
+
 /* Receipt */
 .receipt {
   align-items: center;
@@ -297,5 +306,19 @@
 
 .cancelledBox p {
   font-size: 0.88rem;
+  margin: 0;
+}
+
+.errorBox {
+  align-items: center;
+  color: var(--color-danger, #b42318);
+  display: grid;
+  gap: 10px;
+  text-align: center;
+}
+
+.errorBox p {
+  font-size: 0.82rem;
+  line-height: 1.45;
   margin: 0;
 }
