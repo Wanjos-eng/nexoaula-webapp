@@ -22,13 +22,18 @@ class ProfileAccess:
         return UserProfileRecord.model_validate(row) if row else None
 
     def update(self, user_id: UUID, updates: dict[str, object]) -> UserProfileRecord:
-        row = self._session.get(UserProfile, user_id)
-        if row is None:
-            raise LookupError("Profile not found")
         if updates.keys() - {"institution_id", "course_id", "bio"}:
             raise ValueError("Unsupported academic profile fields")
-        for key, value in updates.items():
-            setattr(row, key, value)
+        
+        row = self._session.get(UserProfile, user_id)
+        if row is None:
+            # Se o perfil ainda não existe, cria um novo objeto vinculado ao user_id
+            row = UserProfile(user_id=user_id, **updates)
+            self._session.add(row)
+        else:
+            for key, value in updates.items():
+                setattr(row, key, value)
+        
         row.updated_at = datetime.now(UTC)
         self._session.flush()
         return UserProfileRecord.model_validate(row)
