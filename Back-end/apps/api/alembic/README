@@ -1,8 +1,12 @@
 Ambiente Alembic oficial da API, conforme o ADR-0003.
 
 A revision `0001_identity` libera somente `users`, `user_profiles` e
-`auth_tokens`. A metadata agregada importa explicitamente apenas os modelos do
-recorte de identidade. Nao adicione todos os modelos do DBML de uma vez.
+`auth_tokens`. A revision `0002_academic_groups` acrescenta institutions, subjects,
+academic_terms, class_sections, study_groups e group_members. A metadata agregada
+importa somente esses recortes. Nao adicione todos os modelos do DBML de uma vez.
+O recorte e as regras de delecao estao em docs/architecture/data-model.md na raiz.
+`downgrade 0001_identity` remove apenas o recorte academico/comunitario, incluindo
+seus dados e enums; preserva as tabelas de identidade.
 
 `DATABASE_URL` e obrigatoria para `upgrade`, `downgrade`, `current` e `check`,
 vem do ambiente ou do `.env` local ignorado e deve usar PostgreSQL. A URL nao e

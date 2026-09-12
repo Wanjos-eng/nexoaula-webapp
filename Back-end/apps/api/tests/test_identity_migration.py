@@ -21,7 +21,7 @@ def database_engine():
         engine.dispose()
 
 
-def test_only_identity_tables_are_released(database_engine):
+def test_only_released_tables_exist(database_engine):
     tables = set(inspect(database_engine).get_table_names())
 
     assert tables == {
@@ -31,11 +31,10 @@ def test_only_identity_tables_are_released(database_engine):
         "auth_tokens",
         "academic_terms",
         "subjects",
-        "group_members", 
+        "group_members",
         "class_sections",
-        "institutions", 
+        "institutions",
         "study_groups",
-        # Add any other tables that are being created in your migration
     }
 
 

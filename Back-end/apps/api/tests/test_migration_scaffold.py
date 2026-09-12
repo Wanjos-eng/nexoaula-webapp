@@ -6,7 +6,7 @@ from alembic.script import ScriptDirectory
 API_ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_identity_is_the_only_migration_and_resolves_from_any_directory(tmp_path, monkeypatch):
+def test_released_migration_chain_resolves_from_any_directory(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     config = Config(str(API_ROOT / "alembic.ini"))
     revisions = list(ScriptDirectory.from_config(config).walk_revisions())
