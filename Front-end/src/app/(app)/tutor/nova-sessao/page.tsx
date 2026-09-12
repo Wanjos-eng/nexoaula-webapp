@@ -16,6 +16,9 @@ type SessionDraft = {
   title: string;
   subject: string;
   startsAt: string;
+  endsAt: string;
+  location: string;
+  externalUrl: string;
   modality: "online" | "in_person" | "hybrid";
   capacity: number;
   priceCents: number;
@@ -31,18 +34,33 @@ export default function NewTutorSessionPage() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const startsAt = String(formData.get("startsAt"));
+    const endsAt = String(formData.get("endsAt"));
+    const modality = String(formData.get("modality")) as SessionDraft["modality"];
+    const location = String(formData.get("location") ?? "").trim();
+    const externalUrl = String(formData.get("externalUrl") ?? "").trim();
+    const title = String(formData.get("title") ?? "").trim();
+    const subject = String(formData.get("subject") ?? "").trim();
+    const startTime = new Date(startsAt).getTime();
+    const endTime = new Date(endsAt).getTime();
     const capacity = Number(formData.get("capacity"));
     const priceCents = Math.round(Number(formData.get("price")) * 100);
-    if (new Date(startsAt).getTime() <= Date.now() || capacity < 1 || priceCents < 0) {
+    if (!title || !subject || !Number.isFinite(startTime) || !Number.isFinite(endTime) || startTime <= Date.now() || endTime <= startTime || !Number.isSafeInteger(capacity) || capacity < 1 || !Number.isSafeInteger(priceCents) || priceCents < 0) {
       setError("Informe uma data futura, capacidade positiva e valor demonstrativo válido.");
+      return;
+    }
+    if ((modality !== "online" && !location) || (modality !== "in_person" && !/^https?:\/\//i.test(externalUrl))) {
+      setError("Informe o local para sessões presenciais e o link HTTP(S) para sessões online ou híbridas.");
       return;
     }
     setError("");
     setDraft({
-      title: String(formData.get("title")),
-      subject: String(formData.get("subject")),
+      title,
+      subject,
       startsAt,
-      modality: String(formData.get("modality")) as SessionDraft["modality"],
+      endsAt,
+      location,
+      externalUrl,
+      modality,
       capacity,
       priceCents,
     });
@@ -63,10 +81,10 @@ export default function NewTutorSessionPage() {
       title: draft.title,
       description: null,
       modality: draft.modality,
-      location: null,
-      external_url: null,
+      location: draft.modality === "online" ? null : draft.location,
+      external_url: draft.modality === "in_person" ? null : draft.externalUrl,
       starts_at: startsAt.toISOString(),
-      ends_at: new Date(startsAt.getTime() + 60 * 60 * 1000).toISOString(),
+      ends_at: new Date(draft.endsAt).toISOString(),
       capacity: draft.capacity,
       enrolled_count: 0,
       price_cents: draft.priceCents,
@@ -101,34 +119,46 @@ export default function NewTutorSessionPage() {
         <form className={styles.form} onSubmit={handleSubmit}>
           <label>
             <span>Título da sessão</span>
-            <input name="title" placeholder="Revisão de Cálculo II" required />
+            <input name="title" defaultValue={draft?.title} placeholder="Revisão de Cálculo II" required />
           </label>
           <label>
             <span>Disciplina</span>
-            <input name="subject" placeholder="Cálculo II" required />
+            <input name="subject" defaultValue={draft?.subject} placeholder="Cálculo II" required />
           </label>
           <div className={styles.row}>
             <label>
               <span>Data e horário</span>
-              <input name="startsAt" required type="datetime-local" />
+              <input name="startsAt" defaultValue={draft?.startsAt} required type="datetime-local" />
+            </label>
+            <label>
+              <span>Término</span>
+              <input name="endsAt" required type="datetime-local" defaultValue={draft?.endsAt} />
             </label>
             <label>
               <span>Modalidade</span>
-              <select defaultValue="online" name="modality">
+              <select defaultValue={draft?.modality ?? "online"} name="modality">
                 <option value="online">Online</option>
                 <option value="in_person">Presencial</option>
                 <option value="hybrid">Híbrida</option>
               </select>
             </label>
           </div>
+          <label>
+            <span>Local (presencial ou híbrida)</span>
+            <input name="location" defaultValue={draft?.location} />
+          </label>
+          <label>
+            <span>Link demonstrativo (online ou híbrida)</span>
+            <input name="externalUrl" type="url" placeholder="https://example.com/sessao" defaultValue={draft?.externalUrl} />
+          </label>
           <div className={styles.row}>
             <label>
               <span>Capacidade</span>
-              <input min="1" name="capacity" required type="number" />
+              <input min="1" name="capacity" defaultValue={draft?.capacity} required type="number" />
             </label>
             <label>
               <span>Valor demonstrativo (R$)</span>
-              <input min="0" name="price" required step="0.01" type="number" />
+              <input min="0" name="price" defaultValue={draft ? draft.priceCents / 100 : undefined} required step="0.01" type="number" />
             </label>
           </div>
           <button className={styles.primary} type="submit">Revisar oferta</button>
@@ -146,6 +176,7 @@ export default function NewTutorSessionPage() {
             <div><dt>Título</dt><dd>{draft.title}</dd></div>
             <div><dt>Disciplina</dt><dd>{draft.subject}</dd></div>
             <div><dt>Início</dt><dd>{new Date(draft.startsAt).toLocaleString("pt-BR")}</dd></div>
+            <div><dt>Término</dt><dd>{new Date(draft.endsAt).toLocaleString("pt-BR")}</dd></div>
             <div><dt>Capacidade</dt><dd>{draft.capacity} estudantes</dd></div>
             <div><dt>Valor demonstrativo</dt><dd>{formatCents(draft.priceCents)}</dd></div>
             <div><dt>Comissão simulada (15%)</dt><dd>{formatCents(commission)}</dd></div>

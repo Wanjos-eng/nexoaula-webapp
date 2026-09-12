@@ -101,6 +101,8 @@ describe("jornada de sessões profissionais simuladas", () => {
     fireEvent.change(screen.getByLabelText("Data e horário"), {
       target: { value: "2026-09-20T18:00" },
     });
+    fireEvent.change(screen.getByLabelText("Término"), { target: { value: "2026-09-20T19:00" } });
+    fireEvent.change(screen.getByLabelText("Link demonstrativo (online ou híbrida)"), { target: { value: "https://example.com/sessao" } });
     fireEvent.change(screen.getByLabelText("Capacidade"), {
       target: { value: "12" },
     });

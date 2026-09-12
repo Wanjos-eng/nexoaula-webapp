@@ -99,6 +99,14 @@ export function useDemoBookings(userId: string): SessionBooking[] {
 }
 
 export function enrollDemoSession(userId: string, session: TutorSession): SessionBooking {
+  const current = readDemoSessions().find((item) => item.id === session.id);
+  if (!current || current.status !== "scheduled" || new Date(current.starts_at).getTime() <= Date.now() || current.enrolled_count >= current.capacity) {
+    throw new Error("Sessão indisponível para inscrição.");
+  }
+  if (readDemoBookings(userId).some((item) => item.session.id === session.id && item.status === "confirmed")) {
+    throw new Error("Inscrição ativa duplicada.");
+  }
+  session = current;
   const booking: SessionBooking = {
     id: crypto.randomUUID(),
     session,
@@ -116,6 +124,9 @@ export function enrollDemoSession(userId: string, session: TutorSession): Sessio
 export function cancelDemoBooking(userId: string, bookingId: string): void {
   const key = `${BOOKINGS_KEY}:${userId}`;
   const booking = readArray<SessionBooking>(key).find((item) => item.id === bookingId);
+  if (booking && new Date(booking.session.starts_at).getTime() <= Date.now()) {
+    throw new Error("O cancelamento só é permitido antes do início.");
+  }
   writeArray(
     key,
     readArray<SessionBooking>(key).map((booking) =>

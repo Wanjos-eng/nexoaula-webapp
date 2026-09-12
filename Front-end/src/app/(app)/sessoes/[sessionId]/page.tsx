@@ -73,8 +73,13 @@ export default function SessionDetailPage() {
   }
 
   function handleCancelEnrollment() {
-    if (bookingId) cancelDemoBooking(user.id, bookingId);
-    setEnrollState("cancelled");
+    try {
+      if (bookingId) cancelDemoBooking(user.id, bookingId);
+      setEnrollState("cancelled");
+    } catch {
+      setFailureMessage("Não foi possível cancelar. O cancelamento é permitido somente antes do início.");
+      setEnrollState("error");
+    }
   }
 
   function handleFailure() {
