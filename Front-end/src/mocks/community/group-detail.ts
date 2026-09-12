@@ -14,6 +14,8 @@ export const groupDetailsMap: Record<string, GroupDetailData> = {
     location: "Online",
     entryMode: "approval",
     nextMeeting: "31/08, às 19h",
+    isPremiumCommunity: true,
+    studentAccessPrice: "9,90",
     role: "Organizador",
     isMember: true,
     pendingRequestsCount: 2,

@@ -1,22 +1,5 @@
-"use client";
-
-import { CheckCircle, CloudArrowUp, FilePdf, Info, LockKey, SealCheck } from "@phosphor-icons/react";
-import { useState } from "react";
-import Link from "next/link";
-import styles from "./page.module.css";
+import { redirect } from "next/navigation";
 
 export default function PublicarMaterialPage() {
-  const [type, setType] = useState("Caderno de Resoluções Comentado");
-  const [sent, setSent] = useState(false);
-  return <div className={styles.page}>
-    <p className={styles.crumbs}>nexoAula　›　Meus Materiais　›　<strong>Publicar Novo Material</strong></p>
-    <header><p>Venda entre estudantes · monetize seu conteúdo</p><h1>Publicar Material Didático Escrito</h1><span>Disponibilize resumos, cadernos de exercícios e anotações de disciplinas que você já cursou.<br />Receba 88% do valor diretamente via Pix.</span></header>
-    <div className={styles.layout}><form className={styles.form} onSubmit={(event) => { event.preventDefault(); setSent(true); }}>
-      <Field title="1　Disciplina Cursada e Informações Acadêmicas"><label>Disciplina cursada (apenas cadeiras aprovadas)<select defaultValue="ENG-402"><option>ENG-402 · Pesquisa Operacional I</option><option>MSD-201 · Modelagem e Simulação Discreta</option></select></label><div className={styles.two}><label>Professor / turma de referência<input defaultValue="Prof. Brauliro · Cadeira P1/P2" /></label><label>Semestre que cursou<input defaultValue="2025.2 · Concluído com Média 9.2" /></label></div><strong>Tipo de material escrito</strong><div className={styles.typeGrid}>{["Caderno de Resoluções Comentado", "Resumo Teórico", "Apostila Completa"].map((name) => <button className={type === name ? styles.selected : ""} key={name} onClick={() => setType(name)} type="button">{name}<small>{name === "Resumo Teórico" ? "Fórmulas e tópicos para revisão." : "Questões comentadas e raciocínio passo a passo."}</small></button>)}</div><label>Título claro do material didático<input defaultValue="Caderno Completo de Resoluções P1 · Teoria de Filas e Simulação Discreta" /></label><label>Descrição detalhada e tópicos cobertos<textarea defaultValue="Apostilas em PDF com 78 páginas detalhadas, passo a passo de 25 exercícios de exames anteriores resolvidos à mão e digitalizados, com diagramas de transição e explicações conceituais." /></label></Field>
-      <Field title="2　Upload do Arquivo & Amostra Pública Grátis"><label>Arquivo PDF principal (para venda)<div className={styles.upload}><FilePdf size={25} weight="fill" /><span><b>caderno_resolucoes_p1_final.pdf</b><small>78 páginas · 4,2 MB · carimbo digital ativado</small></span><button type="button">Substituir</button></div></label><p className={styles.note}><LockKey size={17} /> Proteção do arquivo nexoAula: ao ser publicado, cada página do PDF receberá automaticamente um carimbo digital contendo nome completo, CPF parcial, data e identificação exclusiva do comprador.</p><label className={styles.checkbox}><input defaultChecked type="checkbox" /> Liberar as primeiras 5 páginas como amostra grátis na vitrine</label></Field>
-      <Field title="3　Precificação e Repasse Líquido"><div className={styles.two}><label>Preço de venda ao estudante<input defaultValue="R$ 19,00" /></label><label>Chave Pix para depósito das vendas<input defaultValue="lucas.andrade@pix.edu.br" /></label></div><label className={styles.checkbox}><input defaultChecked type="checkbox" /> Declaro que sou o titular e detenho propriedade intelectual deste material.</label></Field>
-      {sent ? <p className={styles.success}><CheckCircle weight="fill" /> Material enviado para publicação na vitrine.</p> : null}<div className={styles.actions}><Link href="/materiais">Salvar como Rascunho</Link><button type="submit"><CloudArrowUp weight="bold" /> Publicar Material na Vitrine</button></div>
-    </form><aside><section className={styles.earnings}><p>Simulador de Ganhos</p><small>Preço por venda ao aluno: <b>R$ 19,00</b></small><small>Taxa nexoAula (12%): <b className={styles.red}>- R$ 2,28</b></small><strong>SEU REPASSE LÍQUIDO POR VENDA <b>R$ 16,72</b></strong><p>Projeção em seis meses</p><b>15 vendas estimadas:　R$ 250,80 líquido</b><b>40 vendas estimadas:　R$ 668,80 líquido</b></section><section><SealCheck size={22} weight="fill" /><h2>Dicas para Aprovação Rápida</h2><p>Evite incluir páginas inteiras de livros ou artigos. Use explicações próprias, listas comentadas e exercícios resolvidos.</p></section><section><Info size={22} weight="fill" /><h2>Garantia Acadêmica nexoAula</h2><p>Seu conteúdo é protegido com identificação individual em cada compra.</p></section></aside></div>
-  </div>;
+  redirect("/grupos/novo");
 }
-function Field({ children, title }: { children: React.ReactNode; title: string }) { return <fieldset><legend>{title}</legend>{children}</fieldset>; }

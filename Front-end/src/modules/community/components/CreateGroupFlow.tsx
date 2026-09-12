@@ -138,7 +138,7 @@ export function CreateGroupFlow() {
                 {step === 1
                   ? "Campos com * são obrigatórios. A turma é opcional e pertence à disciplina selecionada."
                   : step === 2
-                    ? "Defina a descoberta, a entrada e os combinados do grupo."
+                    ? "Defina a descoberta, a entrada e, se necessário, a opção de comunidade privada premium."
                     : "Revise as escolhas. Você pode voltar e editar qualquer etapa."}
               </p>
             </div>

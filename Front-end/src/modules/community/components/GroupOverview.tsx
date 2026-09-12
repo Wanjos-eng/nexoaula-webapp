@@ -5,6 +5,7 @@ import {
   Tag,
   UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
+import Link from "next/link";
 import type { GroupDetailData } from "@/modules/community/types";
 
 import styles from "./GroupDetailView.module.css";
@@ -29,6 +30,7 @@ export function GroupOverview({
       <div>
         <p className={styles.eyebrow}>Grupo de estudo</p>
         <h2>{group.name}</h2>
+        {group.isPremiumCommunity ? <p className={styles.premiumInfo}>Comunidade privada premium · tutor R$ 19,90/mês · participante R$ {group.studentAccessPrice}/mês (simulado)</p> : null}
         <div className={styles.metadata}>
           <span>
             <Tag aria-hidden size={15} /> {group.discipline}
@@ -65,9 +67,19 @@ export function GroupOverview({
             onClick={onJoinClick}
             type="button"
           >
-            {group.isMember ? "Membro da comunidade" : group.entryMode === "approval" ? "Solicitar entrada" : "Entrar no grupo"}
+            {group.isMember ? "Membro da comunidade" : group.isPremiumCommunity ? `Solicitar acesso · R$ ${group.studentAccessPrice}/mês` : group.entryMode === "approval" ? "Solicitar entrada" : "Entrar no grupo"}
           </button>
         )}
+        {group.isMember ? (
+          <>
+            <Link className={styles.outlineButton} href={`/grupos/${group.id}/materiais`}>
+              Conteúdos da comunidade
+            </Link>
+            {group.isPremiumCommunity ? <Link className={styles.outlineButton} href={`/grupos/${group.id}/plano`}>
+              Plano premium e acesso
+            </Link> : null}
+          </>
+        ) : null}
         {joinFeedback ? (
           <p aria-live="polite" className={styles.joinFeedback}>
             {joinFeedback}

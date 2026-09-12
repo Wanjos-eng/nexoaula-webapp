@@ -43,6 +43,8 @@ export type GroupDraft = {
   joinPolicy: (typeof joinPolicyOptions)[number]["value"];
   capacity: string;
   rules: string;
+  isPremiumCommunity: boolean;
+  studentAccessPrice: string;
 };
 export type GroupErrors = Partial<Record<keyof GroupDraft, string>>;
 export type GroupStep = 1 | 2 | 3 | 4;
@@ -55,6 +57,8 @@ export const emptyGroupDraft: GroupDraft = {
   joinPolicy: "approval_required",
   capacity: "",
   rules: "",
+  isPremiumCommunity: false,
+  studentAccessPrice: "9,90",
 };
 // Validação da interface, não contrato de API. Regras ainda não são persistidas.
 export function validateGroup(draft: GroupDraft, step: 1 | 2 | 3): GroupErrors {
@@ -90,6 +94,8 @@ export function validateGroup(draft: GroupDraft, step: 1 | 2 | 3): GroupErrors {
         "Informe um número inteiro positivo ou deixe vazio para não definir capacidade.";
     if (draft.rules.length > 500)
       errors.rules = "Use até 500 caracteres nas regras.";
+    if (draft.isPremiumCommunity && !/^\d+(,\d{2})?$/.test(draft.studentAccessPrice.trim()))
+      errors.studentAccessPrice = "Informe um valor mensal no formato 9,90.";
   }
   return errors;
 }

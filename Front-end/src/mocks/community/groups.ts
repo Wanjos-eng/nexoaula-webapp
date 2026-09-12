@@ -14,6 +14,8 @@ export const myStudyGroups: OwnedStudyGroup[] = [
     location: "Online",
     entryMode: "approval",
     nextMeeting: "31/08, às 19h",
+    isPremiumCommunity: true,
+    studentAccessPrice: "9,90",
     role: "Organizador",
     href: "/grupos/comunidade-msd-c8",
   },

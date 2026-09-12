@@ -141,6 +141,8 @@ export function GroupDetailView({
     setJoinFeedback(
       group.isMember
         ? "Você já participa desta comunidade."
+        : group.isPremiumCommunity
+        ? `Solicitação de acesso premium enviada no protótipo (R$ ${group.studentAccessPrice}/mês, sem cobrança real).`
         : group.entryMode === "approval"
         ? "Solicitação enviada no protótipo (aguarda aprovação do organizador)."
         : "Entrada simulada com sucesso no protótipo.",
