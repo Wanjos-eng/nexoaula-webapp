@@ -114,9 +114,16 @@ python -m alembic current
 python -m alembic check
 ```
 
-As colunas opcionais `avatar_file_id`, `institution_id` e `course_id` são
-preservadas em `user_profiles`, mas suas FKs dependem de tabelas de Media e
-Academic ainda fora do recorte. Elas serão criadas pelas migrations responsáveis.
+O recorte da #29 acrescenta instituições, disciplinas, períodos, turmas, grupos e
+membros por meio da revision `0002_academic_groups`. Consulte o
+[recorte físico e rollback](../../../docs/architecture/data-model.md#recorte-físico-da-issue-29).
+Os testes `tests/test_academic_group_migration.py` exercitam suas restrições em
+PostgreSQL, com dados sintéticos revertidos ao final de cada cenário.
+
+As colunas `institution_id` e `course_id` são opcionais; `0004_academic_context`
+cria `courses` e as FKs do perfil para instituição/curso. A FK de `avatar_file_id`
+para mídia permanece adiada. Consulte o
+[contrato acadêmico e migração corretiva](app/modules/academic/README.md).
 O downgrade é destrutivo e só deve ser testado em banco descartável. Veja
 [alembic/README](alembic/README).
 

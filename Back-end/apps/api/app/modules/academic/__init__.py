@@ -1,35 +1,6 @@
-"""Public academic capabilities consumed by other modules."""
+"""Public academic service; catalog references never grant access to group PD."""
 
-from app.modules.academic.errors import (
-    AcademicPersistenceError,
-    AcademicServiceError,
-    AcademicTermNotFoundError,
-    ClassSectionAlreadyExistsError,
-    ClassSectionNotFoundError,
-    EnrollmentAlreadyExistsError,
-    EnrollmentNotFoundError,
-    InstitutionMismatchError,
-    InstitutionNotFoundError,
-    InvalidProfileUpdateError,
-    ProfileNotFoundError,
-    SubjectAlreadyExistsError,
-    SubjectNotFoundError,
-)
+from app.modules.academic.errors import AcademicError, AcademicPersistenceError
 from app.modules.academic.service import AcademicService
 
-__all__ = [
-    "AcademicPersistenceError",
-    "AcademicService",
-    "AcademicServiceError",
-    "AcademicTermNotFoundError",
-    "ClassSectionAlreadyExistsError",
-    "ClassSectionNotFoundError",
-    "EnrollmentAlreadyExistsError",
-    "EnrollmentNotFoundError",
-    "InstitutionMismatchError",
-    "InstitutionNotFoundError",
-    "InvalidProfileUpdateError",
-    "ProfileNotFoundError",
-    "SubjectAlreadyExistsError",
-    "SubjectNotFoundError",
-]
+__all__ = ["AcademicError", "AcademicPersistenceError", "AcademicService"]

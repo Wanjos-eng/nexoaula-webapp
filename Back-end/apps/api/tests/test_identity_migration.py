@@ -21,7 +21,7 @@ def database_engine():
         engine.dispose()
 
 
-def test_only_identity_tables_are_released(database_engine):
+def test_only_released_tables_exist(database_engine):
     tables = set(inspect(database_engine).get_table_names())
 
     assert tables == {
@@ -31,12 +31,11 @@ def test_only_identity_tables_are_released(database_engine):
         "auth_tokens",
         "academic_terms",
         "subjects",
-        "group_members", 
+        "group_members",
         "class_sections",
-        "institutions", 
-        "class_section_enrollments",
-        "study_groups"
-        # Add any other tables that are being created in your migration
+        "institutions",
+        "study_groups",
+        "courses",
     }
 
 
@@ -105,9 +104,9 @@ def test_constraints_indexes_and_enum_match_the_approved_model(database_engine):
     inspector = inspect(database_engine)
     profile_fks = inspector.get_foreign_keys("user_profiles")
     token_fks = inspector.get_foreign_keys("auth_tokens")
-    assert [(fk["referred_table"], fk["options"]["ondelete"]) for fk in profile_fks] == [
-        ("users", "CASCADE")
-    ]
+    assert {(fk["referred_table"], fk["options"]["ondelete"]) for fk in profile_fks} == {
+        ("users", "CASCADE"), ("institutions", "RESTRICT"), ("courses", "RESTRICT")
+    }
     assert [(fk["referred_table"], fk["options"]["ondelete"]) for fk in token_fks] == [
         ("users", "CASCADE")
     ]

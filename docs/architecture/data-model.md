@@ -86,6 +86,76 @@ CORE não significa implementar tudo na mesma Sprint. Não há dependência de U
 
 ## Validação reproduzível
 
+### Recorte físico da issue #29
+
+A migration `0002_academic_groups`, após `0001_identity`, implementa somente
+`institutions`, `subjects`, `academic_terms`, `class_sections`, `study_groups` e
+`group_members`. Os modelos ficam nos módulos Academic e Community da API.
+O DBML continua descrevendo o modelo lógico mais amplo; este recorte não declara
+as outras tabelas implementadas.
+
+- As FKs compostas impedem turma com disciplina/período de instituições diferentes
+  e grupo com turma de outra disciplina. O grupo pode não indicar turma, mas deve
+  indicar disciplina. Capacidade nula significa ausência de limite neste campo.
+- Unicidades impedem disciplina com nome/código repetido na instituição, período
+  com rótulo repetido, turma repetida e associação duplicada de aluno/grupo.
+  Os índices `lower(name)` são de busca, não impõem unicidade sem distinguir caixa.
+- O ciclo de participação exige `ended_at` na saída/remoção, exige `removed_by`
+  na remoção e proíbe esses campos em participação ativa. O índice parcial impede
+  dois proprietários ativos. Garantir pelo menos um proprietário e transferi-lo
+  em uma única transação continua sendo obrigação do serviço de grupos.
+- Referências acadêmicas e usuários usam `RESTRICT`. Excluir fisicamente um grupo
+  remove seus membros por `CASCADE`, preservando usuários e catálogo. Isso não
+  autoriza uma rota de exclusão definitiva: `deleted_at` permite exclusão lógica,
+  cuja política deve ser definida na funcionalidade responsável.
+- Cursos, interesses estruturados, mídia/capa, solicitações de entrada, PD, aulas,
+  registros pessoais, mensagens, marketplace e integrações não são criados aqui.
+  As FKs opcionais de perfil para Academic/Media permanecem adiadas e não devem
+  ser tratadas como validação de curso/instituição já disponível.
+- Não há acompanhamento avulso de turma neste recorte. O acesso ao PD continua
+  condicionado ao grupo, conforme a regra aprovada acima.
+
+`downgrade 0001_identity` remove as seis tabelas novas e seus cinco enums,
+mantendo as tabelas de identidade. Os dados acadêmicos/grupos seriam perdidos;
+o rollback é exclusivo de PostgreSQL descartável de desenvolvimento/CI.
+Ambientes compartilhados exigem migrations corretivas incrementais, sem editar
+revisions já compartilhadas. Nenhuma migration anterior foi reescrita neste ajuste.
+
+O workflow `Identity migration checks` executa as restrições em PostgreSQL real,
+confere `alembic check`, reverte somente este recorte, reaplica e repete os testes;
+depois reverte até base, confere a remoção das tabelas/enums e aplica novamente.
+Os cenários de `tests/test_academic_group_migration.py` usam dados sintéticos e
+rollback por teste. Para reproduzir, com `DATABASE_URL` apontando exclusivamente
+para um banco descartável, execute em `Back-end/apps/api`:
+
+```sh
+python -m alembic upgrade head
+python -m pytest -q tests/test_identity_migration.py tests/test_academic_group_migration.py
+python -m alembic check
+python -m alembic downgrade 0001_identity
+python -m alembic upgrade head
+python -m pytest -q tests/test_academic_group_migration.py
+python -m alembic check
+```
+
+### Recorte adicional da issue #30
+
+A API acadêmica acrescenta o catálogo mínimo de cursos e valida as referências
+opcionais de perfil por FKs para instituição e curso da mesma instituição.
+`0004_academic_context` corrige a revision compartilhada `0003_enrollments`, sem
+reescrevê-la: a tabela de acompanhamento avulso não permanece no schema final.
+Se houver inscrições antigas ou referências de perfil inválidas, a correção
+interrompe antes de alterar dados e exige conciliação revisada. Não há migração
+automática de inscrições em turma para membros de grupo, pois esse vínculo não
+pode ser inferido.
+
+Instituições, cursos, disciplinas, períodos e turmas podem ser cadastrados e
+consultados por estudantes autenticados. Catálogo não concede acesso a PD. O
+contrato e os testes estão no [README Academic](../../Back-end/apps/api/app/modules/academic/README.md).
+Esse incremento não implementa PD, aulas, presença/progresso nem a US31 completa.
+
+### Validação do modelo lógico completo (DBML)
+
 Ferramentas isoladas em `tools/data-model`, com versões e lockfile próprios, sem dependências adicionadas ao frontend/backend. Execute da raiz:
 
 ```sh
