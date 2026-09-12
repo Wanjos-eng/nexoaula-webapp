@@ -23,9 +23,9 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
   const canCreateGroup = pathname === "/inicio" || pathname === "/grupos";
   const pageContext = isHome
     ? { title: "Olá, Lucas", subtitle: "Acompanhe suas disciplinas e próximos encontros" }
-    : pathname.startsWith("/grupos")
-      ? { title: "Área de grupos", subtitle: "Comunidade acadêmica e colaboração" }
-      : { title: "Área acadêmica", subtitle: "Organize sua rotina de estudos" };
+      : pathname.startsWith("/grupos")
+        ? { title: "Área de grupos", subtitle: "Comunidade acadêmica e colaboração" }
+        : { title: "Área acadêmica", subtitle: "Organize sua rotina de estudos" };
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

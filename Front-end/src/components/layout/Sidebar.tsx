@@ -4,6 +4,7 @@ import {
   BookOpenText,
   CalendarDots,
   ChartLineUp,
+  CurrencyCircleDollar,
   GearSix,
   House,
   UsersThree,
@@ -30,6 +31,8 @@ const navigation = [
   { href: "/disciplinas", icon: BookOpenText, label: "Disciplinas" },
   { href: "/calendario", icon: CalendarDots, label: "Calendário" },
   { href: "/grupos", icon: UsersThree, label: "Grupos" },
+  { href: "/materiais", icon: CurrencyCircleDollar, label: "Meus materiais" },
+  { href: "/comprar-materiais", icon: BookOpenText, label: "Comprar materiais" },
   { href: "/progresso", icon: ChartLineUp, label: "Meu progresso" },
 ];
 
@@ -76,7 +79,7 @@ export function Sidebar({ closeButtonRef, isOpen, mode, onClose, onModeChange }:
 
         <nav className={styles.navList}>
           {navigation.map(({ href, icon: NavIcon, label }, index) => {
-            const isActive = index === 0 ? pathname === "/inicio" : label === "Grupos" ? pathname.startsWith("/grupos") : pathname === href;
+            const isActive = index === 0 ? pathname === "/inicio" : label === "Grupos" ? pathname.startsWith("/grupos") : label === "Meus materiais" ? pathname === "/materiais" || pathname === "/materiais/publicar" : label === "Comprar materiais" ? pathname.startsWith("/comprar-materiais") : pathname === href;
 
             return (
               <Link
