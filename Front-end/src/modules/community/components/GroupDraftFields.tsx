@@ -193,35 +193,6 @@ export function GroupAccessFields({ draft, errors, onChange }: Props) {
           </p>
         ) : null}
       </fieldset>
-      <fieldset className={styles.choices}>
-        <legend>Comunidade privada premium</legend>
-        <label className={styles.option}>
-          <input
-            checked={draft.isPremiumCommunity}
-            type="checkbox"
-            onChange={(event) => onChange("isPremiumCommunity", event.target.checked)}
-          />
-          <span>
-            <strong>Ativar comunidade privada</strong>
-            <small>Simulação: o tutor mantém a comunidade por R$ 19,90/mês. Grupos abertos continuam gratuitos.</small>
-          </span>
-        </label>
-        {draft.isPremiumCommunity ? (
-          <Field
-            error={errors.studentAccessPrice}
-            hint="Valor apenas demonstrativo; não há checkout nem cobrança real."
-            id="studentAccessPrice"
-            label="Acesso mensal do participante (R$)"
-          >
-            <input
-              {...fieldA11y("studentAccessPrice", errors, true)}
-              inputMode="decimal"
-              value={draft.studentAccessPrice}
-              onChange={(event) => onChange("studentAccessPrice", event.target.value)}
-            />
-          </Field>
-        ) : null}
-      </fieldset>
       <div className={styles.grid}>
         <Field
           id="capacity"

@@ -45,7 +45,6 @@ export function GroupCard(props: GroupCardProps) {
           <h3>{group.name}</h3>
         </div>
         <span className={badgeClassName}>{badgeLabel}</span>
-        {group.isPremiumCommunity ? <span className={styles.approvalBadge}>Premium · R$ {group.studentAccessPrice}/mês</span> : null}
       </div>
 
       <p className={styles.description}>{group.description}</p>
@@ -75,7 +74,7 @@ export function GroupCard(props: GroupCardProps) {
         <p>{group.classGroup} <span aria-hidden>·</span> {group.period}</p>
         {group.href ? (
           <Link className={styles.cardAction} href={group.href}>
-            {group.isPremiumCommunity ? "Gerenciar comunidade" : "Abrir grupo"} <ArrowRight aria-hidden size={16} />
+            Abrir grupo <ArrowRight aria-hidden size={16} />
           </Link>
         ) : props.variant === "discover" ? (
           <button className={styles.cardAction} onClick={() => props.onPreview(group)} type="button">

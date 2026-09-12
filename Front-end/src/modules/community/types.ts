@@ -14,8 +14,6 @@ export type StudyGroup = {
   location: string;
   entryMode: GroupEntryMode;
   nextMeeting?: string;
-  isPremiumCommunity?: boolean;
-  studentAccessPrice?: string;
   href?: string;
 };
 

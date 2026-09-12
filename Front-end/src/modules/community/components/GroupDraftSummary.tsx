@@ -41,14 +41,10 @@ export function GroupDraftSummary({
         ],
         [
           "Plano da comunidade",
-          draft.isPremiumCommunity
-            ? "Premium demonstrativo · tutor R$ 19,90/mês"
             : "Gratuito · grupo aberto",
         ],
         [
           "Acesso do participante",
-          draft.isPremiumCommunity
-            ? `R$ ${draft.studentAccessPrice || "9,90"}/mês (simulado)`
             : "Sem taxa de acesso",
         ],
         [
