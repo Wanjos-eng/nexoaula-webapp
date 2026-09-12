@@ -51,6 +51,12 @@ class MembershipStatus(str, Enum):
     REMOVED = "removed"
 
 
+# Compatibilidade retroativa (Aliases exigidos pelo services.py)
+GroupPolicy = GroupVisibility
+Group = None  # Será definido abaixo
+GroupMembership = None  # Será definido abaixo
+
+
 GROUP_VISIBILITY = SqlEnum(
     GroupVisibility,
     name="group_visibility",
@@ -159,3 +165,8 @@ class GroupMember(Base):
     )
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     removed_by: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+
+
+# Atribuição dos apelidos para garantir o funcionamento do import
+Group = StudyGroup
+GroupMembership = GroupMember
