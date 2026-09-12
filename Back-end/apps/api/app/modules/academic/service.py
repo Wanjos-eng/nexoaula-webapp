@@ -27,21 +27,26 @@ class AcademicService:
         updates = data.model_dump(exclude_unset=True)
         with self._uow_factory() as uow:
             profile = uow.academic.get_profile(user_id)
-            if profile is None:
-                raise AcademicError("Perfil acadêmico não encontrado.", 404)
-            institution = updates.get("institution_id", profile.institution_id)
-            course = updates.get("course_id", profile.course_id)
+            
+            institution = updates.get("institution_id")
+            course = updates.get("course_id")
+            
             if institution is not None:
                 self._required(uow.academic, "institutions", institution)
             if course is not None:
                 record = self._required(uow.academic, "courses", course)
-                if record.institution_id != institution:
+                if institution and record.institution_id != institution:
                     raise AcademicError(
                         "O curso deve pertencer à instituição selecionada."
                     )
-            result = (
-                uow.academic.update_profile(user_id, updates) if updates else profile
-            )
+
+            if profile is None:
+                # Se o perfil não existe, cria um novo registro para o usuário
+                result = uow.academic.update_profile(user_id, updates)
+            else:
+                result = (
+                    uow.academic.update_profile(user_id, updates) if updates else profile
+                )
             uow.commit()
             return result
 
