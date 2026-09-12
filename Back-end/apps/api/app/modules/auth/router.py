@@ -3,10 +3,10 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from fastapi.security import APIKeyCookie
 
 from app.core.config import settings
 from app.modules.auth.dependencies import (
+    authenticated_subject,
     get_authentication_service,
     get_registration_service,
     get_session_tokens,
@@ -155,18 +155,6 @@ def login(
         path="/",
     )
     return user
-
-
-cookie_session = APIKeyCookie(name=settings.auth_cookie_name, auto_error=False)
-
-
-def authenticated_subject(
-    token: Annotated[str | None, Depends(cookie_session)],
-    tokens: Annotated[SessionTokens, Depends(get_session_tokens)],
-) -> UUID:
-    if not token:
-        raise InvalidCredentialsError()
-    return tokens.subject(token)
 
 
 @router.get(

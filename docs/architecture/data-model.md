@@ -138,7 +138,23 @@ python -m pytest -q tests/test_academic_group_migration.py
 python -m alembic check
 ```
 
-### Validação do modelo lógico completo
+### Recorte adicional da issue #30
+
+A API acadêmica acrescenta o catálogo mínimo de cursos e valida as referências
+opcionais de perfil por FKs para instituição e curso da mesma instituição.
+`0004_academic_context` corrige a revision compartilhada `0003_enrollments`, sem
+reescrevê-la: a tabela de acompanhamento avulso não permanece no schema final.
+Se houver inscrições antigas ou referências de perfil inválidas, a correção
+interrompe antes de alterar dados e exige conciliação revisada. Não há migração
+automática de inscrições em turma para membros de grupo, pois esse vínculo não
+pode ser inferido.
+
+Instituições, cursos, disciplinas, períodos e turmas podem ser cadastrados e
+consultados por estudantes autenticados. Catálogo não concede acesso a PD. O
+contrato e os testes estão no [README Academic](../../Back-end/apps/api/app/modules/academic/README.md).
+Esse incremento não implementa PD, aulas, presença/progresso nem a US31 completa.
+
+### Validação do modelo lógico completo (DBML)
 
 Ferramentas isoladas em `tools/data-model`, com versões e lockfile próprios, sem dependências adicionadas ao frontend/backend. Execute da raiz:
 

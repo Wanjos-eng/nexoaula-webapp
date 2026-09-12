@@ -1,14 +1,18 @@
 from functools import lru_cache
 from secrets import token_urlsafe
+from typing import Annotated
+from uuid import UUID
 
-from fastapi import HTTPException
+
+from fastapi import Depends, HTTPException
+from fastapi.security import APIKeyCookie
 from pydantic import SecretStr
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 from app.db.session import create_database_engine, create_session_factory
 from app.modules.auth.passwords import BcryptPasswordHasher
-from app.modules.auth.security import SessionTokens
+from app.modules.auth.security import InvalidCredentialsError, SessionTokens
 from app.modules.auth.service import AuthenticationService, RegistrationService
 from app.modules.users.infrastructure.unit_of_work import SqlAlchemyUserUnitOfWork
 from app.modules.users.service import UserService
@@ -54,3 +58,23 @@ def get_authentication_service() -> AuthenticationService:
     return AuthenticationService(
         users, get_password_hasher(), get_dummy_password_hash()
     )
+
+
+cookie_session = APIKeyCookie(name=settings.auth_cookie_name, auto_error=False)
+
+
+def authenticated_subject(
+    token: Annotated[str | None, Depends(cookie_session)],
+    tokens: Annotated[SessionTokens, Depends(get_session_tokens)],
+) -> UUID:
+    if not token:
+        raise InvalidCredentialsError()
+    return tokens.subject(token)
+
+
+def active_subject(
+    user_id: Annotated[UUID, Depends(authenticated_subject)],
+    service: Annotated[AuthenticationService, Depends(get_authentication_service)],
+) -> UUID:
+    service.current_user(user_id)
+    return user_id

@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     Enum as SqlEnum,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     String,
     Text,
@@ -57,6 +58,8 @@ class User(Base):
 class UserProfile(Base):
     __tablename__ = "user_profiles"
     __table_args__ = (
+        ForeignKeyConstraint(["institution_id"], ["institutions.id"], name="fk_user_profiles_institution", ondelete="RESTRICT"),
+        ForeignKeyConstraint(["course_id", "institution_id"], ["courses.id", "courses.institution_id"], name="fk_user_profiles_course_institution", ondelete="RESTRICT"),
         CheckConstraint(
             "course_id IS NULL OR institution_id IS NOT NULL",
             name="chk_user_profile_course_requires_institution",

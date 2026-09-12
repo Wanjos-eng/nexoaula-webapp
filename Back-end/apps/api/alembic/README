@@ -7,6 +7,11 @@ importa somente esses recortes. Nao adicione todos os modelos do DBML de uma vez
 O recorte e as regras de delecao estao em docs/architecture/data-model.md na raiz.
 `downgrade 0001_identity` remove apenas o recorte academico/comunitario, incluindo
 seus dados e enums; preserva as tabelas de identidade.
+Na #30, 0003_enrollments permanece como revision historica compartilhada.
+0004_academic_context remove o acompanhamento avulso, cria courses e FKs de perfil.
+O schema final nao oferece inscricao direta em turma. A corretiva recusa remover
+inscricoes existentes ou aceitar referencias de perfil invalidas sem conciliacao.
+Veja app/modules/academic/README.md para o contrato e limites de rollback.
 
 `DATABASE_URL` e obrigatoria para `upgrade`, `downgrade`, `current` e `check`,
 vem do ambiente ou do `.env` local ignorado e deve usar PostgreSQL. A URL nao e
