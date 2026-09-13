@@ -51,10 +51,11 @@ class MembershipStatus(str, Enum):
     REMOVED = "removed"
 
 
-# Compatibilidade retroativa (Aliases exigidos pelo services.py)
-GroupPolicy = GroupVisibility
-Group = None  # Será definido abaixo
-GroupMembership = None  # Será definido abaixo
+class JoinRequestStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
 
 
 GROUP_VISIBILITY = SqlEnum(
@@ -80,6 +81,11 @@ MEMBERSHIP_ROLE = SqlEnum(
 MEMBERSHIP_STATUS = SqlEnum(
     MembershipStatus,
     name="membership_status",
+    values_callable=lambda enum: [item.value for item in enum],
+)
+JOIN_REQUEST_STATUS = SqlEnum(
+    JoinRequestStatus,
+    name="join_request_status",
     values_callable=lambda enum: [item.value for item in enum],
 )
 
@@ -109,6 +115,7 @@ class StudyGroup(Base):
     class_section_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
+    rules: Mapped[str | None] = mapped_column(Text)
     visibility: Mapped[GroupVisibility] = mapped_column(
         GROUP_VISIBILITY, nullable=False, server_default=text("'public'::group_visibility")
     )
@@ -167,6 +174,43 @@ class GroupMember(Base):
     removed_by: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
 
 
-# Atribuição dos apelidos para garantir o funcionamento do import
-Group = StudyGroup
-GroupMembership = GroupMember
+class GroupJoinRequest(Base):
+    __tablename__ = "group_join_requests"
+    __table_args__ = (
+        ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["resolved_by"], ["users.id"], ondelete="RESTRICT"),
+        CheckConstraint(
+            "(status = 'pending' AND resolved_by IS NULL AND resolved_at IS NULL) "
+            "OR (status <> 'pending' AND resolved_by IS NOT NULL AND resolved_at IS NOT NULL)",
+            name="chk_join_requests_resolution",
+        ),
+        Index("ix_group_join_requests_group_user_status", "group_id", "user_id", "status"),
+        Index("ix_group_join_requests_user_status", "user_id", "status"),
+        Index(
+            "uq_group_join_requests_pending",
+            "group_id",
+            "user_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    status: Mapped[JoinRequestStatus] = mapped_column(
+        JOIN_REQUEST_STATUS,
+        nullable=False,
+        server_default=text("'pending'::join_request_status"),
+    )
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    resolved_by: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolution_note: Mapped[str | None] = mapped_column(Text)

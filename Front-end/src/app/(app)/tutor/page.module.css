@@ -1,0 +1,263 @@
+.page {
+  display: grid;
+  gap: 32px;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.header {
+  display: grid;
+  gap: 12px;
+}
+
+.eyebrow {
+  align-items: center;
+  color: var(--color-green);
+  display: flex;
+  font-size: 0.75rem;
+  font-weight: 800;
+  gap: 6px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.simulationBanner {
+  background: color-mix(in srgb, var(--color-green) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-green) 30%, transparent);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+  padding: 10px 16px;
+}
+
+.section {
+  display: grid;
+  gap: 16px;
+}
+
+.sectionHeader {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Activation card */
+.activationCard {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: 12px;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.activationCard p {
+  color: var(--color-text-secondary);
+  font-size: 0.88rem;
+  margin: 0;
+  max-width: 360px;
+}
+
+.warningIcon {
+  color: var(--color-text-muted);
+}
+
+.activateButton {
+  background: var(--color-green);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 12px 24px;
+  transition: opacity 0.15s;
+}
+
+.activateButton:hover {
+  opacity: 0.85;
+}
+
+/* Profile form */
+.profileForm {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.field input,
+.field textarea {
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-size: 0.88rem;
+  padding: 10px 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.formActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.cancelButton {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 10px 18px;
+}
+
+/* Active profile */
+.activeProfile {
+  align-items: center;
+  background: color-mix(in srgb, var(--color-green) 8%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-green) 25%, transparent);
+  border-radius: 12px;
+  display: flex;
+  gap: 14px;
+  padding: 20px;
+}
+
+.successIcon {
+  color: var(--color-green);
+  flex-shrink: 0;
+}
+
+.activeTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.activeBio {
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  margin: 4px 0 0;
+}
+
+.newButton {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  display: flex;
+  font-size: 0.8rem;
+  font-weight: 600;
+  gap: 5px;
+  padding: 8px 14px;
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+
+.newButton:hover {
+  border-color: var(--color-green);
+  color: var(--color-green);
+}
+
+.emptyNote {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.emptyNote a {
+  color: var(--color-green);
+}
+
+/* Booking list */
+.bookingList {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bookingCard {
+  align-items: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 16px 20px;
+}
+
+.bookingInfo {
+  display: grid;
+  gap: 4px;
+}
+
+.bookingStatus {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.bookingTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.bookingMeta {
+  align-items: center;
+  color: var(--color-text-muted);
+  display: flex;
+  font-size: 0.78rem;
+  gap: 4px;
+  margin: 0;
+}
+
+.bookingPrice {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.bookingPrice small {
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 400;
+}

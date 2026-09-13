@@ -10,6 +10,8 @@ FROM base AS builder
 WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG API_BASE_URL=http://localhost:8000
+ENV API_BASE_URL=$API_BASE_URL
 
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY package.json package-lock.json ./

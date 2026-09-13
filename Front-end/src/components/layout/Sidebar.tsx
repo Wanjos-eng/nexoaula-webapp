@@ -6,6 +6,8 @@ import {
   ChartLineUp,
   GearSix,
   House,
+  IdentificationCard,
+  Storefront,
   UsersThree,
   X,
 } from "@phosphor-icons/react";
@@ -30,6 +32,8 @@ const navigation = [
   { href: "/disciplinas", icon: BookOpenText, label: "Disciplinas" },
   { href: "/calendario", icon: CalendarDots, label: "Calendário" },
   { href: "/grupos", icon: UsersThree, label: "Grupos" },
+  { href: "/sessoes", icon: Storefront, label: "Sessões" },
+  { href: "/tutor", icon: IdentificationCard, label: "Área do tutor" },
   { href: "/progresso", icon: ChartLineUp, label: "Meu progresso" },
 ];
 
@@ -76,7 +80,7 @@ export function Sidebar({ closeButtonRef, isOpen, mode, onClose, onModeChange }:
 
         <nav className={styles.navList}>
           {navigation.map(({ href, icon: NavIcon, label }, index) => {
-            const isActive = index === 0 ? pathname === "/inicio" : label === "Grupos" ? pathname.startsWith("/grupos") : pathname === href;
+            const isActive = index === 0 ? pathname === "/inicio" : pathname === href || pathname.startsWith(`${href}/`);
 
             return (
               <Link

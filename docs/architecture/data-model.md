@@ -154,6 +154,32 @@ consultados por estudantes autenticados. Catálogo não concede acesso a PD. O
 contrato e os testes estão no [README Academic](../../Back-end/apps/api/app/modules/academic/README.md).
 Esse incremento não implementa PD, aulas, presença/progresso nem a US31 completa.
 
+### Recorte adicional da issue #31
+
+A migration `0005_group_rules` acrescenta o texto opcional de regras à
+configuração persistida do grupo. O serviço de Community cria o grupo e a
+participação ativa do proprietário na mesma transação, valida disciplina e turma,
+e restringe alterações ao proprietário autenticado. As rotas de leitura e
+mutação exigem usuário ativo; mutações também seguem a proteção CSRF de mesma
+origem do ADR-0002. Os testes de integração com PostgreSQL verificam criação,
+leitura, atualização e persistência das regras.
+
+### Recorte adicional da issue #32
+
+A migration `0006_group_join_requests` materializa o histórico de solicitações
+previsto no modelo oficial, incluindo o ciclo de resolução e o índice parcial que
+impede dois pedidos pendentes para o mesmo usuário e grupo. A descoberta expõe
+somente grupos públicos e ativos e permite filtrar pelo catálogo físico disponível:
+nome/código da disciplina, período e texto do grupo. Tópicos estruturados continuam
+fora deste recorte; o filtro de assunto usa nome e descrição até `group_topics` ser
+implementada.
+
+Grupos abertos ativam a participação imediatamente; grupos com aprovação criam
+pedido persistido; grupos privados ou apenas por convite não aceitam autoentrada.
+Owner e moderador ativos podem aprovar, recusar ou remover, respeitando capacidade.
+A remoção encerra a associação com data e responsável, sem apagar o histórico, e
+o proprietário não pode ser removido por esse fluxo.
+
 ### Validação do modelo lógico completo (DBML)
 
 Ferramentas isoladas em `tools/data-model`, com versões e lockfile próprios, sem dependências adicionadas ao frontend/backend. Execute da raiz:

@@ -705,6 +705,7 @@ Table study_groups {
   class_section_id uuid
   name varchar(150) [not null]
   description text
+  rules text
   visibility group_visibility [not null, default: 'public']
   join_policy group_join_policy [not null, default: 'approval_required']
   status group_status [not null, default: 'active']

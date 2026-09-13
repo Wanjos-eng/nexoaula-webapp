@@ -54,6 +54,8 @@ coverage/
 .coverage.*
 htmlcov/
 lcov.info
+playwright-report/
+test-results/
 
 # Logs
 logs/

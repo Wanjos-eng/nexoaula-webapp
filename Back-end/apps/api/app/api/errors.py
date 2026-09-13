@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.modules.auth.security import InvalidCredentialsError
 from app.modules.academic.errors import AcademicError
+from app.modules.community.errors import CommunityError
 from app.modules.users import UserPersistenceError
 
 
@@ -22,6 +23,17 @@ def _public_validation_errors(error: RequestValidationError) -> list[dict[str, A
 
 
 def register_exception_handlers(app: FastAPI) -> None:
+    @app.exception_handler(CommunityError)
+    async def community_handler(
+        request: Request, error: CommunityError
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(
+            status_code=error.status_code,
+            content={"detail": str(error)},
+            headers={"Cache-Control": "no-store"},
+        )
+
     @app.exception_handler(AcademicError)
     async def academic_handler(request: Request, error: AcademicError) -> JSONResponse:
         return JSONResponse(
