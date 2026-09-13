@@ -1,0 +1,66 @@
+name: Authentication E2E
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/auth-e2e.yml"
+      - "Back-end/**"
+      - "Front-end/**"
+      - "compose.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+          cache-dependency-path: Front-end/package-lock.json
+
+      - name: Build and start the isolated stack
+        run: docker compose up -d --build --wait
+
+      - name: Install frontend dependencies and Chromium
+        working-directory: Front-end
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Wait for the web application
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:3000/login > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+
+      - name: Run authentication E2E tests
+        working-directory: Front-end
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            Front-end/playwright-report/
+            Front-end/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Show service logs on failure
+        if: failure()
+        run: docker compose logs

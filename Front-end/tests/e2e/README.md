@@ -31,6 +31,8 @@ operacional, as versoes de Node, npm, Docker e Playwright, e o resultado de
 `npm run test:e2e`.
 
 Os cenarios cobrem cadastro valido, e-mail duplicado, login valido, credenciais
-invalidas, acesso a `/inicio`, cookie HttpOnly, ausencia de senha/token em
-respostas e Web Storage, header CSRF e logout que expira o cookie. A revogacao
-antecipada de uma copia do JWT nao e esperada pelo ADR-0002.
+invalidas, acesso a `/inicio`, cookie HttpOnly/SameSite, ausencia de senha/token
+em respostas e Web Storage, sessao ausente com resposta 401, header CSRF e
+logout que expira o cookie. O atributo Secure e desativado apenas no ambiente
+HTTP local; a verificacao HTTPS permanece coberta pelos testes de integracao da
+API. A revogacao antecipada de uma copia do JWT nao e esperada pelo ADR-0002.

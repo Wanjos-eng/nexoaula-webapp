@@ -51,6 +51,8 @@ services:
   web:
     build:
       context: ./Front-end
+      args:
+        API_BASE_URL: http://api:8000
     environment:
       API_BASE_URL: http://api:8000
       NODE_ENV: production

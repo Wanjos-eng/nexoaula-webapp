@@ -42,16 +42,25 @@ test.describe("autenticação real", () => {
     const session = (await context.cookies()).find((cookie) => cookie.name.includes("nexoaula_session"));
     expect(session).toBeDefined();
     expect(session?.httpOnly).toBe(true);
+    expect(session?.sameSite).toBe("Lax");
+    expect(session?.secure).toBe(false);
     expect(await page.evaluate(() => localStorage.length)).toBe(0);
     expect(await page.evaluate(() => sessionStorage.length)).toBe(0);
     expect(responses.every((body) => !body.includes(password) && !body.includes("password_hash"))).toBe(true);
   });
 
   test("usa mensagem genérica para conta inexistente e senha incorreta", async ({ page }) => {
-    for (const email of [`missing-${Date.now()}@example.test`, "nobody@example.test"]) {
+    const existingUser = uniqueUser();
+    await register(page, existingUser);
+    await page.waitForURL(/\/login$/);
+
+    for (const credentials of [
+      { email: `missing-${Date.now()}@example.test`, password },
+      { email: existingUser.email, password: `${password}-incorreta` },
+    ]) {
       await page.goto("/login");
-      await page.getByLabel("E-mail").fill(email);
-      await page.getByLabel("Senha").fill(password);
+      await page.getByLabel("E-mail").fill(credentials.email);
+      await page.getByLabel("Senha").fill(credentials.password);
       await page.getByRole("button", { name: "Entrar" }).click();
       await expect(page.getByRole("status")).toHaveText("E-mail ou senha incorretos.");
       await expect(page).toHaveURL(/\/login$/);
@@ -77,5 +86,13 @@ test.describe("autenticação real", () => {
     await page.goto("/login");
     await expect(page).toHaveURL(/\/login$/);
     expect((await context.cookies()).some((cookie) => cookie.name.includes("nexoaula_session"))).toBe(false);
+  });
+
+  test("sessão ausente retorna 401 sem expor token", async ({ page }) => {
+    const response = await page.request.get("/api/v1/auth/me");
+    expect(response.status()).toBe(401);
+    const body = await response.text();
+    expect(body).not.toContain("token");
+    expect(body).not.toContain("jwt");
   });
 });
