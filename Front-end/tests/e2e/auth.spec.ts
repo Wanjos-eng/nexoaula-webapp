@@ -34,7 +34,7 @@ test.describe("autenticação real", () => {
 
     await page.goto("/login");
     await page.getByLabel("E-mail").fill(user.email);
-    await page.getByLabel("Senha").fill(password);
+    await page.getByLabel("Senha", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Entrar" }).click();
     await expect(page).toHaveURL(/\/inicio$/, { timeout: 5_000 });
     await expect(page.getByRole("heading", { name: "Próxima aula" })).toBeVisible();
@@ -60,7 +60,7 @@ test.describe("autenticação real", () => {
     ]) {
       await page.goto("/login");
       await page.getByLabel("E-mail").fill(credentials.email);
-      await page.getByLabel("Senha").fill(credentials.password);
+      await page.getByLabel("Senha", { exact: true }).fill(credentials.password);
       await page.getByRole("button", { name: "Entrar" }).click();
       await expect(page.getByRole("status")).toHaveText("E-mail ou senha incorretos.");
       await expect(page).toHaveURL(/\/login$/);
@@ -73,7 +73,7 @@ test.describe("autenticação real", () => {
     await page.waitForURL(/\/login$/);
     const loginRequest = page.waitForRequest("**/api/v1/auth/login");
     await page.getByLabel("E-mail").fill(user.email);
-    await page.getByLabel("Senha").fill(password);
+    await page.getByLabel("Senha", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Entrar" }).click();
     expect((await loginRequest).headers()["x-nexoaula-csrf"]).toBe("1");
     await page.waitForURL(/\/inicio$/);
