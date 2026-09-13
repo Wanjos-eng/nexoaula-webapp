@@ -18,14 +18,19 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const pathname = usePathname();
   const isHome = pathname === "/inicio";
-  const isStandalonePage = pathname === "/calendario" || pathname === "/disciplinas" || pathname.startsWith("/disciplinas/") || pathname === "/perfil" || pathname === "/progresso" || pathname === "/grupos/novo" || pathname.startsWith("/grupos/comunidade");
+  const isStandalonePage = pathname === "/calendario" || pathname === "/disciplinas" || pathname.startsWith("/disciplinas/") || pathname === "/perfil" || pathname === "/progresso" || pathname === "/grupos/novo" || pathname.startsWith("/grupos/comunidade") || pathname.startsWith("/sessoes") || pathname.startsWith("/tutor");
   const showUtilityActions = !isStandalonePage;
   const canCreateGroup = pathname === "/inicio" || pathname === "/grupos";
   const pageContext = isHome
     ? { title: "Olá, Lucas", subtitle: "Acompanhe suas disciplinas e próximos encontros" }
-    : pathname.startsWith("/grupos")
-      ? { title: "Área de grupos", subtitle: "Comunidade acadêmica e colaboração" }
-      : { title: "Área acadêmica", subtitle: "Organize sua rotina de estudos" };
+      : pathname.startsWith("/grupos")
+        ? { title: "Área de grupos", subtitle: "Comunidade acadêmica e colaboração" }
+        : pathname.startsWith("/sessoes")
+          ? { title: "Sessões de Tutoria", subtitle: "Encontre e simule inscrições em sessões" }
+          : pathname.startsWith("/tutor")
+            ? { title: "Painel do Tutor", subtitle: "Gerencie seu perfil e sessões simuladas" }
+            : { title: "Área acadêmica", subtitle: "Organize sua rotina de estudos" };
+
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
