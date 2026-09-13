@@ -57,6 +57,9 @@ usar o executável diretamente evita depender da política de ativação do shel
 - Health: <http://127.0.0.1:8000/health> — HTTP 200,
   `{"status":"ok","message":"API is running"}`.
 - Cadastro: `POST http://127.0.0.1:8000/api/v1/auth/register` — HTTP 201.
+- Grupos: `POST /api/v1/groups`, `GET /api/v1/groups/{id}` e
+  `PATCH /api/v1/groups/{id}` — consulte o
+  [contrato de Community](app/modules/community/README.md).
 - Swagger: <http://127.0.0.1:8000/docs>.
 - OpenAPI: <http://127.0.0.1:8000/openapi.json>.
 - ReDoc: <http://127.0.0.1:8000/redoc>.

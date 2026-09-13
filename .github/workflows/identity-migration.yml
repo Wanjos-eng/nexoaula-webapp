@@ -52,6 +52,7 @@ jobs:
             tests/test_identity_migration.py \
             tests/test_academic_group_migration.py \
             tests/integration/academic \
+            tests/integration/community \
             tests/unit/users \
             tests/integration/users \
             tests/unit/auth \
@@ -97,6 +98,7 @@ jobs:
             tests/test_identity_migration.py \
             tests/test_academic_group_migration.py \
             tests/integration/academic \
+            tests/integration/community \
             tests/integration/users \
             tests/integration/auth
 
