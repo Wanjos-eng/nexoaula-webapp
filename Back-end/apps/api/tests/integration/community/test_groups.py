@@ -15,8 +15,10 @@ from app.modules.academic.models import AcademicTerm, ClassSection, Institution,
 from app.modules.auth.dependencies import active_subject
 from app.modules.community.dependencies import get_community_service
 from app.modules.community.models import (
+    GroupJoinRequest,
     GroupMember,
     GroupStatus,
+    JoinRequestStatus,
     MembershipRole,
     MembershipStatus,
     StudyGroup,
@@ -24,6 +26,7 @@ from app.modules.community.models import (
 from app.modules.community.repository import (
     CommunityRepository,
     CommunityUnitOfWork,
+    GroupDiscoveryRecord,
     SqlAlchemyCommunityUnitOfWork,
 )
 from app.modules.community.schemas import (
@@ -58,7 +61,10 @@ class MemoryCommunityRepository:
     def __init__(self) -> None:
         self.groups: dict[UUID, StudyGroup] = {}
         self.members: dict[tuple[UUID, UUID], GroupMember] = {}
+        self.requests: list[GroupJoinRequest] = []
         self.disciplines: set[UUID] = set()
+        self.subject_names: dict[UUID, tuple[str, str | None]] = {}
+        self.periods: dict[UUID, str] = {}
         self.offerings: dict[UUID, UUID] = {}  # offering_id -> discipline_id
 
     def find_by_id(self, group_id: UUID) -> StudyGroup | None:
@@ -84,6 +90,47 @@ class MemoryCommunityRepository:
             MembershipStatus.ACTIVE,
             MembershipStatus.ACTIVE.value,
         )
+
+    def is_active_organizer(self, group_id: UUID, user_id: UUID) -> bool:
+        member = self.members.get((group_id, user_id))
+        return member is not None and member.status in (
+            MembershipStatus.ACTIVE, MembershipStatus.ACTIVE.value
+        ) and member.role in (
+            MembershipRole.OWNER, MembershipRole.OWNER.value,
+            MembershipRole.MODERATOR, MembershipRole.MODERATOR.value,
+        )
+
+    def find_member(self, group_id: UUID, user_id: UUID) -> GroupMember | None:
+        return self.members.get((group_id, user_id))
+
+    def find_pending_request(self, group_id: UUID, user_id: UUID) -> GroupJoinRequest | None:
+        return next((request for request in self.requests if request.group_id == group_id
+                     and request.user_id == user_id and request.status in (
+                         JoinRequestStatus.PENDING, JoinRequestStatus.PENDING.value)), None)
+
+    def count_active_members(self, group_id: UUID) -> int:
+        return sum(1 for (g_id, _), member in self.members.items() if g_id == group_id
+                   and member.status in (MembershipStatus.ACTIVE, MembershipStatus.ACTIVE.value))
+
+    def search_public_groups(self, subject, period, topic, offset, limit):
+        records = []
+        for group in self.groups.values():
+            subject_name, subject_code = self.subject_names.get(
+                group.subject_id, (str(group.subject_id), None)
+            )
+            period_label = self.periods.get(group.class_section_id)
+            if group.visibility not in (GroupVisibility.PUBLIC, GroupVisibility.PUBLIC.value):
+                continue
+            if group.status not in (GroupStatus.ACTIVE, GroupStatus.ACTIVE.value):
+                continue
+            if subject and subject.casefold() not in f"{subject_name} {subject_code or ''}".casefold():
+                continue
+            if period and (period_label is None or period.casefold() not in period_label.casefold()):
+                continue
+            if topic and topic.casefold() not in f"{group.name} {group.description or ''}".casefold():
+                continue
+            records.append(GroupDiscoveryRecord(group, subject_name, subject_code, period_label))
+        return records[offset:offset + limit]
 
     def create_group(self, owner_id: UUID, data: GroupCreate) -> StudyGroup:
         group_id = uuid4()
@@ -124,6 +171,39 @@ class MemoryCommunityRepository:
             setattr(group, key, value)
         group.updated_at = datetime.now(UTC)
         return group
+
+    def activate_member(self, group_id: UUID, user_id: UUID) -> GroupMember:
+        now = datetime.now(UTC)
+        member = self.members.get((group_id, user_id))
+        if member is None:
+            member = GroupMember(group_id=group_id, user_id=user_id,
+                                 role=MembershipRole.MEMBER.value)
+            self.members[(group_id, user_id)] = member
+        member.status = MembershipStatus.ACTIVE.value
+        member.joined_at = now
+        member.ended_at = None
+        member.removed_by = None
+        return member
+
+    def create_join_request(self, group_id: UUID, user_id: UUID) -> GroupJoinRequest:
+        request = GroupJoinRequest(id=uuid4(), group_id=group_id, user_id=user_id,
+                                   status=JoinRequestStatus.PENDING.value,
+                                   requested_at=datetime.now(UTC))
+        self.requests.append(request)
+        return request
+
+    def resolve_join_request(self, request, status, resolver_id, note):
+        request.status = status.value
+        request.resolved_by = resolver_id
+        request.resolved_at = datetime.now(UTC)
+        request.resolution_note = note
+        return request
+
+    def remove_member(self, member: GroupMember, remover_id: UUID) -> GroupMember:
+        member.status = MembershipStatus.REMOVED.value
+        member.ended_at = datetime.now(UTC)
+        member.removed_by = remover_id
+        return member
 
     def check_discipline_exists(self, discipline_id: UUID) -> bool:
         return discipline_id in self.disciplines
@@ -625,6 +705,148 @@ async def test_create_group_requires_csrf_headers(memory_service, memory_repo, u
     assert memory_repo.groups == {}
 
 
+@pytest.mark.anyio
+async def test_discovery_returns_only_public_groups_and_applies_filters(
+    memory_service, memory_repo, user_a
+):
+    discipline_id = uuid4()
+    memory_repo.disciplines.add(discipline_id)
+    memory_repo.subject_names[discipline_id] = ("Cálculo Diferencial", "MAT101")
+    visible = memory_repo.create_group(
+        user_a,
+        GroupCreate(name="Limites e derivadas", description="Listas semanais",
+                    disciplineId=discipline_id),
+    )
+    memory_repo.create_group(
+        user_a,
+        GroupCreate(name="Grupo privado", disciplineId=discipline_id,
+                    visibility=GroupVisibility.PRIVATE),
+    )
+    app.dependency_overrides[get_community_service] = lambda: memory_service
+    app.dependency_overrides[active_subject] = lambda: user_a
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+        response = await client.get(f"{API_PREFIX}?subject=MAT101&topic=derivadas")
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [str(visible.id)]
+    assert response.json()[0]["subjectName"] == "Cálculo Diferencial"
+    assert response.headers["cache-control"] == "no-store"
+
+
+@pytest.mark.anyio
+async def test_open_group_join_is_immediate_and_duplicate_is_rejected(
+    memory_service, memory_repo, user_a, user_b
+):
+    discipline_id = uuid4()
+    memory_repo.disciplines.add(discipline_id)
+    group = memory_repo.create_group(
+        user_a, GroupCreate(name="Grupo aberto", disciplineId=discipline_id,
+                            joinPolicy=JoinPolicy.OPEN)
+    )
+    app.dependency_overrides[get_community_service] = lambda: memory_service
+    app.dependency_overrides[active_subject] = lambda: user_b
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL,
+                           headers=SECURITY_HEADERS) as client:
+        response = await client.post(f"{API_PREFIX}/{group.id}/join", json={})
+        duplicate = await client.post(f"{API_PREFIX}/{group.id}/join", json={})
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "active"
+    assert memory_repo.is_active_member(group.id, user_b)
+    assert duplicate.status_code == 409
+
+
+@pytest.mark.anyio
+async def test_approval_flow_requires_organizer_and_preserves_request_history(
+    memory_service, memory_repo, user_a, user_b
+):
+    discipline_id = uuid4()
+    outsider = uuid4()
+    memory_repo.disciplines.add(discipline_id)
+    group = memory_repo.create_group(
+        user_a, GroupCreate(name="Grupo moderado", disciplineId=discipline_id,
+                            joinPolicy=JoinPolicy.APPROVAL_REQUIRED)
+    )
+    app.dependency_overrides[get_community_service] = lambda: memory_service
+    app.dependency_overrides[active_subject] = lambda: user_b
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL,
+                           headers=SECURITY_HEADERS) as client:
+        requested = await client.post(f"{API_PREFIX}/{group.id}/join", json={})
+        duplicate = await client.post(f"{API_PREFIX}/{group.id}/join", json={})
+        app.dependency_overrides[active_subject] = lambda: outsider
+        forbidden = await client.patch(
+            f"{API_PREFIX}/{group.id}/members/{user_b}", json={"action": "approve"}
+        )
+        app.dependency_overrides[active_subject] = lambda: user_a
+        approved = await client.patch(
+            f"{API_PREFIX}/{group.id}/members/{user_b}",
+            json={"action": "approve", "note": "Contexto conferido"},
+        )
+
+    assert requested.status_code == 201
+    assert requested.json()["status"] == "pending"
+    assert duplicate.status_code == 409
+    assert forbidden.status_code == 403
+    assert approved.status_code == 200
+    assert approved.json()["status"] == "active"
+    assert memory_repo.requests[0].status == JoinRequestStatus.APPROVED.value
+    assert memory_repo.requests[0].resolution_note == "Contexto conferido"
+
+
+@pytest.mark.anyio
+async def test_reject_remove_capacity_and_invite_only_states(
+    memory_service, memory_repo, user_a, user_b
+):
+    discipline_id = uuid4()
+    rejected_user = uuid4()
+    memory_repo.disciplines.add(discipline_id)
+    moderated = memory_repo.create_group(
+        user_a, GroupCreate(name="Grupo com análise", disciplineId=discipline_id,
+                            joinPolicy=JoinPolicy.APPROVAL_REQUIRED)
+    )
+    invite_only = memory_repo.create_group(
+        user_a, GroupCreate(name="Grupo por convite", disciplineId=discipline_id,
+                            joinPolicy=JoinPolicy.INVITE_ONLY)
+    )
+    full = memory_repo.create_group(
+        user_a, GroupCreate(name="Grupo lotado", disciplineId=discipline_id,
+                            joinPolicy=JoinPolicy.OPEN)
+    )
+    full.capacity = 1
+    app.dependency_overrides[get_community_service] = lambda: memory_service
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL,
+                           headers=SECURITY_HEADERS) as client:
+        app.dependency_overrides[active_subject] = lambda: rejected_user
+        await client.post(f"{API_PREFIX}/{moderated.id}/join", json={})
+        app.dependency_overrides[active_subject] = lambda: user_a
+        rejected = await client.patch(
+            f"{API_PREFIX}/{moderated.id}/members/{rejected_user}",
+            json={"action": "reject"},
+        )
+        app.dependency_overrides[active_subject] = lambda: user_b
+        invite_denied = await client.post(f"{API_PREFIX}/{invite_only.id}/join", json={})
+        capacity_denied = await client.post(f"{API_PREFIX}/{full.id}/join", json={})
+        app.dependency_overrides[active_subject] = lambda: user_a
+        owner_removal = await client.patch(
+            f"{API_PREFIX}/{moderated.id}/members/{user_a}", json={"action": "remove"}
+        )
+        memory_repo.activate_member(moderated.id, user_b)
+        removed = await client.patch(
+            f"{API_PREFIX}/{moderated.id}/members/{user_b}", json={"action": "remove"}
+        )
+
+    assert rejected.status_code == 200 and rejected.json()["status"] == "rejected"
+    assert invite_denied.status_code == 403
+    assert capacity_denied.status_code == 409
+    assert owner_removal.status_code == 409
+    assert removed.status_code == 200 and removed.json()["status"] == "removed"
+    assert memory_repo.members[(moderated.id, user_b)].removed_by == user_a
+
+
 # --- Teste de Integração Real com Banco PostgreSQL (quando DATABASE_URL configurado) ---
 
 
@@ -639,6 +861,8 @@ async def test_real_database_atomic_creation_and_owner_membership():
     factory = sessionmaker(bind=engine, expire_on_commit=False)
 
     user_id = uuid4()
+    open_member_id = uuid4()
+    applicant_id = uuid4()
     inst_id = uuid4()
     subject_id = uuid4()
     term_id = uuid4()
@@ -654,6 +878,12 @@ async def test_real_database_atomic_creation_and_owner_membership():
                 password_hash="hash-teste",
             )
         )
+        session.add_all([
+            User(id=open_member_id, email=f"group-member-{open_member_id}@nexoaula.test",
+                 password_hash="hash-teste"),
+            User(id=applicant_id, email=f"group-applicant-{applicant_id}@nexoaula.test",
+                 password_hash="hash-teste"),
+        ])
         session.add(
             Institution(
                 id=inst_id,
@@ -736,6 +966,28 @@ async def test_real_database_atomic_creation_and_owner_membership():
             assert patch_res.json()["name"] == "Grupo Atualizado Real"
             assert patch_res.json()["rules"] == "Regra atualizada e persistida"
 
+            app.dependency_overrides[active_subject] = lambda: open_member_id
+            join_res = await client.post(f"{API_PREFIX}/{group_id}/join", json={})
+            assert join_res.status_code == 201
+            assert join_res.json()["status"] == "active"
+
+            app.dependency_overrides[active_subject] = lambda: user_id
+            policy_res = await client.patch(
+                f"{API_PREFIX}/{group_id}", json={"joinPolicy": "approval_required"}
+            )
+            assert policy_res.status_code == 200
+            app.dependency_overrides[active_subject] = lambda: applicant_id
+            request_res = await client.post(f"{API_PREFIX}/{group_id}/join", json={})
+            assert request_res.status_code == 201
+            assert request_res.json()["status"] == "pending"
+            app.dependency_overrides[active_subject] = lambda: user_id
+            approval_res = await client.patch(
+                f"{API_PREFIX}/{group_id}/members/{applicant_id}",
+                json={"action": "approve"},
+            )
+            assert approval_res.status_code == 200
+            assert approval_res.json()["status"] == "active"
+
         # Inspeciona diretamente a tabela group_members no PostgreSQL
         with engine.connect() as conn:
             member_row = conn.execute(
@@ -752,13 +1004,23 @@ async def test_real_database_atomic_creation_and_owner_membership():
                 {"gid": group_id},
             ).scalar_one()
             assert rules == "Regra atualizada e persistida"
+            request_status = conn.execute(
+                text("SELECT status::text FROM group_join_requests "
+                     "WHERE group_id = :gid AND user_id = :uid"),
+                {"gid": group_id, "uid": applicant_id},
+            ).scalar_one()
+            assert request_status == "approved"
     finally:
         app.dependency_overrides.clear()
         # Limpeza
         with engine.begin() as conn:
             conn.execute(
-                text("DELETE FROM group_members WHERE user_id = :uid"),
-                {"uid": user_id},
+                text("DELETE FROM group_join_requests WHERE group_id = :gid"),
+                {"gid": group_id},
+            )
+            conn.execute(
+                text("DELETE FROM group_members WHERE group_id = :gid"),
+                {"gid": group_id},
             )
             conn.execute(
                 text("DELETE FROM study_groups WHERE created_by = :uid"),
@@ -781,6 +1043,6 @@ async def test_real_database_atomic_creation_and_owner_membership():
                 {"iid": inst_id},
             )
             conn.execute(
-                text("DELETE FROM users WHERE id = :uid"),
-                {"uid": user_id},
+                text("DELETE FROM users WHERE id IN (:owner, :member, :applicant)"),
+                {"owner": user_id, "member": open_member_id, "applicant": applicant_id},
             )

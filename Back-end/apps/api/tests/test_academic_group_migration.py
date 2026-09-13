@@ -130,11 +130,50 @@ def test_group_can_exist_without_section_and_without_capacity_limit(graph):
     ), ids) == ids["subject"]
 
 
+def test_join_request_history_allows_only_one_pending_attempt(graph):
+    connection, ids = graph
+    connection.execute(text(
+        "INSERT INTO group_join_requests(group_id,user_id) VALUES (:group,:other_user)"
+    ), ids)
+    with pytest.raises(IntegrityError) as duplicate:
+        with connection.begin_nested():
+            connection.execute(text(
+                "INSERT INTO group_join_requests(group_id,user_id) VALUES (:group,:other_user)"
+            ), ids)
+    assert duplicate.value.orig.pgcode == "23505"
+
+    with pytest.raises(IntegrityError) as incomplete_resolution:
+        with connection.begin_nested():
+            connection.execute(text(
+                "UPDATE group_join_requests SET status='rejected' "
+                "WHERE group_id=:group AND user_id=:other_user"
+            ), ids)
+    assert incomplete_resolution.value.orig.pgcode == "23514"
+
+    connection.execute(text(
+        "UPDATE group_join_requests SET status='rejected',resolved_by=:user,resolved_at=now() "
+        "WHERE group_id=:group AND user_id=:other_user"
+    ), ids)
+    connection.execute(text(
+        "INSERT INTO group_join_requests(group_id,user_id) VALUES (:group,:other_user)"
+    ), ids)
+    assert connection.scalar(text(
+        "SELECT count(*) FROM group_join_requests "
+        "WHERE group_id=:group AND user_id=:other_user"
+    ), ids) == 2
+
+
 def test_group_deletion_removes_members_but_preserves_users_and_catalog(graph):
     connection, ids = graph
+    connection.execute(text(
+        "INSERT INTO group_join_requests(group_id,user_id) VALUES (:group,:other_user)"
+    ), ids)
     connection.execute(text("DELETE FROM study_groups WHERE id=:group"), ids)
     assert connection.scalar(text(
         "SELECT count(*) FROM group_members WHERE group_id=:group"
+    ), ids) == 0
+    assert connection.scalar(text(
+        "SELECT count(*) FROM group_join_requests WHERE group_id=:group"
     ), ids) == 0
     for table, key in (("users", "user"), ("subjects", "subject"), ("class_sections", "section")):
         assert connection.scalar(text(f"SELECT count(*) FROM {table} WHERE id=:id"), {"id": ids[key]}) == 1

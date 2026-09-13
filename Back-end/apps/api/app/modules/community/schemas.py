@@ -23,6 +23,19 @@ class GroupStatus(str, Enum):
     CLOSED = "closed"
 
 
+class MembershipActionType(str, Enum):
+    APPROVE = "approve"
+    REJECT = "reject"
+    REMOVE = "remove"
+
+
+class MembershipResultStatus(str, Enum):
+    ACTIVE = "active"
+    PENDING = "pending"
+    REJECTED = "rejected"
+    REMOVED = "removed"
+
+
 class GroupCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -30,9 +43,7 @@ class GroupCreate(BaseModel):
     description: str | None = Field(default=None, max_length=500)
     rules: str | None = Field(default=None, max_length=2000)
     visibility: GroupVisibility = Field(default=GroupVisibility.PUBLIC)
-    join_policy: JoinPolicy = Field(
-        default=JoinPolicy.OPEN, alias="joinPolicy"
-    )
+    join_policy: JoinPolicy = Field(default=JoinPolicy.OPEN, alias="joinPolicy")
     discipline_id: UUID = Field(alias="disciplineId")
     offering_id: UUID | None = Field(default=None, alias="offeringId")
 
@@ -93,11 +104,7 @@ class GroupUpdate(BaseModel):
 
 
 class GroupResponse(BaseModel):
-    model_config = ConfigDict(
-        populate_by_name=True,
-        serialize_by_alias=True,
-        from_attributes=True,
-    )
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True, from_attributes=True)
 
     id: UUID
     name: str
@@ -112,3 +119,35 @@ class GroupResponse(BaseModel):
     capacity: int | None = None
     created_at: datetime = Field(serialization_alias="createdAt")
     updated_at: datetime = Field(serialization_alias="updatedAt")
+
+
+class GroupDiscoveryResponse(GroupResponse):
+    subject_name: str = Field(serialization_alias="subjectName")
+    subject_code: str | None = Field(default=None, serialization_alias="subjectCode")
+    period: str | None = None
+
+
+class MembershipAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action: MembershipActionType
+    note: str | None = Field(default=None, max_length=500)
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class MembershipResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+
+    group_id: UUID = Field(serialization_alias="groupId")
+    user_id: UUID = Field(serialization_alias="userId")
+    status: MembershipResultStatus
+    requested_at: datetime | None = Field(default=None, serialization_alias="requestedAt")
+    joined_at: datetime | None = Field(default=None, serialization_alias="joinedAt")
+    resolved_at: datetime | None = Field(default=None, serialization_alias="resolvedAt")
