@@ -1,16 +1,18 @@
 from datetime import UTC, datetime
 import os
+from secrets import token_urlsafe
 from uuid import UUID, uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from pydantic import SecretStr
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 from app.main import app
 from app.modules.academic.models import AcademicTerm, ClassSection, Institution, Subject
-from app.modules.auth.dependencies import authenticated_subject
+from app.modules.auth.dependencies import active_subject
 from app.modules.community.dependencies import get_community_service
 from app.modules.community.models import (
     GroupMember,
@@ -35,11 +37,21 @@ from app.modules.users.infrastructure.models import User
 
 BASE_URL = "https://testserver"
 API_PREFIX = "/api/v1/groups"
+SECURITY_HEADERS = {"Origin": BASE_URL, "X-NexoAula-CSRF": "1"}
 
 
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
+
+
+@pytest.fixture(autouse=True)
+def isolate_app_state(monkeypatch):
+    monkeypatch.setattr(settings, "AUTH_ALLOWED_ORIGINS", [BASE_URL])
+    monkeypatch.setattr(settings, "AUTH_JWT_SECRET", SecretStr(token_urlsafe(32)))
+    app.dependency_overrides.clear()
+    yield
+    app.dependency_overrides.clear()
 
 
 class MemoryCommunityRepository:
@@ -66,6 +78,13 @@ class MemoryCommunityRepository:
         group = self.groups.get(group_id)
         return group.created_by if group else None
 
+    def is_active_member(self, group_id: UUID, user_id: UUID) -> bool:
+        member = self.members.get((group_id, user_id))
+        return member is not None and member.status in (
+            MembershipStatus.ACTIVE,
+            MembershipStatus.ACTIVE.value,
+        )
+
     def create_group(self, owner_id: UUID, data: GroupCreate) -> StudyGroup:
         group_id = uuid4()
         now = datetime.now(UTC)
@@ -77,6 +96,7 @@ class MemoryCommunityRepository:
             class_section_id=data.offering_id,
             name=data.name,
             description=data.description,
+            rules=data.rules,
             visibility=data.visibility.value,
             join_policy=data.join_policy.value,
             status=GroupStatus.ACTIVE.value,
@@ -164,7 +184,7 @@ async def test_create_group_success_and_owner_membership_created(
     memory_repo.offerings[offering_id] = discipline_id
 
     app.dependency_overrides[get_community_service] = lambda: memory_service
-    app.dependency_overrides[authenticated_subject] = lambda: user_a
+    app.dependency_overrides[active_subject] = lambda: user_a
 
     payload = {
         "name": "Grupo de Estudos de Cálculo I",
@@ -177,7 +197,9 @@ async def test_create_group_success_and_owner_membership_created(
     }
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.post(f"{API_PREFIX}/", json=payload)
 
@@ -213,7 +235,7 @@ async def test_create_group_without_offering_id_success(
     memory_repo.disciplines.add(discipline_id)
 
     app.dependency_overrides[get_community_service] = lambda: memory_service
-    app.dependency_overrides[authenticated_subject] = lambda: user_a
+    app.dependency_overrides[active_subject] = lambda: user_a
 
     payload = {
         "name": "Grupo de Álgebra Linear",
@@ -221,7 +243,9 @@ async def test_create_group_without_offering_id_success(
     }
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.post(f"{API_PREFIX}", json=payload)
 
@@ -239,7 +263,7 @@ async def test_create_group_invalid_discipline_returns_400(
     memory_service, memory_repo, user_a
 ):
     app.dependency_overrides[get_community_service] = lambda: memory_service
-    app.dependency_overrides[authenticated_subject] = lambda: user_a
+    app.dependency_overrides[active_subject] = lambda: user_a
 
     payload = {
         "name": "Grupo Inválido",
@@ -247,7 +271,9 @@ async def test_create_group_invalid_discipline_returns_400(
     }
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.post(f"{API_PREFIX}/", json=payload)
 
@@ -269,7 +295,7 @@ async def test_create_group_incompatible_offering_returns_400(
     memory_repo.offerings[offering_2] = discipline_2
 
     app.dependency_overrides[get_community_service] = lambda: memory_service
-    app.dependency_overrides[authenticated_subject] = lambda: user_a
+    app.dependency_overrides[active_subject] = lambda: user_a
 
     payload = {
         "name": "Grupo Incompatível",
@@ -278,7 +304,9 @@ async def test_create_group_incompatible_offering_returns_400(
     }
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.post(f"{API_PREFIX}/", json=payload)
 
@@ -298,7 +326,9 @@ async def test_create_group_unauthenticated_returns_401():
     }
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.post(f"{API_PREFIX}/", json=payload)
 
@@ -310,11 +340,13 @@ async def test_create_group_invalid_payload_returns_422(
     memory_service, user_a
 ):
     app.dependency_overrides[get_community_service] = lambda: memory_service
-    app.dependency_overrides[authenticated_subject] = lambda: user_a
+    app.dependency_overrides[active_subject] = lambda: user_a
 
     # Nome com menos de 3 caracteres
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.post(
             f"{API_PREFIX}/",
@@ -324,7 +356,9 @@ async def test_create_group_invalid_payload_returns_422(
 
     # Falta disciplineId
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response_missing = await client.post(
             f"{API_PREFIX}/", json={"name": "Grupo sem disciplina"}
@@ -344,13 +378,17 @@ async def test_get_group_success(memory_service, memory_repo, user_a):
             name="Grupo de Física",
             disciplineId=discipline_id,
             description="Mecânica Clássica",
+            rules="Respeito e foco",
         ),
     )
 
     app.dependency_overrides[get_community_service] = lambda: memory_service
+    app.dependency_overrides[active_subject] = lambda: user_a
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.get(f"{API_PREFIX}/{group.id}")
 
@@ -359,17 +397,22 @@ async def test_get_group_success(memory_service, memory_repo, user_a):
     assert data["id"] == str(group.id)
     assert data["name"] == "Grupo de Física"
     assert data["description"] == "Mecânica Clássica"
+    assert data["rules"] == "Respeito e foco"
     assert data["ownerId"] == str(user_a)
+    assert response.headers["cache-control"] == "no-store"
 
     app.dependency_overrides.clear()
 
 
 @pytest.mark.anyio
-async def test_get_group_not_found_returns_404(memory_service):
+async def test_get_group_not_found_returns_404(memory_service, user_a):
     app.dependency_overrides[get_community_service] = lambda: memory_service
+    app.dependency_overrides[active_subject] = lambda: user_a
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.get(f"{API_PREFIX}/{uuid4()}")
 
@@ -391,20 +434,24 @@ async def test_update_group_by_owner_success(
             name="Nome Antigo",
             disciplineId=discipline_id,
             description="Desc Antiga",
+            rules="Regra antiga",
         ),
     )
 
     app.dependency_overrides[get_community_service] = lambda: memory_service
-    app.dependency_overrides[authenticated_subject] = lambda: user_a
+    app.dependency_overrides[active_subject] = lambda: user_a
 
     update_payload = {
         "name": "Nome Atualizado",
         "description": "Nova descrição do grupo",
+        "rules": "Regra atualizada",
         "visibility": "private",
     }
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.patch(
             f"{API_PREFIX}/{group.id}", json=update_payload
@@ -414,8 +461,10 @@ async def test_update_group_by_owner_success(
     data = response.json()
     assert data["name"] == "Nome Atualizado"
     assert data["description"] == "Nova descrição do grupo"
+    assert data["rules"] == "Regra atualizada"
     assert data["visibility"] == "private"
     assert data["ownerId"] == str(user_a)
+    assert group.rules == "Regra atualizada"
 
     app.dependency_overrides.clear()
 
@@ -436,10 +485,12 @@ async def test_update_group_by_non_owner_returns_403(
 
     app.dependency_overrides[get_community_service] = lambda: memory_service
     # User B autenticado tentando editar grupo do User A
-    app.dependency_overrides[authenticated_subject] = lambda: user_b
+    app.dependency_overrides[active_subject] = lambda: user_b
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.patch(
             f"{API_PREFIX}/{group.id}",
@@ -457,7 +508,9 @@ async def test_update_group_unauthenticated_returns_401(memory_service):
     app.dependency_overrides.clear()
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.patch(
             f"{API_PREFIX}/{uuid4()}",
@@ -470,10 +523,12 @@ async def test_update_group_unauthenticated_returns_401(memory_service):
 @pytest.mark.anyio
 async def test_update_group_not_found_returns_404(memory_service, user_a):
     app.dependency_overrides[get_community_service] = lambda: memory_service
-    app.dependency_overrides[authenticated_subject] = lambda: user_a
+    app.dependency_overrides[active_subject] = lambda: user_a
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
     ) as client:
         response = await client.patch(
             f"{API_PREFIX}/{uuid4()}",
@@ -484,6 +539,90 @@ async def test_update_group_not_found_returns_404(memory_service, user_a):
     assert response.json()["detail"] == "Grupo não encontrado."
 
     app.dependency_overrides.clear()
+
+
+@pytest.mark.anyio
+async def test_private_group_is_hidden_from_non_members(
+    memory_service, memory_repo, user_a, user_b
+):
+    discipline_id = uuid4()
+    memory_repo.disciplines.add(discipline_id)
+    group = memory_repo.create_group(
+        owner_id=user_a,
+        data=GroupCreate(
+            name="Grupo privado",
+            disciplineId=discipline_id,
+            visibility=GroupVisibility.PRIVATE,
+            rules="Não expor",
+        ),
+    )
+    app.dependency_overrides[get_community_service] = lambda: memory_service
+    app.dependency_overrides[active_subject] = lambda: user_b
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
+    ) as client:
+        response = await client.get(f"{API_PREFIX}/{group.id}")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Grupo não encontrado."
+
+
+@pytest.mark.anyio
+async def test_get_group_unauthenticated_returns_401():
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
+    ) as client:
+        response = await client.get(f"{API_PREFIX}/{uuid4()}")
+
+    assert response.status_code == 401
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("field", ["name", "visibility", "joinPolicy"])
+async def test_update_rejects_null_required_fields(
+    memory_service, memory_repo, user_a, field
+):
+    discipline_id = uuid4()
+    memory_repo.disciplines.add(discipline_id)
+    group = memory_repo.create_group(
+        owner_id=user_a,
+        data=GroupCreate(name="Grupo válido", disciplineId=discipline_id),
+    )
+    app.dependency_overrides[get_community_service] = lambda: memory_service
+    app.dependency_overrides[active_subject] = lambda: user_a
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
+    ) as client:
+        response = await client.patch(f"{API_PREFIX}/{group.id}", json={field: None})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_create_group_requires_csrf_headers(memory_service, memory_repo, user_a):
+    discipline_id = uuid4()
+    memory_repo.disciplines.add(discipline_id)
+    app.dependency_overrides[get_community_service] = lambda: memory_service
+    app.dependency_overrides[active_subject] = lambda: user_a
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url=BASE_URL
+    ) as client:
+        response = await client.post(
+            API_PREFIX,
+            json={"name": "Grupo sem CSRF", "disciplineId": str(discipline_id)},
+        )
+
+    assert response.status_code == 403
+    assert memory_repo.groups == {}
 
 
 # --- Teste de Integração Real com Banco PostgreSQL (quando DATABASE_URL configurado) ---
@@ -556,11 +695,13 @@ async def test_real_database_atomic_creation_and_owner_membership():
 
     real_service = CommunityService(lambda: SqlAlchemyCommunityUnitOfWork(factory))
     app.dependency_overrides[get_community_service] = lambda: real_service
-    app.dependency_overrides[authenticated_subject] = lambda: user_id
+    app.dependency_overrides[active_subject] = lambda: user_id
 
     try:
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url=BASE_URL
+        transport=ASGITransport(app=app),
+        base_url=BASE_URL,
+        headers=SECURITY_HEADERS,
         ) as client:
             res = await client.post(
                 f"{API_PREFIX}/",
@@ -568,6 +709,7 @@ async def test_real_database_atomic_creation_and_owner_membership():
                     "name": "Grupo de Estudo Real",
                     "disciplineId": str(subject_id),
                     "offeringId": str(class_id),
+                    "rules": "Regra persistida",
                     "visibility": "public",
                     "joinPolicy": "open",
                 },
@@ -580,14 +722,19 @@ async def test_real_database_atomic_creation_and_owner_membership():
             get_res = await client.get(f"{API_PREFIX}/{group_id}")
             assert get_res.status_code == 200
             assert get_res.json()["ownerId"] == str(user_id)
+            assert get_res.json()["rules"] == "Regra persistida"
 
             # Valida edição por owner
             patch_res = await client.patch(
                 f"{API_PREFIX}/{group_id}",
-                json={"name": "Grupo Atualizado Real"},
+                json={
+                    "name": "Grupo Atualizado Real",
+                    "rules": "Regra atualizada e persistida",
+                },
             )
             assert patch_res.status_code == 200
             assert patch_res.json()["name"] == "Grupo Atualizado Real"
+            assert patch_res.json()["rules"] == "Regra atualizada e persistida"
 
         # Inspeciona diretamente a tabela group_members no PostgreSQL
         with engine.connect() as conn:
@@ -600,6 +747,11 @@ async def test_real_database_atomic_creation_and_owner_membership():
             ).one()
             assert member_row[0] == "owner"
             assert member_row[1] == "active"
+            rules = conn.execute(
+                text("SELECT rules FROM study_groups WHERE id = :gid"),
+                {"gid": group_id},
+            ).scalar_one()
+            assert rules == "Regra atualizada e persistida"
     finally:
         app.dependency_overrides.clear()
         # Limpeza

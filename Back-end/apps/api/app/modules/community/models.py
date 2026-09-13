@@ -103,6 +103,7 @@ class StudyGroup(Base):
     class_section_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
+    rules: Mapped[str | None] = mapped_column(Text)
     visibility: Mapped[GroupVisibility] = mapped_column(
         GROUP_VISIBILITY, nullable=False, server_default=text("'public'::group_visibility")
     )

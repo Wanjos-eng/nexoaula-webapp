@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class GroupVisibility(str, Enum):
@@ -63,6 +63,13 @@ class GroupUpdate(BaseModel):
     rules: str | None = Field(default=None, max_length=2000)
     visibility: GroupVisibility | None = None
     join_policy: JoinPolicy | None = Field(default=None, alias="joinPolicy")
+
+    @model_validator(mode="after")
+    def reject_null_required_fields(self) -> "GroupUpdate":
+        for field in ("name", "visibility", "join_policy"):
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise ValueError(f"{field} não aceita valor nulo.")
+        return self
 
     @field_validator("name")
     @classmethod

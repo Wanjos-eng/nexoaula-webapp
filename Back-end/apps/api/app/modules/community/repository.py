@@ -4,9 +4,11 @@ from typing import Any, Protocol, Self
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.modules.academic.models import ClassSection, Subject
+from app.modules.community.errors import CommunityPersistenceError
 from app.modules.community.models import (
     GroupMember,
     GroupStatus,
@@ -21,6 +23,8 @@ class CommunityRepository(Protocol):
     def find_by_id(self, group_id: UUID) -> StudyGroup | None: ...
 
     def find_active_owner_id(self, group_id: UUID) -> UUID | None: ...
+
+    def is_active_member(self, group_id: UUID, user_id: UUID) -> bool: ...
 
     def create_group(
         self, owner_id: UUID, data: GroupCreate
@@ -81,6 +85,14 @@ class SqlAlchemyCommunityRepository:
         group = self._session.get(StudyGroup, group_id)
         return group.created_by if group else None
 
+    def is_active_member(self, group_id: UUID, user_id: UUID) -> bool:
+        stmt = select(GroupMember.user_id).where(
+            GroupMember.group_id == group_id,
+            GroupMember.user_id == user_id,
+            GroupMember.status == MembershipStatus.ACTIVE,
+        )
+        return self._session.execute(stmt).scalar_one_or_none() is not None
+
     def create_group(
         self, owner_id: UUID, data: GroupCreate
     ) -> StudyGroup:
@@ -94,6 +106,7 @@ class SqlAlchemyCommunityRepository:
             class_section_id=data.offering_id,
             name=data.name,
             description=data.description,
+            rules=data.rules,
             visibility=data.visibility.value,
             join_policy=data.join_policy.value,
             status=GroupStatus.ACTIVE.value,
@@ -158,15 +171,22 @@ class SqlAlchemyCommunityUnitOfWork:
     ) -> None:
         if self._session is None:
             return
+        database_failure = isinstance(exc_value, SQLAlchemyError)
         if self._session.in_transaction():
             self._session.rollback()
         self._session.close()
         self._session = None
+        if database_failure:
+            raise CommunityPersistenceError() from None
 
     def commit(self) -> None:
         if self._session is None:
             raise RuntimeError("Unidade de trabalho não iniciada.")
-        self._session.commit()
+        try:
+            self._session.commit()
+        except SQLAlchemyError:
+            self._session.rollback()
+            raise CommunityPersistenceError() from None
 
     def rollback(self) -> None:
         if self._session is not None:

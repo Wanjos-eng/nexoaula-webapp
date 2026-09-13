@@ -154,6 +154,16 @@ consultados por estudantes autenticados. Catálogo não concede acesso a PD. O
 contrato e os testes estão no [README Academic](../../Back-end/apps/api/app/modules/academic/README.md).
 Esse incremento não implementa PD, aulas, presença/progresso nem a US31 completa.
 
+### Recorte adicional da issue #31
+
+A migration `0005_group_rules` acrescenta o texto opcional de regras à
+configuração persistida do grupo. O serviço de Community cria o grupo e a
+participação ativa do proprietário na mesma transação, valida disciplina e turma,
+e restringe alterações ao proprietário autenticado. As rotas de leitura e
+mutação exigem usuário ativo; mutações também seguem a proteção CSRF de mesma
+origem do ADR-0002. Os testes de integração com PostgreSQL verificam criação,
+leitura, atualização e persistência das regras.
+
 ### Validação do modelo lógico completo (DBML)
 
 Ferramentas isoladas em `tools/data-model`, com versões e lockfile próprios, sem dependências adicionadas ao frontend/backend. Execute da raiz:
