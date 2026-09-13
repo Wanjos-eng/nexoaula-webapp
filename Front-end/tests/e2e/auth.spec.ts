@@ -4,7 +4,7 @@ const password = "senha-e2e-segura";
 
 function uniqueUser() {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  return { email: `e2e-${id}@example.test`, fullName: "Estudante E2E" };
+  return { email: `e2e-${id}@example.com`, fullName: "Estudante E2E" };
 }
 
 async function register(page: Page, user: ReturnType<typeof uniqueUser>) {
@@ -55,7 +55,7 @@ test.describe("autenticação real", () => {
     await page.waitForURL(/\/login$/);
 
     for (const credentials of [
-      { email: `missing-${Date.now()}@example.test`, password },
+      { email: `missing-${Date.now()}@example.com`, password },
       { email: existingUser.email, password: `${password}-incorreta` },
     ]) {
       await page.goto("/login");
