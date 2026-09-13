@@ -32,6 +32,7 @@ def test_only_released_tables_exist(database_engine):
         "academic_terms",
         "subjects",
         "group_members",
+        "group_join_requests",
         "class_sections",
         "institutions",
         "study_groups",
