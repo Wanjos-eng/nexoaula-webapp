@@ -21,6 +21,8 @@ from app.modules.community.models import (
     StudyGroup,
 )
 from app.modules.community.schemas import GroupCreate
+from app.modules.community.schemas import ParticipantResponse
+from app.modules.users.infrastructure.models import UserProfile
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,8 @@ class GroupDiscoveryRecord:
 
 
 class CommunityRepository(Protocol):
+    def list_mine(self, user_id: UUID, offset: int, limit: int) -> list[StudyGroup]: ...
+    def list_participants(self, group_id: UUID, pending: bool, offset: int, limit: int) -> list[ParticipantResponse]: ...
     def find_by_id(self, group_id: UUID) -> StudyGroup | None: ...
     def find_active_owner_id(self, group_id: UUID) -> UUID | None: ...
     def is_active_member(self, group_id: UUID, user_id: UUID) -> bool: ...
@@ -68,6 +72,24 @@ class CommunityUnitOfWork(Protocol):
 class SqlAlchemyCommunityRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def list_mine(self, user_id: UUID, offset: int, limit: int) -> list[StudyGroup]:
+        stmt = select(StudyGroup).join(GroupMember, GroupMember.group_id == StudyGroup.id).where(
+            GroupMember.user_id == user_id, GroupMember.status == MembershipStatus.ACTIVE,
+            StudyGroup.deleted_at.is_(None),
+        ).order_by(StudyGroup.created_at.desc(), StudyGroup.id).offset(offset).limit(limit)
+        return list(self._session.scalars(stmt))
+
+    def list_participants(self, group_id: UUID, pending: bool, offset: int, limit: int) -> list[ParticipantResponse]:
+        model = GroupJoinRequest if pending else GroupMember
+        status = JoinRequestStatus.PENDING if pending else MembershipStatus.ACTIVE
+        stmt = select(model, UserProfile.display_name).outerjoin(
+            UserProfile, UserProfile.user_id == model.user_id
+        ).where(model.group_id == group_id, model.status == status).order_by(model.user_id).offset(offset).limit(limit)
+        return [ParticipantResponse(userId=row.user_id, displayName=name or "Estudante",
+                                    status="pending" if pending else "active",
+                                    role=None if pending else row.role.value)
+                for row, name in self._session.execute(stmt)]
 
     def find_by_id(self, group_id: UUID) -> StudyGroup | None:
         group = self._session.get(StudyGroup, group_id)

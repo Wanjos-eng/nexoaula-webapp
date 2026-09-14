@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/layout/AppShell";
 
+vi.mock("@/modules/auth/components/AuthSessionProvider", () => ({
+  useAuthSession: () => ({ user: { id: "ana", fullName: "Ana Silva" } }),
+}));
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/inicio",
 }));
@@ -16,6 +20,8 @@ describe("AppShell", () => {
     );
 
     expect(screen.getByLabelText("Navegação principal")).toBeDefined();
+    expect(screen.getByText("Ana Silva")).toBeDefined();
+    expect(screen.getByText("Olá, Ana")).toBeDefined();
     expect(screen.getByRole("link", { name: "Início" }).getAttribute("aria-current")).toBe(
       "page",
     );

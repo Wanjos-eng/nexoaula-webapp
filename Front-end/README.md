@@ -1,16 +1,14 @@
 # Frontend do nexoAula
 
 Aplicação web do nexoAula construída com Next.js, TypeScript e App Router.
-A interface atual é um protótipo navegável com dados simulados; ela ainda não
-possui autenticação real nem integração com o FastAPI.
+Autenticação, perfil acadêmico, criação/configuração de grupos, descoberta e
+participação consomem a API FastAPI pelo cliente HTTP compartilhado. Sessões usam
+cookie HttpOnly e as mutações enviam proteção CSRF (ADR-0002).
 
-O mecanismo definido para a integração é JWT curto em cookie `HttpOnly`, descrito
-no [ADR-0002](../docs/decisions/ADR-0002-authentication.md). O frontend não deverá
-ler, retornar ou persistir esse token em Web Storage.
-
-A criação de grupo em `/grupos/novo` valida e preserva um rascunho somente enquanto
-a tela está aberta. A conclusão é simulada e não cria grupos, canais ou convites.
-Veja a [organização, limites e evidências da issue #16](../docs/evidence/issue-16/README.md).
+As rotas `/perfil`, `/grupos`, `/grupos/novo` e `/grupos/[groupId]` usam dados reais.
+Os componentes históricos em `modules/community` permanecem como referência do
+protótipo e não alimentam essas rotas. Outras áreas ainda possuem demonstrações.
+Consulte os [contratos e evidências das issues #33 e #34](../docs/evidence/issues-33-34/README.md).
 
 ## Requisitos
 

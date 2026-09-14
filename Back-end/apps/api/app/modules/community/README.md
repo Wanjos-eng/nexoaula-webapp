@@ -40,3 +40,11 @@ Erros de contexto retornam `400`, falta de autenticação retorna `401`, falta d
 permissão retorna `403`, grupo ausente retorna `404`, conflito de estado/capacidade
 retorna `409`, payload inválido retorna `422` e falha de persistência retorna `503`.
 Respostas do módulo usam `Cache-Control: no-store`.
+
+## Leituras para a interface (#33 e #34)
+
+- `GET /api/v1/groups/mine?offset=0&limit=20`: grupos do usuário com participação ativa, incluindo privados/não listados.
+- `GET /api/v1/groups/{id}/participation`: `status`, `role`, `canManage` e `memberCount` para a sessão atual.
+- `GET /api/v1/groups/{id}/members?pending=false&offset=0&limit=20`: participantes ativos; `pending=true` consulta pedidos pendentes. Apenas organizadores ativos podem consultar, sem exposição de emails.
+
+Os endpoints exigem sessão e preservam 404 para grupos privados inacessíveis. As listagens limitam `limit` a 100 e ordenam os resultados de modo estável. A remoção não apaga histórico pessoal.

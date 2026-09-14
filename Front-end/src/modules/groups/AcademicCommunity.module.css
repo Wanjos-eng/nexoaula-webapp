@@ -1,0 +1,229 @@
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: grid;
+  gap: 28px;
+  padding: 32px 0 40px;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.header h1 {
+  font-size: clamp(26px, 3vw, 36px);
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+  margin: 8px 0 12px;
+}
+.page p {
+  line-height: 1.65;
+  color: var(--color-text-muted);
+}
+.eyebrow {
+  color: var(--color-green) !important;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 28px;
+  display: grid;
+  gap: 22px;
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+.panel h2 {
+  font-size: 20px;
+  letter-spacing: -0.025em;
+}
+.panel h3 {
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.field {
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 0;
+}
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 12px;
+  font: inherit;
+  font-weight: 400;
+}
+.field textarea {
+  min-height: 116px;
+  resize: vertical;
+}
+.field small {
+  color: var(--color-text-muted);
+  font-weight: 400;
+  line-height: 1.5;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.primary,
+.secondary,
+.danger {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--color-border);
+}
+.primary {
+  background: var(--color-green);
+  border-color: var(--color-green);
+  color: white;
+}
+.primary:hover {
+  background: var(--color-green-hover);
+}
+.secondary {
+  background: var(--color-surface);
+  color: var(--color-graphite);
+}
+.secondary:hover {
+  background: var(--color-surface-subtle);
+}
+.danger {
+  background: var(--color-surface);
+  color: var(--color-error);
+}
+.page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.badge {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 6px;
+  background: var(--color-surface-subtle);
+  color: var(--color-green);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 16px;
+}
+.state {
+  padding: 36px 24px;
+  border: 1px dashed var(--color-border);
+  border-radius: 16px;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  background: var(--color-surface);
+}
+.error {
+  border-left: 3px solid var(--color-error);
+  background: var(--color-surface);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  color: var(--color-error);
+}
+.success {
+  border-left: 3px solid var(--color-green);
+  background: var(--color-surface-subtle);
+  padding: 16px;
+  color: var(--color-green);
+}
+.muted {
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 18px;
+}
+.text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.back {
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+@media (max-width: 1050px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .page {
+    padding-top: 16px;
+    gap: 22px;
+  }
+  .header {
+    align-items: start;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .columns,
+  .grid,
+  .fields {
+    grid-template-columns: 1fr;
+  }
+  .panel {
+    padding: 20px;
+    border-radius: 16px;
+  }
+  .actions {
+    align-items: stretch;
+  }
+  .actions > * {
+    flex: 1;
+  }
+}

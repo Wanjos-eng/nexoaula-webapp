@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, Query, status
 from app.modules.auth.dependencies import active_subject
 from app.modules.community.dependencies import get_community_service
 from app.modules.community.schemas import (
+    ParticipationResponse,
+    ParticipantResponse,
     GroupCreate,
     GroupDiscoveryResponse,
     GroupResponse,
@@ -49,6 +51,24 @@ def search_groups(
     limit: int = Query(default=20, ge=1, le=100),
 ) -> list[GroupDiscoveryResponse]:
     return service.search_groups(subject, period, topic, offset, limit)
+
+
+@router.get("/mine", response_model=list[GroupResponse], summary="Listar meus grupos")
+def list_mine(user_id: UserId, service: Service,
+              offset: int = Query(default=0, ge=0), limit: int = Query(default=20, ge=1, le=100)):
+    return service.list_mine(user_id, offset, limit)
+
+
+@router.get("/{group_id}/participation", response_model=ParticipationResponse)
+def participation(group_id: UUID, user_id: UserId, service: Service):
+    return service.participation(group_id, user_id)
+
+
+@router.get("/{group_id}/members", response_model=list[ParticipantResponse])
+def list_participants(group_id: UUID, user_id: UserId, service: Service,
+                      pending: bool = False, offset: int = Query(default=0, ge=0),
+                      limit: int = Query(default=20, ge=1, le=100)):
+    return service.list_participants(group_id, user_id, pending, offset, limit)
 
 
 @router.get("/{group_id}", response_model=GroupResponse, summary="Obter dados do grupo")
