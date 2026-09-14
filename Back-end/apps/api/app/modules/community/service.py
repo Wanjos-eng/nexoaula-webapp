@@ -14,6 +14,8 @@ from app.modules.community.models import (
 )
 from app.modules.community.repository import CommunityUnitOfWork, GroupDiscoveryRecord
 from app.modules.community.schemas import (
+    ParticipationResponse,
+    ParticipantResponse,
     GroupCreate,
     GroupDiscoveryResponse,
     GroupResponse,
@@ -33,6 +35,30 @@ CommunityUnitOfWorkFactory = Callable[[], CommunityUnitOfWork]
 class CommunityService:
     def __init__(self, unit_of_work_factory: CommunityUnitOfWorkFactory) -> None:
         self._uow_factory = unit_of_work_factory
+
+    def list_mine(self, user_id: UUID, offset: int, limit: int) -> list[GroupResponse]:
+        with self._uow_factory() as uow:
+            return [self._to_response(group, uow.community.find_active_owner_id(group.id) or group.created_by)
+                    for group in uow.community.list_mine(user_id, offset, limit)]
+
+    def participation(self, group_id: UUID, user_id: UUID) -> ParticipationResponse:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            member = uow.community.find_member(group_id, user_id)
+            active = member is not None and self._value(member.status) == MembershipStatus.ACTIVE.value
+            pending = uow.community.find_pending_request(group_id, user_id) is not None
+            return ParticipationResponse(status="active" if active else "pending" if pending else "none",
+                role=self._value(member.role) if active else None,
+                canManage=uow.community.is_active_organizer(group_id, user_id),
+                memberCount=uow.community.count_active_members(group_id))
+
+    def list_participants(self, group_id: UUID, user_id: UUID, pending: bool,
+                          offset: int, limit: int) -> list[ParticipantResponse]:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem gerenciar participantes.", 403)
+            return uow.community.list_participants(group_id, pending, offset, limit)
 
     def create_group(self, data: GroupCreate, user_id: UUID) -> GroupResponse:
         with self._uow_factory() as uow:

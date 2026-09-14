@@ -30,6 +30,7 @@ from app.modules.community.repository import (
     SqlAlchemyCommunityUnitOfWork,
 )
 from app.modules.community.schemas import (
+    ParticipantResponse,
     GroupCreate,
     GroupUpdate,
     GroupVisibility,
@@ -58,6 +59,18 @@ def isolate_app_state(monkeypatch):
 
 
 class MemoryCommunityRepository:
+    def list_mine(self, user_id, offset, limit):
+        return [g for g in self.groups.values() if g.deleted_at is None
+                and self.is_active_member(g.id, user_id)][offset:offset + limit]
+
+    def list_participants(self, group_id, pending, offset, limit):
+        rows = self.requests if pending else self.members.values()
+        return [ParticipantResponse(userId=r.user_id, displayName="Estudante",
+                status="pending" if pending else "active",
+                role=None if pending else CommunityService._value(r.role))
+                for r in rows if r.group_id == group_id and
+                CommunityService._value(r.status) == ("pending" if pending else "active")][offset:offset + limit]
+
     def __init__(self) -> None:
         self.groups: dict[UUID, StudyGroup] = {}
         self.members: dict[tuple[UUID, UUID], GroupMember] = {}
@@ -980,13 +993,24 @@ async def test_real_database_atomic_creation_and_owner_membership():
             request_res = await client.post(f"{API_PREFIX}/{group_id}/join", json={})
             assert request_res.status_code == 201
             assert request_res.json()["status"] == "pending"
+            participation = await client.get(f"{API_PREFIX}/{group_id}/participation")
+            assert participation.json()["status"] == "pending"
             app.dependency_overrides[active_subject] = lambda: user_id
+            pending_res = await client.get(f"{API_PREFIX}/{group_id}/members?pending=true")
+            assert pending_res.status_code == 200
+            assert pending_res.json()[0]["userId"] == str(applicant_id)
             approval_res = await client.patch(
                 f"{API_PREFIX}/{group_id}/members/{applicant_id}",
                 json={"action": "approve"},
             )
             assert approval_res.status_code == 200
             assert approval_res.json()["status"] == "active"
+            members_res = await client.get(f"{API_PREFIX}/{group_id}/members")
+            assert members_res.status_code == 200
+            assert len(members_res.json()) == 3
+            mine_res = await client.get(f"{API_PREFIX}/mine")
+            assert mine_res.status_code == 200
+            assert str(group_id) in {item["id"] for item in mine_res.json()}
 
         # Inspeciona diretamente a tabela group_members no PostgreSQL
         with engine.connect() as conn:
@@ -1046,3 +1070,43 @@ async def test_real_database_atomic_creation_and_owner_membership():
                 text("DELETE FROM users WHERE id IN (:owner, :member, :applicant)"),
                 {"owner": user_id, "member": open_member_id, "applicant": applicant_id},
             )
+
+@pytest.mark.anyio
+async def test_participation_read_models_enforce_permissions_and_survive_removal(memory_service, memory_repo, user_a, user_b):
+    discipline = uuid4()
+    memory_repo.disciplines.add(discipline)
+    group = memory_service.create_group(GroupCreate(name="Grupo de estudo", disciplineId=discipline, joinPolicy="approval_required"), user_a)
+    app.dependency_overrides[get_community_service] = lambda: memory_service
+    app.dependency_overrides[active_subject] = lambda: user_b
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL, headers=SECURITY_HEADERS) as client:
+        assert (await client.get(f"{API_PREFIX}/mine")).json() == []
+        assert (await client.get(f"{API_PREFIX}/{group.id}/members")).status_code == 403
+        state = (await client.get(f"{API_PREFIX}/{group.id}/participation")).json()
+        assert state == {"status": "none", "role": None, "canManage": False, "memberCount": 1}
+        await client.post(f"{API_PREFIX}/{group.id}/join", json={})
+        assert (await client.get(f"{API_PREFIX}/{group.id}/participation")).json()["status"] == "pending"
+        app.dependency_overrides[active_subject] = lambda: user_a
+        assert len((await client.get(f"{API_PREFIX}/mine")).json()) == 1
+        pending = (await client.get(f"{API_PREFIX}/{group.id}/members?pending=true")).json()
+        assert pending[0]["userId"] == str(user_b)
+        assert (await client.patch(f"{API_PREFIX}/{group.id}/members/{user_b}", json={"action": "approve"})).status_code == 200
+        assert (await client.get(f"{API_PREFIX}/{group.id}/members?pending=true")).json() == []
+        assert len((await client.get(f"{API_PREFIX}/{group.id}/members?limit=1&offset=1")).json()) == 1
+        app.dependency_overrides[active_subject] = lambda: user_b
+        assert len((await client.get(f"{API_PREFIX}/mine")).json()) == 1
+        state = (await client.get(f"{API_PREFIX}/{group.id}/participation")).json()
+        assert state["status"] == "active" and not state["canManage"]
+        assert (await client.get(f"{API_PREFIX}/{group.id}/members?pending=true")).status_code == 403
+        app.dependency_overrides[active_subject] = lambda: user_a
+        await client.patch(f"{API_PREFIX}/{group.id}", json={"visibility": "private"})
+        await client.patch(f"{API_PREFIX}/{group.id}/members/{user_b}", json={"action": "remove"})
+        app.dependency_overrides[active_subject] = lambda: user_b
+        assert (await client.get(f"{API_PREFIX}/mine")).json() == []
+        for suffix in ("", "/participation", "/members"):
+            assert (await client.get(f"{API_PREFIX}/{group.id}{suffix}")).status_code == 404
+
+@pytest.mark.anyio
+async def test_new_read_routes_require_session():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+        for path in ("mine", f"{uuid4()}/participation", f"{uuid4()}/members"):
+            assert (await client.get(f"{API_PREFIX}/{path}")).status_code == 401

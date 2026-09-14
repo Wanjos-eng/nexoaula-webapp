@@ -151,3 +151,17 @@ class MembershipResponse(BaseModel):
     requested_at: datetime | None = Field(default=None, serialization_alias="requestedAt")
     joined_at: datetime | None = Field(default=None, serialization_alias="joinedAt")
     resolved_at: datetime | None = Field(default=None, serialization_alias="resolvedAt")
+
+
+class ParticipationResponse(BaseModel):
+    status: str
+    role: str | None = None
+    canManage: bool
+    memberCount: int
+
+
+class ParticipantResponse(BaseModel):
+    userId: UUID
+    displayName: str
+    status: str
+    role: str | None = None

@@ -1,9 +1,4 @@
 import type { Metadata } from "next";
-
-import { ProfilePage } from "@/components/profile/ProfilePage";
-
+import { AcademicProfile } from "@/modules/academic/components/AcademicProfile";
 export const metadata: Metadata = { title: "Meu perfil" };
-
-export default function PerfilPage() {
-  return <ProfilePage />;
-}
+export default function PerfilPage() { return <AcademicProfile />; }

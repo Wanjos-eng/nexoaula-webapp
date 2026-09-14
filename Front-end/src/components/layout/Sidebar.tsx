@@ -17,6 +17,7 @@ import { usePathname } from "next/navigation";
 import type { RefObject } from "react";
 import { useState } from "react";
 
+import { useAuthSession } from "@/modules/auth/components/AuthSessionProvider";
 import styles from "./AppShell.module.css";
 
 type SidebarProps = {
@@ -38,6 +39,8 @@ const navigation = [
 ];
 
 export function Sidebar({ closeButtonRef, isOpen, mode, onClose, onModeChange }: SidebarProps) {
+  const { user } = useAuthSession();
+  const name = user.fullName || "Meu perfil";
   const pathname = usePathname();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPeekOpen, setIsPeekOpen] = useState(false);
@@ -100,9 +103,9 @@ export function Sidebar({ closeButtonRef, isOpen, mode, onClose, onModeChange }:
         <div className={styles.profile}>
           <Link className={styles.profileLink} href="/perfil" onClick={onClose}>
             <div aria-hidden className={styles.avatarFallback}>
-              LA
+              {name.split(" ").slice(0, 2).map(part => part[0]).join("").toUpperCase()}
             </div>
-            <span className={styles.profileName}>Lucas Andrade</span>
+            <span className={styles.profileName}>{name}</span>
           </Link>
           <button aria-controls="sidebar-settings" aria-expanded={isSettingsOpen} aria-label="Abrir configurações da barra lateral" className={styles.iconButton} onClick={() => setIsSettingsOpen((open) => !open)} type="button">
             <GearSix aria-hidden size={21} />

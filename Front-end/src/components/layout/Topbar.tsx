@@ -6,6 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useAuthSession } from "@/modules/auth/components/AuthSessionProvider";
 import styles from "./AppShell.module.css";
 
 type TopbarProps = {
@@ -16,13 +17,14 @@ type TopbarProps = {
 export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
   const [feedback, setFeedback] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { user } = useAuthSession();
   const pathname = usePathname();
   const isHome = pathname === "/inicio";
-  const isStandalonePage = pathname === "/calendario" || pathname === "/disciplinas" || pathname.startsWith("/disciplinas/") || pathname === "/perfil" || pathname === "/progresso" || pathname === "/grupos/novo" || pathname.startsWith("/grupos/comunidade") || pathname.startsWith("/sessoes") || pathname.startsWith("/tutor");
+  const isStandalonePage = pathname.startsWith("/grupos") || pathname === "/calendario" || pathname === "/disciplinas" || pathname.startsWith("/disciplinas/") || pathname === "/perfil" || pathname === "/progresso" || pathname === "/grupos/novo" || pathname.startsWith("/grupos/comunidade") || pathname.startsWith("/sessoes") || pathname.startsWith("/tutor");
   const showUtilityActions = !isStandalonePage;
-  const canCreateGroup = pathname === "/inicio" || pathname === "/grupos";
+  const canCreateGroup = pathname === "/inicio";
   const pageContext = isHome
-    ? { title: "Olá, Lucas", subtitle: "Acompanhe suas disciplinas e próximos encontros" }
+    ? { title: `Olá, ${user.fullName?.split(" ")[0] || "estudante"}`, subtitle: "Acompanhe suas disciplinas e próximos encontros" }
       : pathname.startsWith("/grupos")
         ? { title: "Área de grupos", subtitle: "Comunidade acadêmica e colaboração" }
         : pathname.startsWith("/sessoes")
