@@ -203,3 +203,43 @@ A revisão conjunta com o proprietário foi aceita como conclusão da #7 em 04/0
 Ainda abertas: governança de topics, papéis de publicação/correção, saída/transferência de owner, credenciamento/comissão, retenção/anonimização e efeitos de reembolso simulado sobre avaliações existentes. Implementar só o recorte da issue correspondente.
 
 Referências técnicas: [sintaxe DBML](https://dbml.dbdiagram.io/docs/), [constraints PostgreSQL](https://www.postgresql.org/docs/current/ddl-constraints.html) e [índices por expressão](https://www.postgresql.org/docs/current/indexes-expressional.html).
+
+
+### Recorte físico da issue #38 — monetização simulada
+
+A revision `0007_marketplace_simulation`, após `0006_group_join_requests`,
+materializa somente `tutor_profiles`, `tutor_subjects`, `tutor_sessions`,
+`session_bookings` e `transactions`. A ADR-0004 aprova BRL em centavos inteiros
+não negativos e comissão de 15%, arredondada ao centavo com metade para cima.
+Exemplo: 10 centavos gera comissão demonstrativa de 2 centavos.
+
+O DBML de 45 tabelas permanece o modelo lógico de roadmap. Para as duas sprints
+restantes, o banco físico tem estas especializações deliberadas:
+
+- `simulated=true` obrigatório em ofertas e recibos; moeda limitada a BRL.
+- Estados usam VARCHAR + CHECK, evitando enums compartilhados com módulos futuros.
+  Perfil: active/paused/suspended; oferta: draft/scheduled/completed/cancelled;
+  inscrição: confirmed/cancelled; recibo: somente completed.
+- Não há reserved, presença, no_show, reembolso nem tentativa de pagamento neste
+  incremento. O recibo permanece histórico quando a inscrição é cancelada.
+- `transactions` tem uma reserva obrigatória e única, sem material_id e sem
+  campos financeiros sensíveis. FK composta obriga comprador = aluno da reserva;
+  CHECK obriga comissão exata de 15%. O serviço deve capturar o preço da oferta.
+- FK composta obriga disciplina declarada em tutor_subjects; a declaração é
+  registrada junto com a criação da oferta. Turma opcional deve ser da disciplina.
+- Índice parcial equivale ao índice CASE lógico de inscrição não cancelada.
+  Capacidade positiva é CHECK; lotação agregada, início futuro e transições
+  autorizadas exigem transação com bloqueio da oferta na API (#39/#40).
+- Cancelamento conserva linhas e permite nova tentativa. FKs RESTRICT preservam
+  histórico contra exclusão física de usuário, catálogo, oferta e reserva.
+- Assunto será pesquisado no título/descrição. `session_topics` depende de
+  `subject_topics`, ainda não migrada; ambas ficam fora, assim como materiais,
+  credenciamento, especializações e avaliações. Nenhum bloqueio acadêmico é criado.
+
+Testes: `python -m pytest -q tests/test_marketplace_migration.py` com PostgreSQL
+real descartável. O CI aplica a cadeia desde base, confere `alembic check`,
+reverte até `0006_group_join_requests`, verifica preservação das tabelas anteriores,
+reaplica e repete integridade; depois também testa rollback total e reaplicação.
+O downgrade remove somente as cinco tabelas deste recorte. Em banco compartilhado,
+utilizar migration corretiva incremental; downgrade é teste destrutivo apenas do
+banco descartável, nunca uma rotina de produção.
