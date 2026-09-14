@@ -240,3 +240,14 @@ Front-end/src/lib/marketplace.service.ts  — client HTTP do módulo
 - [Issue #11](https://github.com/Wanjos-eng/nexoaula-webapp/issues/11) — decisão de monetização vigente
 - [ADR-0002](./ADR-0002-authentication.md) — autenticação JWT que protege os endpoints do marketplace
 - [ADR-0003](./ADR-0003-persistence.md) — SQLAlchemy + Alembic para as migrations do #38
+
+
+## Nota de implementação da #38 (14/09/2026)
+
+O [recorte físico documentado](../architecture/data-model.md#recorte-físico-da-issue-38--monetização-simulada)
+especializa o DBML lógico sem antecipar tabelas futuras: cinco tabelas, recibo
+exclusivo de inscrição, BRL/15% e `simulated=true` obrigatórios. Estados de presença,
+reserva pendente e reembolso permanecem roadmap; inscrição usa confirmed/cancelled.
+`session_topics` fica adiada porque `subject_topics` não existe no banco físico.
+A busca por assunto usará título/descrição. Cancelar preserva o recibo completed
+como evidência demonstrativa, sem significar reembolso ou transação real.

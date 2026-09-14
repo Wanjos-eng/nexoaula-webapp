@@ -5,4 +5,6 @@ from app.modules.users.infrastructure import models as users_models  # noqa: F40
 from app.modules.academic import models as academic_models  # noqa: F401,E402
 from app.modules.community import models as community_models  # noqa: F401,E402
 
+from app.modules.marketplace import models as marketplace_models  # noqa: F401,E402
+
 target_metadata = Base.metadata
