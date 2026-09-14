@@ -54,6 +54,7 @@ jobs:
             tests/test_marketplace_migration.py \
             tests/integration/academic \
             tests/integration/community \
+            tests/integration/marketplace \
             tests/unit/users \
             tests/integration/users \
             tests/unit/auth \
@@ -110,6 +111,7 @@ jobs:
             tests/test_marketplace_migration.py \
             tests/integration/academic \
             tests/integration/community \
+            tests/integration/marketplace \
             tests/integration/users \
             tests/integration/auth
 
