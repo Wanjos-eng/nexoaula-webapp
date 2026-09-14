@@ -251,3 +251,14 @@ reserva pendente e reembolso permanecem roadmap; inscrição usa confirmed/cance
 `session_topics` fica adiada porque `subject_topics` não existe no banco físico.
 A busca por assunto usará título/descrição. Cancelar preserva o recibo completed
 como evidência demonstrativa, sem significar reembolso ou transação real.
+
+## Detalhamento operacional da #39 (14/09/2026)
+
+O [contrato implementado](../../Back-end/apps/api/app/modules/marketplace/README.md)
+acrescenta leitura do perfil próprio para a interface detectar ativação opcional.
+Pausa conserva ofertas/inscrições; criar, editar e publicar exigem perfil ativo.
+O responsável pode cancelar compromisso futuro mesmo pausado/suspenso. Cancelar
+uma oferta cancela as inscrições confirmadas e preserva seus recibos demonstrativos.
+Rascunhos são editáveis; ofertas publicadas têm agenda, preço e capacidade imutáveis.
+Cancelamento da oferta, assim como inscrição, exige início futuro. Bloqueios seguem
+perfil → oferta; não há mudanças nas regras aprovadas de BRL, 15% ou núcleo gratuito.
