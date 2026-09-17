@@ -52,7 +52,15 @@ class InstitutionCreate(Input):
     def valid_timezone(cls, value):
         try:
             ZoneInfo(value)
-        except (ZoneInfoNotFoundError, ValueError):
+        except ZoneInfoNotFoundError:
+            import re
+            import zoneinfo
+            if not zoneinfo.available_timezones() and (
+                value == "UTC" or re.match(r"^[A-Za-z_]+(/[A-Za-z_]+)+$", value)
+            ):
+                return value
+            raise ValueError("Informe um fuso horário IANA válido.") from None
+        except ValueError:
             raise ValueError("Informe um fuso horário IANA válido.") from None
         return value
 
