@@ -73,6 +73,31 @@ macOS e Cygwin não são suportados nesta validação; WSL não tem evidência e
 
 ## Como executar o projeto (local)
 
+### Ambiente integrado de demonstração
+
+Para executar frontend, API e PostgreSQL juntos em containers, com migrations,
+ordem de inicialização e health checks:
+
+Windows PowerShell:
+
+```powershell
+.\scripts\demo.ps1 up
+.\scripts\demo.ps1 check
+```
+
+Linux ou Git Bash:
+
+```bash
+bash ./scripts/demo.sh up
+bash ./scripts/demo.sh check
+```
+
+O frontend fica em <http://127.0.0.1:3000>, a API em
+<http://127.0.0.1:8000/health> e o navegador acessa a API pela rota `/api` de
+mesma origem. Para encerrar sem remover o banco, use `down` no script. O
+procedimento completo, portas alternativas, diagnóstico e limpeza descartável
+estão em [docs/environment/integrated-demo.md](docs/environment/integrated-demo.md).
+
 **PostgreSQL**, na raiz do monorepositório e com o Docker em execução:
 
 ```bash
