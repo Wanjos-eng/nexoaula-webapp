@@ -214,3 +214,89 @@ class GroupJoinRequest(Base):
     resolved_by: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolution_note: Mapped[str | None] = mapped_column(Text)
+
+
+class GroupTopic(Base):
+    __tablename__ = "group_topics"
+    __table_args__ = (
+        ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["subject_topic_id"], ["subject_topics.id"], ondelete="RESTRICT"),
+        UniqueConstraint("id", "group_id", name="uq_group_topics_id_group_id"),
+        Index("ix_group_topics_group_id", "group_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    subject_topic_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    custom_title: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class TeachingPlan(Base):
+    __tablename__ = "teaching_plans"
+    __table_args__ = (
+        ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["creator_id"], ["users.id"], ondelete="RESTRICT"),
+        UniqueConstraint("group_id", "version", name="uq_group_teaching_plan_version"),
+        UniqueConstraint("id", "group_id", name="uq_teaching_plans_id_group_id"),
+        Index("ix_teaching_plans_group_id", "group_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    creator_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    source_file_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ScheduledLesson(Base):
+    __tablename__ = "scheduled_lessons"
+    __table_args__ = (
+        ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["plan_id", "group_id"],
+            ["teaching_plans.id", "teaching_plans.group_id"],
+            name="fk_scheduled_lessons_plan_group",
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("id", "group_id", name="uq_scheduled_lessons_id_group_id"),
+        Index("ix_scheduled_lessons_group_id_scheduled_at", "group_id", "scheduled_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    plan_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ScheduledLessonTopic(Base):
+    __tablename__ = "scheduled_lesson_topics"
+    __table_args__ = (
+        ForeignKeyConstraint(["lesson_id"], ["scheduled_lessons.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["group_topic_id"], ["group_topics.id"], ondelete="CASCADE"),
+    )
+
+    lesson_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    group_topic_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
