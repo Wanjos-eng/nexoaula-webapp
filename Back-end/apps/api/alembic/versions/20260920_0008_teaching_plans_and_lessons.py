@@ -21,7 +21,7 @@ def upgrade() -> None:
         'group_topics',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text('gen_random_uuid()')),
         sa.Column('group_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('study_groups.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('subject_topic_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('subject_topics.id', ondelete='RESTRICT'), nullable=True),
+        sa.Column('subject_topic_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('custom_title', sa.String(length=255), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()')),
         sa.UniqueConstraint('id', 'group_id', name='uq_group_topics_id_group_id')

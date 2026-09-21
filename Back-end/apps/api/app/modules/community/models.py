@@ -220,7 +220,6 @@ class GroupTopic(Base):
     __tablename__ = "group_topics"
     __table_args__ = (
         ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="CASCADE"),
-        ForeignKeyConstraint(["subject_topic_id"], ["subject_topics.id"], ondelete="RESTRICT"),
         UniqueConstraint("id", "group_id", name="uq_group_topics_id_group_id"),
         Index("ix_group_topics_group_id", "group_id"),
     )
