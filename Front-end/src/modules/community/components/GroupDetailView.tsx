@@ -8,6 +8,8 @@ import {
   Hash,
   ListBullets,
   PaperPlaneRight,
+  Plus,
+  Trash,
   UserPlus,
   X,
 } from "@phosphor-icons/react/dist/ssr";
@@ -15,6 +17,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { GroupDetailData, GroupMessage } from "@/modules/community/types";
+import {
+  errorMessage,
+  fetchGroupSchedule,
+  publishGroupSchedule,
+  saveGroupScheduleDraft,
+  type ScheduleData,
+  type ScheduleItem,
+} from "@/modules/groups/api";
 
 import { ChannelList } from "./ChannelList";
 import styles from "./GroupDetailView.module.css";
@@ -51,16 +61,52 @@ export function GroupDetailView({
     "participants" | "manage" | "meetings" | "plan" | null
   >(null);
 
+  /* Estados para a integração do Cronograma/Plano */
+  const [scheduleData, setScheduleData] = useState<ScheduleData | null>(null);
+  const [scheduleState, setScheduleState] = useState<"idle" | "loading" | "error">("idle");
+  const [scheduleFeedback, setScheduleFeedback] = useState("");
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
+  const [newItemTitle, setNewItemTitle] = useState("");
+  const [newItemDate, setNewItemDate] = useState("");
+  const [newItemDesc, setNewItemDesc] = useState("");
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+
   const modalRef = useRef<HTMLElement>(null);
+
+  // Efeito para carregar o cronograma real do backend ao abrir o painel de plano
+  useEffect(() => {
+    if (activePanel !== "plan" || !group?.id) return;
+
+    const controller = new AbortController();
+    setScheduleState("loading");
+    setScheduleFeedback("");
+
+    fetchGroupSchedule(group.id, controller.signal)
+      .then((data) => {
+        setScheduleData(data);
+        setScheduleItems(data.items || []);
+        setScheduleState("idle");
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setScheduleState("error");
+        setScheduleFeedback(errorMessage(err));
+      });
+
+    return () => controller.abort();
+  }, [activePanel, group?.id]);
 
   // Keep keyboard navigation inside the modal and restore the trigger.
   useEffect(() => {
     if (!activePanel) return;
     const trigger = document.activeElement as HTMLElement | null;
     const modal = modalRef.current;
-    const focusable = () => Array.from(modal?.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), a[href], input:not(:disabled), [tabindex="0"]',
-    ) ?? []);
+    const focusable = () =>
+      Array.from(
+        modal?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), a[href], input:not(:disabled), [tabindex="0"]',
+        ) ?? [],
+      );
     focusable()[0]?.focus();
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setActivePanel(null);
@@ -69,9 +115,11 @@ export function GroupDetailView({
         const first = items[0];
         const last = items.at(-1);
         if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault(); last?.focus();
+          event.preventDefault();
+          last?.focus();
         } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault(); first?.focus();
+          event.preventDefault();
+          first?.focus();
         }
       }
     }
@@ -82,13 +130,18 @@ export function GroupDetailView({
     };
   }, [activePanel]);
 
-  if (state !== "ready") return <div className={styles.page}>
-    <p>Prévia demonstrativa, sem persistência.</p>
-    <p role={state === "error" ? "alert" : "status"}>
-      {state === "loading" ? "Carregando grupo…" : "Não foi possível carregar o grupo nesta simulação."}
-    </p>
-    <Link href={group ? `/grupos/${group.id}` : "/grupos"}>Voltar à prévia</Link>
-  </div>;
+  if (state !== "ready")
+    return (
+      <div className={styles.page}>
+        <p>Prévia demonstrativa, sem persistência.</p>
+        <p role={state === "error" ? "alert" : "status"}>
+          {state === "loading"
+            ? "Carregando grupo…"
+            : "Não foi possível carregar o grupo nesta simulação."}
+        </p>
+        <Link href={group ? `/grupos/${group.id}` : "/grupos"}>Voltar à prévia</Link>
+      </div>
+    );
 
   if (!group) {
     return (
@@ -111,6 +164,7 @@ export function GroupDetailView({
 
   const activeChannel = group.channels.find((c) => c.id === activeTopic);
   const messagesForChannel = group.isMember ? localMessages[activeTopic] || [] : [];
+  const isOrganizer = group.isMember && group.role === "Organizador";
 
   function handleSendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -147,9 +201,63 @@ export function GroupDetailView({
     );
   }
 
+  /* Funções para manipulação e persistência do Cronograma */
+  function handleAddScheduleItem() {
+    if (!newItemTitle.trim()) return;
+    const newItem: ScheduleItem = {
+      title: newItemTitle.trim(),
+      date: newItemDate.trim() || null,
+      description: newItemDesc.trim() || null,
+      order: scheduleItems.length + 1,
+    };
+    setScheduleItems((prev) => [...prev, newItem]);
+    setNewItemTitle("");
+    setNewItemDate("");
+    setNewItemDesc("");
+  }
+
+  function handleRemoveScheduleItem(index: number) {
+    setScheduleItems((prev) =>
+      prev.filter((_, i) => i !== index).map((item, idx) => ({ ...item, order: idx + 1 })),
+    );
+  }
+
+  async function handleSaveDraft() {
+    if (!group?.id) return;
+    setIsSavingSchedule(true);
+    setScheduleFeedback("");
+    try {
+      const updated = await saveGroupScheduleDraft(group.id, scheduleItems);
+      setScheduleData(updated);
+      setScheduleFeedback("Rascunho do cronograma salvo com sucesso!");
+    } catch (err) {
+      setScheduleFeedback(errorMessage(err));
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  }
+
+  async function handlePublishSchedule() {
+    if (!group?.id) return;
+    setIsSavingSchedule(true);
+    setScheduleFeedback("");
+    try {
+      await saveGroupScheduleDraft(group.id, scheduleItems);
+      const published = await publishGroupSchedule(group.id);
+      setScheduleData(published);
+      setScheduleFeedback("Cronograma publicado com sucesso!");
+    } catch (err) {
+      setScheduleFeedback(errorMessage(err));
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  }
+
   return (
     <div className={styles.page}>
-      <p className={styles.feedback}>Prévia demonstrativa: mensagens, encontros e ações não são persistidos.</p>
+      <p className={styles.feedback}>
+        Prévia demonstrativa: mensagens, encontros e ações não são persistidos.
+      </p>
       {/* Mobile Header */}
       <header className={styles.mobileHeader}>
         <Link aria-label="Voltar aos grupos" className={styles.mobileBack} href="/grupos">
@@ -171,21 +279,27 @@ export function GroupDetailView({
             </span>
           </div>
         </div>
-        {group.isMember && group.role === "Organizador" ? <button
-          aria-label="Gerenciar grupo"
-          className={styles.mobileManage}
-          onClick={() => setActivePanel("manage")}
-          type="button"
-        >
-          <GearSix aria-hidden size={20} />
-        </button> : null}
+        {isOrganizer ? (
+          <button
+            aria-label="Gerenciar grupo"
+            className={styles.mobileManage}
+            onClick={() => setActivePanel("manage")}
+            type="button"
+          >
+            <GearSix aria-hidden size={20} />
+          </button>
+        ) : null}
       </header>
 
       <div className={styles.mobileContext}>
-        <p>{group.discipline} · {group.classGroup} · {group.period}</p>
-        {!group.isMember ? <button type="button" className={styles.primaryButton} onClick={handleJoinClick}>
-          {group.entryMode === "approval" ? "Solicitar entrada" : "Entrar no grupo"}
-        </button> : null}
+        <p>
+          {group.discipline} · {group.classGroup} · {group.period}
+        </p>
+        {!group.isMember ? (
+          <button type="button" className={styles.primaryButton} onClick={handleJoinClick}>
+            {group.entryMode === "approval" ? "Solicitar entrada" : "Entrar no grupo"}
+          </button>
+        ) : null}
         {joinFeedback ? <p role="status">{joinFeedback}</p> : null}
       </div>
       {/* Desktop Header & Hero */}
@@ -219,10 +333,7 @@ export function GroupDetailView({
         />
 
         {/* Center Column: Thread / Chat Panel */}
-        <section
-          aria-labelledby="thread-title"
-          className={styles.chatPanel}
-        >
+        <section aria-labelledby="thread-title" className={styles.chatPanel}>
           <header className={styles.chatHeader}>
             <div>
               <p className={styles.threadLabel}>
@@ -290,7 +401,11 @@ export function GroupDetailView({
               placeholder={`Escreva em #${activeTopic}...`}
               value={messageText}
             />
-            <button aria-label="Enviar mensagem" disabled={!group.isMember || group.channels.length === 0} type="submit">
+            <button
+              aria-label="Enviar mensagem"
+              disabled={!group.isMember || group.channels.length === 0}
+              type="submit"
+            >
               <PaperPlaneRight aria-hidden size={19} />
             </button>
           </form>
@@ -311,13 +426,17 @@ export function GroupDetailView({
 
           <section className={styles.sideCard} id="plano">
             <h3>Plano e cronograma</h3>
-            {!group.isMember ? <p>Entre no grupo para acessar o plano e cronograma.</p> : group.hasPublishedPlan ? (
+            {!group.isMember ? (
+              <p>Entre no grupo para acessar o plano e cronograma.</p>
+            ) : group.hasPublishedPlan || scheduleData?.isPublished ? (
               <div className={styles.planStatus}>
                 <Check aria-hidden size={17} weight="bold" />
                 <div>
                   <strong>Plano publicado</strong>
                   <span>
-                    {group.planPublishedDate
+                    {scheduleData?.publishedAt
+                      ? `Publicado em ${new Date(scheduleData.publishedAt).toLocaleDateString("pt-BR")}`
+                      : group.planPublishedDate
                       ? `Enviado pelo organizador em ${group.planPublishedDate}`
                       : "Plano de estudo ativo"}
                   </span>
@@ -453,11 +572,11 @@ export function GroupDetailView({
                   </span>
                   <ArrowLeft aria-hidden className={styles.rotate} size={16} />
                 </button>
-                <button type="button" disabled>
+                <button type="button" onClick={() => setActivePanel("plan")}>
                   <ListBullets aria-hidden size={18} />
                   <span>
                     <strong>Plano e cronograma</strong>
-                    <small>Publique a próxima etapa do grupo</small>
+                    <small>Publique ou atualize a próxima etapa do grupo</small>
                   </span>
                   <ArrowLeft aria-hidden className={styles.rotate} size={16} />
                 </button>
@@ -480,15 +599,141 @@ export function GroupDetailView({
                 )}
               </div>
             ) : (
+              /* Painel de Cronograma Integrado à API */
               <div className={styles.participantList}>
                 <p className={styles.modalIntro}>
                   Plano e cronograma pedagógico do grupo de estudos.
                 </p>
-                <p className={styles.emptyText}>
-                  {group.hasPublishedPlan
-                    ? `Plano ativo publicado em ${group.planPublishedDate || "data recente"}.`
-                    : "Plano de estudos pendente de publicação pelo organizador."}
-                </p>
+
+                {scheduleState === "loading" ? (
+                  <p className={styles.emptyText}>Carregando cronograma...</p>
+                ) : scheduleState === "error" ? (
+                  <p className={styles.feedback} role="alert">
+                    {scheduleFeedback || "Não foi possível carregar o cronograma."}
+                  </p>
+                ) : (
+                  <>
+                    {scheduleFeedback ? (
+                      <p className={styles.feedback} role="status">
+                        {scheduleFeedback}
+                      </p>
+                    ) : null}
+
+                    {/* Exibição para Organizador (Edição e Rascunho) */}
+                    {isOrganizer ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        <p className={styles.modalHint}>
+                          Como organizador, monte os tópicos/aulas do cronograma e publique para os membros.
+                        </p>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                          <input
+                            placeholder="Título do tópico/aula (ex: Aula 1 - Introdução)"
+                            value={newItemTitle}
+                            onChange={(e) => setNewItemTitle(e.target.value)}
+                          />
+                          <input
+                            placeholder="Data prevista (ex: 2026-10-05) - opcional"
+                            value={newItemDate}
+                            onChange={(e) => setNewItemDate(e.target.value)}
+                          />
+                          <textarea
+                            placeholder="Descrição ou objetivos do tópico (opcional)"
+                            value={newItemDesc}
+                            onChange={(e) => setNewItemDesc(e.target.value)}
+                            rows={2}
+                          />
+                          <button
+                            type="button"
+                            className={styles.detailsButton}
+                            onClick={handleAddScheduleItem}
+                            disabled={!newItemTitle.trim()}
+                            style={{ alignSelf: "flex-start" }}
+                          >
+                            <Plus aria-hidden size={16} /> Adicionar ao cronograma
+                          </button>
+                        </div>
+
+                        {/* Listagem de itens em edição */}
+                        {scheduleItems.length === 0 ? (
+                          <p className={styles.emptyText}>Nenhum tópico adicionado ao cronograma ainda.</p>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.5rem" }}>
+                            {scheduleItems.map((item, index) => (
+                              <div
+                                key={index}
+                                className={styles.participantRow}
+                                style={{ alignItems: "flex-start", justifyContent: "space-between" }}
+                              >
+                                <div>
+                                  <strong>
+                                    #{item.order} {item.title}
+                                  </strong>
+                                  {item.date ? <small> Data: {item.date}</small> : null}
+                                  {item.description ? <p style={{ fontSize: "0.85rem", marginTop: "0.2rem" }}>{item.description}</p> : null}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveScheduleItem(index)}
+                                  aria-label="Remover item"
+                                  style={{ color: "var(--color-danger, #e53e3e)", background: "transparent", border: "none", cursor: "pointer" }}
+                                >
+                                  <Trash size={16} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+                          <button
+                            type="button"
+                            onClick={handleSaveDraft}
+                            disabled={isSavingSchedule}
+                            className={styles.detailsButton}
+                          >
+                            {isSavingSchedule ? "Salvando..." : "Salvar Rascunho"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handlePublishSchedule}
+                            disabled={isSavingSchedule || scheduleItems.length === 0}
+                            className={styles.primaryButton}
+                          >
+                            {isSavingSchedule ? "Publicando..." : "Publicar Cronograma"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Exibição para Membros (Somente Leitura) */
+                      <div>
+                        {scheduleData?.isPublished && scheduleItems.length > 0 ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                            {scheduleItems.map((item, index) => (
+                              <div key={index} className={styles.sideCard}>
+                                <h4>
+                                  #{item.order} {item.title}
+                                </h4>
+                                {item.date ? (
+                                  <p style={{ fontSize: "0.85rem", color: "var(--color-text-muted)" }}>
+                                    <CalendarBlank aria-hidden size={14} /> {item.date}
+                                  </p>
+                                ) : null}
+                                {item.description ? <p style={{ marginTop: "0.4rem" }}>{item.description}</p> : null}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className={styles.emptyText}>
+                            {group.hasPublishedPlan
+                              ? `Plano ativo publicado em ${group.planPublishedDate || "data recente"}.`
+                              : "Plano de estudos pendente de publicação pelo organizador."}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </section>

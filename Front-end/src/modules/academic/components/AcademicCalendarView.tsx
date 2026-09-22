@@ -33,8 +33,8 @@ function parseDateKey(key: string): Date {
 }
 
 export function AcademicCalendarView({ state = "ready" }: { state?: AcademicViewState }) {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date(2026, 7, 31));
-  const [month, setMonth] = useState<Date>(new Date(2026, 7, 1));
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [month, setMonth] = useState<Date>(() => new Date());
 
   const eventsByDate = useMemo(() => {
     const map: Record<string, AcademicCalendarEvent[]> = {};
@@ -61,12 +61,17 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
     year: "numeric",
   }).format(month);
 
+  const todayLabel = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date());
+
   function moveMonth(offset: number) {
     setMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
   }
 
   function goToToday() {
-    const today = new Date(2026, 7, 31); // Anchor mock today
+    const today = new Date();
     setMonth(new Date(today.getFullYear(), today.getMonth(), 1));
     setSelectedDate(today);
   }
@@ -74,14 +79,13 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
   if (state === "loading" || state === "error") return <AcademicPreviewState state={state} />;
   return (
     <div className={styles.page}>
-      <p>Prévia demonstrativa: agenda fictícia de 31/08/2026, sem persistência.</p>
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>Agenda acadêmica</p>
           <h2>Calendário</h2>
           <p>Aulas, encontros de comunidades e entregas em uma visão integrada.</p>
         </div>
-        <Link className={styles.primaryButton} href="/grupos/comunidade-msd-c8">
+        <Link className={styles.primaryButton} href="/grupos">
           Ver encontros de comunidades
         </Link>
       </header>
@@ -90,7 +94,7 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
       <section aria-label="Controles do calendário" className={styles.calendarToolbar}>
         <div className={styles.calendarToolbarGroup}>
           <button className={styles.outlineButton} onClick={goToToday} type="button">
-            Hoje (31/08, demonstração)
+            Hoje ({todayLabel})
           </button>
           <div className={styles.calendarNav}>
             <button
@@ -208,13 +212,17 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
                           ? " (Adiada)"
                           : event.occurrenceStatus === "held"
                           ? " (Realizada)"
-                          : event.occurrenceStatus === "cancelled" ? " (Cancelada)" : ""}
+                          : event.occurrenceStatus === "cancelled"
+                          ? " (Cancelada)"
+                          : ""}
                       </span>
                       <h4>{event.title}</h4>
                       <p>
                         <Clock aria-hidden size={15} /> {event.time}
                       </p>
-                      <small>{event.context} · {event.groupName}</small>
+                      <small>
+                        {event.context} · {event.groupName}
+                      </small>
                     </div>
                   </article>
                 ))}

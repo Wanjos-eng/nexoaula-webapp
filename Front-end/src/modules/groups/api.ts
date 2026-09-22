@@ -95,3 +95,49 @@ export function errorMessage(error: unknown): string {
   }
   return "Não foi possível concluir. Confira sua conexão e tente novamente.";
 }
+
+/* ==========================================================================
+   Cronograma do Grupo (Task #113 / #112)
+   ========================================================================== */
+
+export type ScheduleItem = {
+  id?: string;
+  title: string;
+  description?: string | null;
+  date?: string | null;
+  order: number;
+};
+
+export type ScheduleData = {
+  version: number;
+  isPublished: boolean;
+  publishedAt?: string | null;
+  items: ScheduleItem[];
+};
+
+export async function fetchGroupSchedule(
+  groupId: string,
+  signal?: AbortSignal,
+): Promise<ScheduleData> {
+  return read<ScheduleData>(`groups/${groupId}/schedule`, signal);
+}
+
+export async function saveGroupScheduleDraft(
+  groupId: string,
+  items: ScheduleItem[],
+): Promise<ScheduleData> {
+  return (
+    await apiClient.put<ScheduleData>(
+      `/v1/groups/${groupId}/schedule/draft`,
+      { items } as any,
+    )
+  ).data;
+}
+
+export async function publishGroupSchedule(
+  groupId: string,
+): Promise<ScheduleData> {
+  return (
+    await apiClient.post<ScheduleData>(`/v1/groups/${groupId}/schedule/publish`, {})
+  ).data;
+}
