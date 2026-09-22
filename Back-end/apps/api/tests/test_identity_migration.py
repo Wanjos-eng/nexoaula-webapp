@@ -42,6 +42,8 @@ def test_only_released_tables_exist(database_engine):
         "institutions",
         "study_groups",
         "courses",
+        "topics",
+        "subject_topics",
         "group_topics",
         "teaching_plans",
         "scheduled_lessons",

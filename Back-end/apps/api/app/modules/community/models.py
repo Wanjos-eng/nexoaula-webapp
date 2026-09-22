@@ -216,12 +216,43 @@ class GroupJoinRequest(Base):
     resolution_note: Mapped[str | None] = mapped_column(Text)
 
 
+class Topic(Base):
+    __tablename__ = "topics"
+    __table_args__ = (Index("ix_topics_lower_name", func.lower(text("name"))),)
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    slug: Mapped[str] = mapped_column(String(180), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SubjectTopic(Base):
+    __tablename__ = "subject_topics"
+    __table_args__ = (
+        ForeignKeyConstraint(["subject_id"], ["subjects.id"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["topic_id"], ["topics.id"], ondelete="RESTRICT"),
+        UniqueConstraint("subject_id", "topic_id"),
+        UniqueConstraint("id", "subject_id"),
+        CheckConstraint("display_order IS NULL OR display_order > 0", name="chk_subject_topics_display_order"),
+        Index("ix_subject_topics_topic_id", "topic_id"),
+    )
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    subject_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    topic_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    display_order: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class GroupTopic(Base):
     __tablename__ = "group_topics"
     __table_args__ = (
         ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="CASCADE"),
         UniqueConstraint("id", "group_id", name="uq_group_topics_id_group_id"),
         Index("ix_group_topics_group_id", "group_id"),
+        ForeignKeyConstraint(["group_id", "subject_id"], ["study_groups.id", "study_groups.subject_id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["subject_topic_id", "subject_id"], ["subject_topics.id", "subject_topics.subject_id"], ondelete="RESTRICT"),
+        UniqueConstraint("group_id", "subject_topic_id"),
+        CheckConstraint("(subject_topic_id IS NOT NULL AND custom_title IS NULL) OR (subject_topic_id IS NULL AND custom_title IS NOT NULL AND length(trim(custom_title)) > 0)", name="chk_group_topics_source"),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -230,6 +261,7 @@ class GroupTopic(Base):
         server_default=text("gen_random_uuid()"),
     )
     group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    subject_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
     subject_topic_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
     custom_title: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(
@@ -245,6 +277,12 @@ class TeachingPlan(Base):
         UniqueConstraint("group_id", "version", name="uq_group_teaching_plan_version"),
         UniqueConstraint("id", "group_id", name="uq_teaching_plans_id_group_id"),
         Index("ix_teaching_plans_group_id", "group_id"),
+        ForeignKeyConstraint(["published_by"], ["users.id"], ondelete="RESTRICT"),
+        CheckConstraint("version > 0", name="chk_teaching_plans_positive_version"),
+        CheckConstraint("status IN ('draft', 'published', 'archived')", name="chk_teaching_plans_status"),
+        CheckConstraint("status = 'draft' OR (published_by IS NOT NULL AND published_at IS NOT NULL)", name="chk_teaching_plans_publication_data"),
+        CheckConstraint("source_file_id IS NULL", name="chk_teaching_plans_manual_source"),
+        Index("uq_teaching_plans_current_published", "group_id", unique=True, postgresql_where=text("status = 'published'")),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -255,6 +293,9 @@ class TeachingPlan(Base):
     group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     creator_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default=text("'draft'"))
+    published_by: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     source_file_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -293,9 +334,10 @@ class ScheduledLesson(Base):
 class ScheduledLessonTopic(Base):
     __tablename__ = "scheduled_lesson_topics"
     __table_args__ = (
-        ForeignKeyConstraint(["lesson_id"], ["scheduled_lessons.id"], ondelete="CASCADE"),
-        ForeignKeyConstraint(["group_topic_id"], ["group_topics.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["lesson_id", "group_id"], ["scheduled_lessons.id", "scheduled_lessons.group_id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["group_topic_id", "group_id"], ["group_topics.id", "group_topics.group_id"], ondelete="CASCADE"),
     )
 
+    group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
     lesson_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
     group_topic_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
