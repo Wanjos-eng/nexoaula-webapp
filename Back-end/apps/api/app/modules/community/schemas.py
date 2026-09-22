@@ -165,3 +165,89 @@ class ParticipantResponse(BaseModel):
     displayName: str
     status: str
     role: str | None = None
+
+
+# --- TASK #112: Schemas para Tópicos, Plano de Aulas e Cronograma ---
+
+
+class GroupTopicCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    subject_topic_id: UUID | None = Field(default=None, alias="subjectTopicId")
+    custom_title: str | None = Field(default=None, max_length=255, alias="customTitle")
+
+    @field_validator("custom_title")
+    @classmethod
+    def normalize_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class GroupTopicResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True, from_attributes=True)
+
+    id: UUID
+    group_id: UUID = Field(serialization_alias="groupId")
+    subject_topic_id: UUID | None = Field(default=None, serialization_alias="subjectTopicId")
+    custom_title: str | None = Field(default=None, serialization_alias="customTitle")
+    created_at: datetime = Field(serialization_alias="createdAt")
+
+
+class ScheduledLessonCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = Field(default=None)
+    scheduled_at: datetime = Field(alias="scheduledAt")
+    topic_ids: list[UUID] = Field(default_factory=list, alias="topicIds")
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("O título não pode ser vazio.")
+        return normalized
+
+
+class ScheduledLessonUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = Field(default=None)
+    scheduled_at: datetime | None = Field(default=None, alias="scheduledAt")
+    topic_ids: list[UUID] | None = Field(default=None, alias="topicIds")
+
+
+class ScheduledLessonResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True, from_attributes=True)
+
+    id: UUID
+    group_id: UUID = Field(serialization_alias="groupId")
+    plan_id: UUID = Field(serialization_alias="planId")
+    title: str
+    description: str | None = None
+    scheduled_at: datetime = Field(serialization_alias="scheduledAt")
+    created_at: datetime = Field(serialization_alias="createdAt")
+    topic_ids: list[UUID] = Field(default_factory=list, serialization_alias="topicIds")
+
+
+class TeachingPlanCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    source_file_id: UUID | None = Field(default=None, alias="sourceFileId")
+    lessons: list[ScheduledLessonCreate] = Field(default_factory=list)
+
+
+class TeachingPlanResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True, from_attributes=True)
+
+    id: UUID
+    group_id: UUID = Field(serialization_alias="groupId")
+    version: int
+    creator_id: UUID = Field(serialization_alias="creatorId")
+    source_file_id: UUID | None = Field(default=None, serialization_alias="sourceFileId")
+    created_at: datetime = Field(serialization_alias="createdAt")
+    lessons: list[ScheduledLessonResponse] = Field(default_factory=list)

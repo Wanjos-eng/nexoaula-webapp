@@ -10,16 +10,18 @@ from app.modules.community.models import (
     JoinRequestStatus,
     MembershipRole,
     MembershipStatus,
+    ScheduledLesson,
     StudyGroup,
+    TeachingPlan,
 )
 from app.modules.community.repository import CommunityUnitOfWork, GroupDiscoveryRecord
 from app.modules.community.schemas import (
-    ParticipationResponse,
-    ParticipantResponse,
     GroupCreate,
     GroupDiscoveryResponse,
     GroupResponse,
     GroupStatus,
+    GroupTopicCreate,
+    GroupTopicResponse,
     GroupUpdate,
     GroupVisibility,
     JoinPolicy,
@@ -27,6 +29,13 @@ from app.modules.community.schemas import (
     MembershipActionType,
     MembershipResponse,
     MembershipResultStatus,
+    ParticipantResponse,
+    ParticipationResponse,
+    ScheduledLessonCreate,
+    ScheduledLessonResponse,
+    ScheduledLessonUpdate,
+    TeachingPlanCreate,
+    TeachingPlanResponse,
 )
 
 CommunityUnitOfWorkFactory = Callable[[], CommunityUnitOfWork]
@@ -92,7 +101,7 @@ class CommunityService:
             return self._to_response(group, owner_id=owner_id)
 
     def update_group(self, group_id: UUID, data: GroupUpdate,
-                     user_id: UUID) -> GroupResponse:
+                      user_id: UUID) -> GroupResponse:
         updates = data.model_dump(exclude_unset=True)
         with self._uow_factory() as uow:
             group = uow.community.find_by_id(group_id)
@@ -180,6 +189,154 @@ class CommunityService:
             uow.commit()
             return self._member_response(member, MembershipResultStatus.REMOVED)
 
+    # --- TASK #112: Métodos de Regras de Negócio para Tópicos, Plano de Aulas e Cronograma ---
+
+    def create_topic(self, group_id: UUID, user_id: UUID, data: GroupTopicCreate) -> GroupTopicResponse:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem gerenciar tópicos.", 403)
+            topic = uow.community.create_group_topic(group_id, data)
+            uow.commit()
+            return GroupTopicResponse.model_validate(topic)
+
+    def list_topics(self, group_id: UUID, user_id: UUID) -> list[GroupTopicResponse]:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_member(group_id, user_id):
+                raise CommunityError("Apenas membros do grupo podem ver os tópicos.", 403)
+            topics = uow.community.list_group_topics(group_id)
+            return [GroupTopicResponse.model_validate(t) for t in topics]
+
+    def create_teaching_plan(self, group_id: UUID, user_id: UUID, data: TeachingPlanCreate) -> TeachingPlanResponse:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem cadastrar o plano de aulas.", 403)
+            plan = uow.community.create_teaching_plan(group_id, creator_id=user_id, data=data)
+            uow.commit()
+            return self._to_teaching_plan_response(uow, plan)
+
+    def get_latest_teaching_plan(self, group_id: UUID, user_id: UUID) -> TeachingPlanResponse | None:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_member(group_id, user_id):
+                raise CommunityError("Apenas membros podem visualizar o plano de aulas.", 403)
+            plan = uow.community.find_latest_teaching_plan(group_id)
+            if plan is None:
+                return None
+            return self._to_teaching_plan_response(uow, plan)
+
+    def create_lesson(self, group_id: UUID, user_id: UUID, data: ScheduledLessonCreate) -> ScheduledLessonResponse:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem agendar aulas.", 403)
+            
+            plan = uow.community.find_latest_teaching_plan(group_id)
+            if plan is None:
+                raise CommunityError("É necessário criar um plano de aulas antes de agendar uma aula.", 400)
+
+            lesson = uow.community.create_scheduled_lesson(group_id, plan.id, data)
+            uow.commit()
+            return ScheduledLessonResponse(
+                id=lesson.id,
+                groupId=lesson.group_id,
+                planId=lesson.plan_id,
+                title=lesson.title,
+                description=lesson.description,
+                scheduledAt=lesson.scheduled_at,
+                createdAt=lesson.created_at,
+                topicIds=data.topic_ids,
+            )
+
+    def list_lessons(self, group_id: UUID, user_id: UUID, plan_id: UUID | None = None) -> list[ScheduledLessonResponse]:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_member(group_id, user_id):
+                raise CommunityError("Apenas membros do grupo podem ver as aulas agendadas.", 403)
+            lessons_data = uow.community.list_scheduled_lessons(group_id, plan_id)
+            return [
+                ScheduledLessonResponse(
+                    id=lesson.id,
+                    groupId=lesson.group_id,
+                    planId=lesson.plan_id,
+                    title=lesson.title,
+                    description=lesson.description,
+                    scheduledAt=lesson.scheduled_at,
+                    createdAt=lesson.created_at,
+                    topicIds=topic_ids,
+                )
+                for lesson, topic_ids in lessons_data
+            ]
+
+    def update_lesson(
+        self, group_id: UUID, lesson_id: UUID, user_id: UUID, data: ScheduledLessonUpdate
+    ) -> ScheduledLessonResponse:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem editar aulas.", 403)
+
+            lesson = uow.community.find_scheduled_lesson_by_id(lesson_id)
+            if lesson is None or lesson.group_id != group_id:
+                raise CommunityError("Aula não encontrada.", 404)
+
+            lesson = uow.community.update_scheduled_lesson(lesson, data)
+            uow.commit()
+
+            lessons_data = uow.community.list_scheduled_lessons(group_id, lesson.plan_id)
+            topic_ids = next((t_ids for l, t_ids in lessons_data if l.id == lesson_id), [])
+
+            return ScheduledLessonResponse(
+                id=lesson.id,
+                groupId=lesson.group_id,
+                planId=lesson.plan_id,
+                title=lesson.title,
+                description=lesson.description,
+                scheduledAt=lesson.scheduled_at,
+                createdAt=lesson.created_at,
+                topicIds=topic_ids,
+            )
+
+    def delete_lesson(self, group_id: UUID, lesson_id: UUID, user_id: UUID) -> None:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem remover aulas.", 403)
+
+            lesson = uow.community.find_scheduled_lesson_by_id(lesson_id)
+            if lesson is None or lesson.group_id != group_id:
+                raise CommunityError("Aula não encontrada.", 404)
+
+            uow.community.delete_scheduled_lesson(lesson)
+            uow.commit()
+
+    def _to_teaching_plan_response(self, uow: CommunityUnitOfWork, plan: TeachingPlan) -> TeachingPlanResponse:
+        lessons_data = uow.community.list_scheduled_lessons(plan.group_id, plan.id)
+        lessons_responses = [
+            ScheduledLessonResponse(
+                id=lesson.id,
+                groupId=lesson.group_id,
+                planId=lesson.plan_id,
+                title=lesson.title,
+                description=lesson.description,
+                scheduledAt=lesson.scheduled_at,
+                createdAt=lesson.created_at,
+                topicIds=topic_ids,
+            )
+            for lesson, topic_ids in lessons_data
+        ]
+        return TeachingPlanResponse(
+            id=plan.id,
+            groupId=plan.group_id,
+            version=plan.version,
+            creatorId=plan.creator_id,
+            sourceFileId=plan.source_file_id,
+            createdAt=plan.created_at,
+            lessons=lessons_responses,
+        )
+
     @staticmethod
     def _ensure_capacity(repository, group: StudyGroup) -> None:
         if group.capacity is not None and repository.count_active_members(group.id) >= group.capacity:
@@ -208,6 +365,6 @@ class CommunityService:
 
     @staticmethod
     def _member_response(member: GroupMember,
-                         status: MembershipResultStatus) -> MembershipResponse:
+                          status: MembershipResultStatus) -> MembershipResponse:
         return MembershipResponse(group_id=member.group_id, user_id=member.user_id,
                                   status=status, joined_at=member.joined_at)

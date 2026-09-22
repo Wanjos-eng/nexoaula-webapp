@@ -14,14 +14,24 @@ from app.modules.community.models import (
     GroupJoinRequest,
     GroupMember,
     GroupStatus,
+    GroupTopic,
     GroupVisibility,
     JoinRequestStatus,
     MembershipRole,
     MembershipStatus,
+    ScheduledLesson,
+    ScheduledLessonTopic,
     StudyGroup,
+    TeachingPlan,
 )
-from app.modules.community.schemas import GroupCreate
-from app.modules.community.schemas import ParticipantResponse
+from app.modules.community.schemas import (
+    GroupCreate,
+    GroupTopicCreate,
+    ParticipantResponse,
+    ScheduledLessonCreate,
+    ScheduledLessonUpdate,
+    TeachingPlanCreate,
+)
 from app.modules.users.infrastructure.models import UserProfile
 
 
@@ -57,14 +67,26 @@ class CommunityRepository(Protocol):
     def check_offering_belongs_to_discipline(self, offering_id: UUID,
                                              discipline_id: UUID) -> bool: ...
 
+    # --- TASK #112: Tópicos, Plano de Aulas e Cronograma ---
+    def create_group_topic(self, group_id: UUID, data: GroupTopicCreate) -> GroupTopic: ...
+    def list_group_topics(self, group_id: UUID) -> list[GroupTopic]: ...
+    def create_teaching_plan(self, group_id: UUID, creator_id: UUID, data: TeachingPlanCreate) -> TeachingPlan: ...
+    def find_latest_teaching_plan(self, group_id: UUID) -> TeachingPlan | None: ...
+    def find_teaching_plan_by_id(self, plan_id: UUID) -> TeachingPlan | None: ...
+    def create_scheduled_lesson(self, group_id: UUID, plan_id: UUID, data: ScheduledLessonCreate) -> ScheduledLesson: ...
+    def list_scheduled_lessons(self, group_id: UUID, plan_id: UUID | None = None) -> list[tuple[ScheduledLesson, list[UUID]]]: ...
+    def find_scheduled_lesson_by_id(self, lesson_id: UUID) -> ScheduledLesson | None: ...
+    def update_scheduled_lesson(self, lesson: ScheduledLesson, data: ScheduledLessonUpdate) -> ScheduledLesson: ...
+    def delete_scheduled_lesson(self, lesson: ScheduledLesson) -> None: ...
+
 
 class CommunityUnitOfWork(Protocol):
     community: CommunityRepository
 
     def __enter__(self) -> Self: ...
     def __exit__(self, exc_type: type[BaseException] | None,
-                 exc_value: BaseException | None,
-                 traceback: TracebackType | None) -> None: ...
+                  exc_value: BaseException | None,
+                  traceback: TracebackType | None) -> None: ...
     def commit(self) -> None: ...
     def rollback(self) -> None: ...
 
@@ -204,7 +226,7 @@ class SqlAlchemyCommunityRepository:
         member = self.find_member(group_id, user_id)
         if member is None:
             member = GroupMember(group_id=group_id, user_id=user_id,
-                                 role=MembershipRole.MEMBER.value)
+                                   role=MembershipRole.MEMBER.value)
             self._session.add(member)
         member.status = MembershipStatus.ACTIVE.value
         member.joined_at = now
@@ -245,6 +267,127 @@ class SqlAlchemyCommunityRepository:
         section = self._session.get(ClassSection, offering_id)
         return section is not None and section.subject_id == discipline_id
 
+    # --- TASK #112: Implementação de Tópicos, Plano de Aulas e Cronograma ---
+
+    def create_group_topic(self, group_id: UUID, data: GroupTopicCreate) -> GroupTopic:
+        topic = GroupTopic(
+            id=uuid4(),
+            group_id=group_id,
+            subject_topic_id=data.subject_topic_id,
+            custom_title=data.custom_title,
+            created_at=datetime.now(UTC),
+        )
+        self._session.add(topic)
+        self._session.flush()
+        return topic
+
+    def list_group_topics(self, group_id: UUID) -> list[GroupTopic]:
+        stmt = select(GroupTopic).where(GroupTopic.group_id == group_id).order_by(GroupTopic.created_at)
+        return list(self._session.scalars(stmt))
+
+    def create_teaching_plan(self, group_id: UUID, creator_id: UUID, data: TeachingPlanCreate) -> TeachingPlan:
+        latest = self.find_latest_teaching_plan(group_id)
+        next_version = (latest.version + 1) if latest else 1
+
+        plan = TeachingPlan(
+            id=uuid4(),
+            group_id=group_id,
+            version=next_version,
+            creator_id=creator_id,
+            source_file_id=data.source_file_id,
+            created_at=datetime.now(UTC),
+        )
+        self._session.add(plan)
+        self._session.flush()
+
+        for lesson_data in data.lessons:
+            self.create_scheduled_lesson(group_id=group_id, plan_id=plan.id, data=lesson_data)
+
+        return plan
+
+    def find_latest_teaching_plan(self, group_id: UUID) -> TeachingPlan | None:
+        stmt = (
+            select(TeachingPlan)
+            .where(TeachingPlan.group_id == group_id)
+            .order_by(TeachingPlan.version.desc())
+            .limit(1)
+        )
+        return self._session.execute(stmt).scalar_one_or_none()
+
+    def find_teaching_plan_by_id(self, plan_id: UUID) -> TeachingPlan | None:
+        return self._session.get(TeachingPlan, plan_id)
+
+    def create_scheduled_lesson(self, group_id: UUID, plan_id: UUID, data: ScheduledLessonCreate) -> ScheduledLesson:
+        lesson = ScheduledLesson(
+            id=uuid4(),
+            group_id=group_id,
+            plan_id=plan_id,
+            title=data.title,
+            description=data.description,
+            scheduled_at=data.scheduled_at,
+            created_at=datetime.now(UTC),
+        )
+        self._session.add(lesson)
+        self._session.flush()
+
+        for topic_id in data.topic_ids:
+            self._session.add(
+                ScheduledLessonTopic(
+                    lesson_id=lesson.id,
+                    group_topic_id=topic_id,
+                )
+            )
+        self._session.flush()
+        return lesson
+
+    def list_scheduled_lessons(self, group_id: UUID, plan_id: UUID | None = None) -> list[tuple[ScheduledLesson, list[UUID]]]:
+        stmt = select(ScheduledLesson).where(ScheduledLesson.group_id == group_id)
+        if plan_id:
+            stmt = stmt.where(ScheduledLesson.plan_id == plan_id)
+        stmt = stmt.order_by(ScheduledLesson.scheduled_at)
+
+        lessons = list(self._session.scalars(stmt))
+        result: list[tuple[ScheduledLesson, list[UUID]]] = []
+
+        for lesson in lessons:
+            topic_stmt = select(ScheduledLessonTopic.group_topic_id).where(
+                ScheduledLessonTopic.lesson_id == lesson.id
+            )
+            topic_ids = list(self._session.scalars(topic_stmt))
+            result.append((lesson, topic_ids))
+
+        return result
+
+    def find_scheduled_lesson_by_id(self, lesson_id: UUID) -> ScheduledLesson | None:
+        return self._session.get(ScheduledLesson, lesson_id)
+
+    def update_scheduled_lesson(self, lesson: ScheduledLesson, data: ScheduledLessonUpdate) -> ScheduledLesson:
+        if data.title is not None:
+            lesson.title = data.title
+        if data.description is not None:
+            lesson.description = data.description
+        if data.scheduled_at is not None:
+            lesson.scheduled_at = data.scheduled_at
+
+        if data.topic_ids is not None:
+            self._session.query(ScheduledLessonTopic).filter(
+                ScheduledLessonTopic.lesson_id == lesson.id
+            ).delete()
+            for topic_id in data.topic_ids:
+                self._session.add(
+                    ScheduledLessonTopic(
+                        lesson_id=lesson.id,
+                        group_topic_id=topic_id,
+                    )
+                )
+
+        self._session.flush()
+        return lesson
+
+    def delete_scheduled_lesson(self, lesson: ScheduledLesson) -> None:
+        self._session.delete(lesson)
+        self._session.flush()
+
 
 class SqlAlchemyCommunityUnitOfWork:
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
@@ -258,8 +401,8 @@ class SqlAlchemyCommunityUnitOfWork:
         return self
 
     def __exit__(self, exc_type: type[BaseException] | None,
-                 exc_value: BaseException | None,
-                 traceback: TracebackType | None) -> None:
+                  exc_value: BaseException | None,
+                  traceback: TracebackType | None) -> None:
         if self._session is None:
             return
         database_failure = isinstance(exc_value, SQLAlchemyError)
