@@ -36,6 +36,7 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
   const history = useMarketplace<Booking[]>(`${marketplacePath}/bookings/mine?session_id=${sessionId}&limit=100`);
   const [actionState, setEnrollState] = useState<EnrollState | null>(null);
   const [savedReceipt, setSavedReceipt] = useState<EnrollmentReceipt | null>(null);
+  const [now] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [failureMessage, setFailureMessage] = useState("");
   const receipt = savedReceipt ?? history.data?.find((booking) => booking.session_id === sessionId && booking.status === "confirmed") ?? null;
@@ -46,7 +47,7 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
 
   const isFull = session.enrolled_count >= session.capacity;
   const ownOffer = session.tutor_user_id === user.id;
-  const isUnavailable = isFull || ownOffer || session.status !== "scheduled" || new Date(session.starts_at).getTime() <= Date.now();
+  const isUnavailable = isFull || ownOffer || session.status !== "scheduled" || new Date(session.starts_at).getTime() <= now;
   const commission = receipt?.transaction.commission_cents ?? session.commission_cents;
   const amount = receipt?.transaction.amount_cents ?? session.price_cents;
   const netTutor = amount - commission;

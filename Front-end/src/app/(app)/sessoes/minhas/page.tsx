@@ -12,6 +12,7 @@ import styles from "./page.module.css";
 export default function MyBookingsPage() {
   const [offset, setOffset] = useState(0);
   const { data: bookings = [], error, loading, refresh } = useMarketplace<Booking[]>(`${marketplacePath}/bookings/mine?limit=20&offset=${offset}`);
+  const [now] = useState(() => Date.now());
   const [busy, setBusy] = useState<string | null>(null);
   const [failure, setFailure] = useState("");
   async function cancel(id: string) {
@@ -68,7 +69,7 @@ export default function MyBookingsPage() {
                 </strong>
                 <p>Comissão demonstrativa (15%): {formatCents(booking.transaction.commission_cents)}</p>
                 <p>{booking.notice}</p>
-                {booking.status === "confirmed" && new Date(booking.session.starts_at).getTime() > Date.now() && <button disabled={busy !== null} onClick={() => cancel(booking.session_id)}>Cancelar inscrição</button>}
+                {booking.status === "confirmed" && new Date(booking.session.starts_at).getTime() > now && <button disabled={busy !== null} onClick={() => cancel(booking.session_id)}>Cancelar inscrição</button>}
               </li>
             );
           })}
