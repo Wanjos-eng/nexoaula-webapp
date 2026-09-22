@@ -1,11 +1,13 @@
 from typing import Annotated
 from uuid import UUID
 
+from pydantic import AwareDatetime
 from fastapi import APIRouter, Body, Depends, Query
 
 from app.modules.auth.dependencies import active_subject
 from app.modules.marketplace.dependencies import get_marketplace_service
 from app.modules.marketplace.schemas import (
+    BookingHistoryResponse, BookingResponse, EnrollmentRequest, SessionDiscoveryResponse,
     SessionCreate,
     SessionResponse,
     SessionUpdate,
@@ -122,3 +124,35 @@ def publish(session_id: UUID, user_id: UserId, service: Service):
 )
 def cancel(session_id: UUID, user_id: UserId, service: Service):
     return service.cancel(user_id, session_id)
+
+
+@router.get("/sessions", response_model=list[SessionDiscoveryResponse], summary="Buscar ofertas futuras publicadas")
+def search(user_id: UserId, service: Service, subject_id: UUID | None = None,
+           topic: str | None = Query(None, max_length=200), starts_after: AwareDatetime | None = None,
+           limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)):
+    return service.search(subject_id, topic, starts_after, limit, offset)
+
+
+@router.get("/bookings/mine", response_model=list[BookingHistoryResponse], summary="Meu histórico e recibos demonstrativos")
+def bookings_mine(user_id: UserId, service: Service,
+                  limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)):
+    return service.bookings_mine(user_id, limit, offset)
+
+
+@router.get("/sessions/{session_id}", response_model=SessionDiscoveryResponse)
+def detail(session_id: UUID, user_id: UserId, service: Service):
+    return service.detail(session_id)
+
+
+@router.post("/sessions/{session_id}/enroll", response_model=BookingResponse, status_code=201,
+             openapi_extra=MUTATION_SECURITY, summary="Inscrição simulada sem pagamento real")
+def enroll(session_id: UUID, user_id: UserId, service: Service,
+           payload: EnrollmentRequest = Body(default=EnrollmentRequest())):
+    return service.enroll(user_id, session_id)
+
+
+@router.delete("/sessions/{session_id}/enroll", response_model=BookingResponse,
+               openapi_extra=MUTATION_SECURITY, summary="Cancelar minha inscrição futura")
+def cancel_enrollment(session_id: UUID, user_id: UserId, service: Service,
+                      payload: EnrollmentRequest = Body(default=EnrollmentRequest())):
+    return service.cancel_enrollment(user_id, session_id)
