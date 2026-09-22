@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import datetime
 from uuid import UUID
 
 from app.modules.community.errors import CommunityError
@@ -241,13 +242,13 @@ class CommunityService:
             uow.commit()
             return ScheduledLessonResponse(
                 id=lesson.id,
-                groupId=lesson.group_id,
-                planId=lesson.plan_id,
+                group_id=lesson.group_id,
+                plan_id=lesson.plan_id,
                 title=lesson.title,
                 description=lesson.description,
-                scheduledAt=lesson.scheduled_at,
-                createdAt=lesson.created_at,
-                topicIds=data.topic_ids,
+                scheduled_at=lesson.scheduled_at,
+                created_at=lesson.created_at,
+                topic_ids=data.topic_ids,
             )
 
     def list_lessons(self, group_id: UUID, user_id: UUID, plan_id: UUID | None = None) -> list[ScheduledLessonResponse]:
@@ -255,17 +256,26 @@ class CommunityService:
         with self._uow_factory() as uow:
             if not uow.community.is_active_member(group_id, user_id):
                 raise CommunityError("Apenas membros do grupo podem ver as aulas agendadas.", 403)
+            if plan_id is None:
+                plan = uow.community.find_published_teaching_plan(group_id)
+                if plan is None:
+                    return []
+                plan_id = plan.id
+            else:
+                plan = uow.community.find_teaching_plan_by_id(plan_id)
+                if plan is None or plan.group_id != group_id:
+                    raise CommunityError("Plano não encontrado.", 404)
             lessons_data = uow.community.list_scheduled_lessons(group_id, plan_id)
             return [
                 ScheduledLessonResponse(
                     id=lesson.id,
-                    groupId=lesson.group_id,
-                    planId=lesson.plan_id,
+                    group_id=lesson.group_id,
+                    plan_id=lesson.plan_id,
                     title=lesson.title,
                     description=lesson.description,
-                    scheduledAt=lesson.scheduled_at,
-                    createdAt=lesson.created_at,
-                    topicIds=topic_ids,
+                    scheduled_at=lesson.scheduled_at,
+                    created_at=lesson.created_at,
+                    topic_ids=topic_ids,
                 )
                 for lesson, topic_ids in lessons_data
             ]
@@ -290,13 +300,13 @@ class CommunityService:
 
             return ScheduledLessonResponse(
                 id=lesson.id,
-                groupId=lesson.group_id,
-                planId=lesson.plan_id,
+                group_id=lesson.group_id,
+                plan_id=lesson.plan_id,
                 title=lesson.title,
                 description=lesson.description,
-                scheduledAt=lesson.scheduled_at,
-                createdAt=lesson.created_at,
-                topicIds=topic_ids,
+                scheduled_at=lesson.scheduled_at,
+                created_at=lesson.created_at,
+                topic_ids=topic_ids,
             )
 
     def delete_lesson(self, group_id: UUID, lesson_id: UUID, user_id: UUID) -> None:
@@ -317,25 +327,66 @@ class CommunityService:
         lessons_responses = [
             ScheduledLessonResponse(
                 id=lesson.id,
-                groupId=lesson.group_id,
-                planId=lesson.plan_id,
+                group_id=lesson.group_id,
+                plan_id=lesson.plan_id,
                 title=lesson.title,
                 description=lesson.description,
-                scheduledAt=lesson.scheduled_at,
-                createdAt=lesson.created_at,
-                topicIds=topic_ids,
+                scheduled_at=lesson.scheduled_at,
+                created_at=lesson.created_at,
+                topic_ids=topic_ids,
             )
             for lesson, topic_ids in lessons_data
         ]
         return TeachingPlanResponse(
             id=plan.id,
-            groupId=plan.group_id,
+            group_id=plan.group_id,
             version=plan.version,
-            creatorId=plan.creator_id,
-            sourceFileId=plan.source_file_id,
-            createdAt=plan.created_at,
+            status=plan.status,
+            published_by=plan.published_by,
+            published_at=plan.published_at,
+            creator_id=plan.creator_id,
+            source_file_id=plan.source_file_id,
+            created_at=plan.created_at,
             lessons=lessons_responses,
         )
+
+    def list_plans(self, group_id: UUID, user_id: UUID, offset: int, limit: int):
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_member(group_id, user_id):
+                raise CommunityError("Apenas membros podem visualizar os planos.", 403)
+            return [self._to_teaching_plan_response(uow, plan) for plan in
+                    uow.community.list_teaching_plans(group_id, offset, limit)]
+
+    def publish_plan(self, group_id: UUID, plan_id: UUID, user_id: UUID):
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem publicar planos.", 403)
+            plan = uow.community.publish_teaching_plan(group_id, plan_id, user_id)
+            response = self._to_teaching_plan_response(uow, plan)
+            uow.commit()
+            return response
+
+    def replace_plan(self, group_id: UUID, plan_id: UUID, user_id: UUID, data: TeachingPlanCreate):
+        if "lessons" not in data.model_fields_set:
+            raise CommunityError("Informe as aulas do rascunho.", 422)
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem editar planos.", 403)
+            plan = uow.community.replace_draft(group_id, plan_id, data)
+            response = self._to_teaching_plan_response(uow, plan)
+            uow.commit()
+            return response
+
+    def user_calendar(self, user_id: UUID, start: datetime | None, end: datetime | None,
+                      period: str | None, offset: int, limit: int):
+        if start is not None and end is not None and end <= start:
+            raise CommunityError("O fim do intervalo deve ser posterior ao início.", 422)
+        with self._uow_factory() as uow:
+            return [ScheduledLessonResponse.model_validate(lesson).model_copy(update={"topic_ids": topics})
+                    for lesson, topics in uow.community.list_user_lessons(user_id, start, end, period, offset, limit)]
 
     @staticmethod
     def _ensure_capacity(repository, group: StudyGroup) -> None:

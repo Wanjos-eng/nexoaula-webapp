@@ -1,4 +1,5 @@
-from typing import Annotated
+from typing import Annotated, Literal
+from pydantic import AwareDatetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
@@ -76,6 +77,14 @@ def list_participants(group_id: UUID, user_id: UserId, service: Service,
                       pending: bool = False, offset: int = Query(default=0, ge=0),
                       limit: int = Query(default=20, ge=1, le=100)):
     return service.list_participants(group_id, user_id, pending, offset, limit)
+
+
+@router.get("/me/lessons", response_model=list[ScheduledLessonResponse], summary="Meu cronograma vigente")
+def user_calendar(user_id: UserId, service: Service,
+                  start: AwareDatetime | None = None, end: AwareDatetime | None = None,
+                  period: Literal["past", "future"] | None = None,
+                  offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=100)):
+    return service.user_calendar(user_id, start, end, period, offset, limit)
 
 
 @router.get("/{group_id}", response_model=GroupResponse, summary="Obter dados do grupo")
@@ -162,3 +171,26 @@ def update_lesson(group_id: UUID, lesson_id: UUID, user_id: UserId,
                summary="Remover aula do cronograma", openapi_extra=MUTATION_SECURITY)
 def delete_lesson(group_id: UUID, lesson_id: UUID, user_id: UserId, service: Service) -> None:
     service.delete_lesson(group_id, lesson_id, user_id)
+
+@router.get("/{group_id}/plans", response_model=list[TeachingPlanResponse])
+def list_plans(group_id: UUID, user_id: UserId, service: Service,
+               offset: int = Query(default=0, ge=0), limit: int = Query(default=20, ge=1, le=100)):
+    return service.list_plans(group_id, user_id, offset, limit)
+
+
+@router.post("/{group_id}/plans", response_model=TeachingPlanResponse,
+             status_code=status.HTTP_201_CREATED, openapi_extra=MUTATION_SECURITY)
+def create_plan(group_id: UUID, user_id: UserId, payload: TeachingPlanCreate, service: Service):
+    return service.create_teaching_plan(group_id, user_id, payload)
+
+
+@router.patch("/{group_id}/plans/{plan_id}", response_model=TeachingPlanResponse,
+              openapi_extra=MUTATION_SECURITY)
+def replace_plan(group_id: UUID, plan_id: UUID, user_id: UserId, payload: TeachingPlanCreate, service: Service):
+    return service.replace_plan(group_id, plan_id, user_id, payload)
+
+
+@router.post("/{group_id}/plans/{plan_id}/publish", response_model=TeachingPlanResponse,
+             openapi_extra=MUTATION_SECURITY)
+def publish_plan(group_id: UUID, plan_id: UUID, user_id: UserId, service: Service):
+    return service.publish_plan(group_id, plan_id, user_id)
