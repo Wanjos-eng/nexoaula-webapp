@@ -253,7 +253,7 @@ class MarketplaceService:
             uow.commit()
             return response
 
-    def bookings_mine(self, user_id, limit, offset):
+    def bookings_mine(self, user_id, limit, offset, session_id=None):
         with self._factory() as uow:
             return [BookingHistoryResponse(**self._booking(record[4], record[5]).model_dump(),
-                session=self._discovery(record[:4])) for record in uow.marketplace.history(user_id, limit, offset)]
+                session=self._discovery(record[:4])) for record in uow.marketplace.history(user_id, limit, offset, session_id)]

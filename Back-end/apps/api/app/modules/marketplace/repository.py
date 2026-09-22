@@ -41,7 +41,7 @@ class MarketplaceRepository(Protocol):
     def booking_count(self, session_id: UUID) -> int: ...
     def add_booking(self, booking: SessionBooking, receipt: SimulatedTransaction) -> None: ...
     def receipt(self, booking_id: UUID) -> SimulatedTransaction | None: ...
-    def history(self, user_id: UUID, limit: int, offset: int): ...
+    def history(self, user_id: UUID, limit: int, offset: int, session_id: UUID | None = None): ...
     def tutor_active(self, user_id: UUID) -> bool: ...
 
 
@@ -161,12 +161,14 @@ class SqlAlchemyMarketplaceRepository:
     def receipt(self, booking_id):
         return self._session.scalar(select(SimulatedTransaction).where(SimulatedTransaction.session_booking_id == booking_id))
 
-    def history(self, user_id, limit, offset):
+    def history(self, user_id, limit, offset, session_id=None):
         stmt = (self._discovery_query().add_columns(SessionBooking, SimulatedTransaction)
                 .join(SessionBooking, SessionBooking.session_id == TutorSession.id)
                 .outerjoin(SimulatedTransaction, SimulatedTransaction.session_booking_id == SessionBooking.id)
                 .where(SessionBooking.user_id == user_id)
                 .order_by(SessionBooking.booked_at.desc(), SessionBooking.id).limit(limit).offset(offset))
+        if session_id is not None:
+            stmt = stmt.where(SessionBooking.session_id == session_id)
         return self._session.execute(stmt).all()
 
 

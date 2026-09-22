@@ -30,6 +30,11 @@ def client(monkeypatch):
     [
         ("GET", "/tutor"),
         ("GET", "/sessions/mine"),
+        ("GET", "/sessions"),
+        ("GET", f"/sessions/{uuid4()}"),
+        ("GET", "/bookings/mine"),
+        ("POST", f"/sessions/{uuid4()}/enroll"),
+        ("DELETE", f"/sessions/{uuid4()}/enroll"),
         ("POST", "/tutor/activate"),
         ("DELETE", "/tutor/deactivate"),
         ("POST", "/sessions"),

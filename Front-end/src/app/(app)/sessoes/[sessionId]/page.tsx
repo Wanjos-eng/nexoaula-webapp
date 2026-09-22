@@ -11,13 +11,14 @@ import {
   XCircle,
 } from "@phosphor-icons/react";
 import Link from "next/link";
-import { notFound, useParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useState } from "react";
 
 import { useAuthSession } from "@/modules/auth";
-import { cancelDemoBooking, enrollDemoSession, readDemoBookings, useDemoSessions } from "@/modules/marketplace/marketplace.demo";
+import { useMarketplace } from "@/modules/marketplace/useMarketplace";
+import { marketplaceApi, marketplaceError, marketplacePath, type Booking, type PublishedSession } from "@/modules/marketplace/marketplace.api";
+import type { EnrollmentReceipt } from "@/modules/marketplace/marketplace.types";
 import {
-  calcCommission,
   formatCents,
 } from "@/modules/marketplace/marketplace.types";
 import styles from "./page.module.css";
@@ -25,66 +26,55 @@ import styles from "./page.module.css";
 type EnrollState = "idle" | "confirming" | "done" | "cancelled" | "error";
 
 export default function SessionDetailPage() {
-  const { user } = useAuthSession();
   const { sessionId } = useParams<{ sessionId: string }>();
-  const { sessions, loaded } = useDemoSessions();
-  const [enrollState, setEnrollState] = useState<EnrollState>("idle");
-  const [bookingId, setBookingId] = useState<string | null>(null);
-  const [failureMessage, setFailureMessage] = useState("");
-  const [now] = useState(() => Date.now());
-  const session = sessions.find((s) => s.id === sessionId);
+  return <SessionDetail key={sessionId} sessionId={sessionId} />;
+}
 
-  if (!session) {
-    if (!loaded) return <main>Carregando sessão simulada…</main>;
-    notFound();
-  }
+function SessionDetail({ sessionId }: { sessionId: string }) {
+  const { user } = useAuthSession();
+  const details = useMarketplace<PublishedSession>(`${marketplacePath}/sessions/${sessionId}`);
+  const history = useMarketplace<Booking[]>(`${marketplacePath}/bookings/mine?session_id=${sessionId}&limit=100`);
+  const [actionState, setEnrollState] = useState<EnrollState | null>(null);
+  const [savedReceipt, setSavedReceipt] = useState<EnrollmentReceipt | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failureMessage, setFailureMessage] = useState("");
+  const receipt = savedReceipt ?? history.data?.find((booking) => booking.session_id === sessionId && booking.status === "confirmed") ?? null;
+  const enrollState = actionState ?? (receipt?.status === "confirmed" ? "done" : "idle");
+  const session = details.data;
+  if (details.loading || history.loading) return <main><p role="status">Carregando sessão…</p></main>;
+  if (!session || details.error || history.error) return <main><p role="alert">{details.error ?? history.error ?? "Sessão indisponível."}</p><button onClick={() => { details.refresh(); history.refresh(); }}>Tentar novamente</button><Link href="/sessoes/minhas">Ver minhas inscrições</Link></main>;
 
   const isFull = session.enrolled_count >= session.capacity;
-  const isUnavailable = isFull || session.status !== "scheduled" || new Date(session.starts_at).getTime() <= now;
-  const commission = calcCommission(session.price_cents);
-  const netTutor = session.price_cents - commission;
-
+  const ownOffer = session.tutor_user_id === user.id;
+  const isUnavailable = isFull || ownOffer || session.status !== "scheduled" || new Date(session.starts_at).getTime() <= Date.now();
+  const commission = receipt?.transaction.commission_cents ?? session.commission_cents;
+  const amount = receipt?.transaction.amount_cents ?? session.price_cents;
+  const netTutor = amount - commission;
   const starts = new Date(session.starts_at);
   const ends = new Date(session.ends_at);
-
-  function handleEnroll() {
-    setEnrollState("confirming");
-  }
-
-  function handleConfirm() {
-    if (!session) return;
-    if (readDemoBookings(user.id).some((booking) => booking.session.id === session.id && booking.status === "confirmed")) {
-      setFailureMessage("Você já possui inscrição ativa nesta sessão simulada.");
-      setEnrollState("error");
-      return;
-    }
+  function handleEnroll() { setEnrollState("confirming"); }
+  function handleCancel() { setEnrollState(null); }
+  async function handleConfirm() {
+    if (busy) return;
+    setBusy(true);
     try {
-      const booking = enrollDemoSession(user.id, session);
-      setBookingId(booking.id);
+      setSavedReceipt(await marketplaceApi.enroll(sessionId));
       setEnrollState("done");
-    } catch {
-      setFailureMessage("Não foi possível salvar a inscrição simulada neste navegador.");
-      setEnrollState("error");
-    }
+      details.refresh(); history.refresh();
+    } catch (error) {
+      setFailureMessage(marketplaceError(error)); setEnrollState("error");
+    } finally { setBusy(false); }
   }
-
-  function handleCancel() {
-    setEnrollState("idle");
-  }
-
-  function handleCancelEnrollment() {
+  async function handleCancelEnrollment() {
+    if (busy) return;
+    setBusy(true);
     try {
-      if (bookingId) cancelDemoBooking(user.id, bookingId);
+      setSavedReceipt(await marketplaceApi.cancel(sessionId));
       setEnrollState("cancelled");
-    } catch {
-      setFailureMessage("Não foi possível cancelar. O cancelamento é permitido somente antes do início.");
-      setEnrollState("error");
-    }
-  }
-
-  function handleFailure() {
-    setFailureMessage("Não foi possível concluir a inscrição simulada. Sua sessão pode ter expirado ou a operação pode estar duplicada.");
-    setEnrollState("error");
+      details.refresh(); history.refresh();
+    } catch (error) {
+      setFailureMessage(marketplaceError(error)); setEnrollState("error");
+    } finally { setBusy(false); }
   }
 
   return (
@@ -174,7 +164,7 @@ export default function SessionDetailPage() {
           <div className={styles.priceCard}>
             <p className={styles.priceLabel}>Valor demonstrativo</p>
             <p className={styles.priceValue}>
-              {formatCents(session.price_cents, session.currency)}
+              {formatCents(amount, session.currency)}
             </p>
             <p className={styles.priceNote}>
               Comissão da plataforma (15%):{" "}
@@ -189,11 +179,11 @@ export default function SessionDetailPage() {
             {enrollState === "idle" && (
               <button
                 className={styles.enrollButton}
-                disabled={isUnavailable}
+                disabled={isUnavailable || busy}
                 onClick={handleEnroll}
                 type="button"
               >
-                {isFull ? "Vagas esgotadas" : isUnavailable ? "Sessão indisponível" : "Simular Inscrição"}
+                {ownOffer ? "Esta é sua oferta" : isFull ? "Vagas esgotadas" : isUnavailable ? "Sessão indisponível" : "Simular Inscrição"}
               </button>
             )}
 
@@ -218,19 +208,13 @@ export default function SessionDetailPage() {
                   </button>
                   <button
                     className={styles.confirmButton}
+                    disabled={busy}
                     onClick={handleConfirm}
                     type="button"
                   >
                     Confirmar
                   </button>
                 </div>
-                <button
-                  className={styles.failureButton}
-                  onClick={handleFailure}
-                  type="button"
-                >
-                  Simular falha da operação
-                </button>
               </div>
             )}
 
@@ -251,7 +235,7 @@ export default function SessionDetailPage() {
                 <dl className={styles.receiptDetails}>
                   <div>
                     <dt>Valor demonstrativo</dt>
-                    <dd>{formatCents(session.price_cents, session.currency)}</dd>
+                    <dd>{formatCents(amount, session.currency)}</dd>
                   </div>
                   <div>
                     <dt>Comissão nexoAula (15%)</dt>
@@ -263,11 +247,11 @@ export default function SessionDetailPage() {
                   </div>
                 </dl>
                 <p className={styles.receiptNotice}>
-                  Nenhum pagamento foi processado. Esta é uma demonstração
-                  acadêmica.
+                  {receipt?.notice}
                 </p>
                 <button
                   className={styles.cancelEnrollButton}
+                  disabled={busy}
                   onClick={handleCancelEnrollment}
                   type="button"
                 >
@@ -300,10 +284,10 @@ export default function SessionDetailPage() {
                 <p>{failureMessage}</p>
                 <button
                   className={styles.enrollButton}
-                  onClick={handleEnroll}
+                  onClick={() => { setEnrollState(null); details.refresh(); history.refresh(); }}
                   type="button"
                 >
-                  Tentar novamente
+                  Atualizar inscrição
                 </button>
               </div>
             )}

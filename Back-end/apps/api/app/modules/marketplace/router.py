@@ -134,9 +134,9 @@ def search(user_id: UserId, service: Service, subject_id: UUID | None = None,
 
 
 @router.get("/bookings/mine", response_model=list[BookingHistoryResponse], summary="Meu histórico e recibos demonstrativos")
-def bookings_mine(user_id: UserId, service: Service,
+def bookings_mine(user_id: UserId, service: Service, session_id: UUID | None = None,
                   limit: int = Query(20, ge=1, le=100), offset: int = Query(0, ge=0)):
-    return service.bookings_mine(user_id, limit, offset)
+    return service.bookings_mine(user_id, limit, offset, session_id)
 
 
 @router.get("/sessions/{session_id}", response_model=SessionDiscoveryResponse)
