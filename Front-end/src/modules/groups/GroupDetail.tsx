@@ -14,6 +14,8 @@ import {
 import { useRemote } from "./useRemote";
 import { Failure, Loading } from "./AsyncState";
 import { GroupForm } from "./GroupForm";
+import { GroupSchedule } from "./GroupSchedule";
+import { invalidateGroups } from "./schedule";
 import s from "./AcademicCommunity.module.css";
 
 export function GroupDetail({ groupId }: { groupId: string }) {
@@ -52,6 +54,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
     } catch (e) {
       setError(e);
     } finally {
+      invalidateGroups();
       remote.reload();
       lock.current = false;
       setBusy(false);
@@ -159,12 +162,18 @@ export function GroupDetail({ groupId }: { groupId: string }) {
               ) : null}
             </aside>
           </div>
+          {participation.status === "active" ? (
+            <GroupSchedule key={groupId} groupId={groupId} canManage={participation.canManage} />
+          ) : (
+            <section className={s.panel}><h2>Plano e cronograma</h2><p>Entre no grupo para acessar as aulas publicadas.</p></section>
+          )}
           {editing && participation.role === "owner" ? (
             <GroupForm
               group={group}
               onSaved={() => {
                 setEditing(false);
                 setFeedback("Configurações salvas.");
+                invalidateGroups();
                 remote.reload();
               }}
             />
@@ -232,6 +241,7 @@ function MemberManagement({
       resultError = e;
       setError(e);
     } finally {
+      invalidateGroups();
       lock.current = false;
       setBusy(false);
       remote.reload();

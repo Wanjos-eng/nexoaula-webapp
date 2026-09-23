@@ -30,7 +30,7 @@ export function GroupDirectory({
     (signal: AbortSignal) => read<Group[]>(path, signal),
     [path],
   );
-  const remote = useRemote(path, fetcher);
+  const remote = useRemote(path, fetcher, true);
   function search(event: FormEvent) {
     event.preventDefault();
     setOffset(0);

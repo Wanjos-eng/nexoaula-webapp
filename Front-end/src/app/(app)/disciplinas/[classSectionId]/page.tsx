@@ -1,11 +1,10 @@
-import { getDisciplinePreview } from "@/mocks/academic/academicCatalog";
-import { DisciplineDetailPage } from "@/modules/academic/components/DisciplineDetailPage";
-import type { AcademicViewState } from "@/modules/academic/components/AcademicPreviewState";
-export default async function Page({ params, searchParams }: {
-  params: Promise<{ classSectionId: string }>;
-  searchParams: Promise<{ state?: AcademicViewState; group?: string }>;
+import { redirect } from "next/navigation";
+
+export default async function Page({ searchParams }: {
+  searchParams: Promise<{ group?: string }>;
 }) {
-  const { state, group } = await searchParams;
-  const id = (await params).classSectionId;
-  return <DisciplineDetailPage key={`${id}-${group}-${state}`} discipline={getDisciplinePreview(id, group, state)} state={state} />;
+  const { group } = await searchParams;
+  redirect(group && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(group)
+    ? `/grupos/${group}#cronograma`
+    : "/disciplinas");
 }

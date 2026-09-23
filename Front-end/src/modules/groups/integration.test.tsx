@@ -37,7 +37,8 @@ type Handler = (
 function server(handler: Handler) {
   return vi.stubGlobal(
     "fetch",
-    vi.fn((url: string, options: RequestInit) => handler(url, options)),
+    vi.fn((url: string, options: RequestInit) =>
+      url.includes("/plans?") ? json([]) : handler(url, options)),
   );
 }
 function catalogs(url: string) {
