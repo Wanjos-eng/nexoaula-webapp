@@ -10,15 +10,16 @@ import {
   UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { DayPicker } from "react-day-picker";
 import type { DayButtonProps } from "react-day-picker";
 import { ptBR } from "react-day-picker/locale";
 import "react-day-picker/style.css";
 
-import { calendarEventsList } from "@/mocks/academic/academicCatalog";
 import type { AcademicCalendarEvent } from "@/modules/academic/types";
-import { AcademicPreviewState, type AcademicViewState } from "./AcademicPreviewState";
+import { academicGroups, readAll, type Lesson } from "@/modules/groups/schedule";
+import { useRemote } from "@/modules/groups/useRemote";
+import { Failure, Loading } from "@/modules/groups/AsyncState";
 import styles from "@/components/academic/AcademicPage.module.css";
 
 function formatDateKey(date: Date): string {
@@ -32,18 +33,46 @@ function parseDateKey(key: string): Date {
   return new Date(year, month - 1, day);
 }
 
-export function AcademicCalendarView({ state = "ready" }: { state?: AcademicViewState }) {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date(2026, 7, 31));
-  const [month, setMonth] = useState<Date>(new Date(2026, 7, 1));
+export function AcademicCalendarView() {
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [month, setMonth] = useState<Date>(() => new Date());
+  // Include outside days displayed in the six-week calendar grid.
+  const first = new Date(month.getFullYear(), month.getMonth(), 1);
+  first.setDate(first.getDate() - first.getDay());
+  const last = new Date(first);
+  last.setDate(last.getDate() + 42);
+  const start = first.toISOString(), end = last.toISOString();
+  const fetcher = useCallback(async (signal: AbortSignal) => {
+    const groups = await academicGroups(signal);
+    if (!groups.length) return { groups, events: [] as AcademicCalendarEvent[] };
+    const query = new URLSearchParams({ start, end });
+    const lessons = await readAll<Lesson>(`groups/me/lessons?${query}`, signal);
+    const byId = new Map(groups.map((group) => [group.id, group]));
+    const events = lessons.flatMap((lesson): AcademicCalendarEvent[] => {
+      const group = byId.get(lesson.groupId);
+      if (!group) return [];
+      const date = new Date(lesson.scheduledAt);
+      return [{
+        id: lesson.id, groupName: group.name, title: lesson.title, type: "Aula",
+        date: formatDateKey(date),
+        time: date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+        context: `${group.subject} · ${group.section} · ${group.term}`,
+        occurrenceStatus: "scheduled",
+        href: `/grupos/${group.id}#aula-${lesson.id}`,
+      }];
+    });
+    return { groups, events };
+  }, [start, end]);
+  const remote = useRemote(`${start}/${end}`, fetcher, true);
 
   const eventsByDate = useMemo(() => {
     const map: Record<string, AcademicCalendarEvent[]> = {};
-    (state === "empty" ? [] : calendarEventsList).forEach((evt) => {
+    (remote.data?.events ?? []).forEach((evt) => {
       if (!map[evt.date]) map[evt.date] = [];
       map[evt.date].push(evt);
     });
     return map;
-  }, [state]);
+  }, [remote.data]);
 
   const eventDays = useMemo(
     () => Object.keys(eventsByDate).map((key) => parseDateKey(key)),
@@ -61,36 +90,40 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
     year: "numeric",
   }).format(month);
 
+  const todayLabel = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date());
+
   function moveMonth(offset: number) {
     setMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
   }
 
   function goToToday() {
-    const today = new Date(2026, 7, 31); // Anchor mock today
+    const today = new Date();
     setMonth(new Date(today.getFullYear(), today.getMonth(), 1));
     setSelectedDate(today);
   }
 
-  if (state === "loading" || state === "error") return <AcademicPreviewState state={state} />;
   return (
     <div className={styles.page}>
-      <p>Prévia demonstrativa: agenda fictícia de 31/08/2026, sem persistência.</p>
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>Agenda acadêmica</p>
           <h2>Calendário</h2>
-          <p>Aulas, encontros de comunidades e entregas em uma visão integrada.</p>
+          <p>Aulas publicadas nos grupos dos quais você participa.</p>
         </div>
-        <Link className={styles.primaryButton} href="/grupos/comunidade-msd-c8">
-          Ver encontros de comunidades
+        <Link className={styles.primaryButton} href="/grupos">
+          Ver meus grupos
         </Link>
       </header>
+      <button className={styles.outlineButton} onClick={remote.reload} type="button">Atualizar calendário</button>
 
       {/* Toolbar */}
       <section aria-label="Controles do calendário" className={styles.calendarToolbar}>
         <div className={styles.calendarToolbarGroup}>
           <button className={styles.outlineButton} onClick={goToToday} type="button">
-            Hoje (31/08, demonstração)
+            Hoje ({todayLabel})
           </button>
           <div className={styles.calendarNav}>
             <button
@@ -118,11 +151,22 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
       </section>
 
       {/* Layout */}
+      {remote.loading ? <Loading /> : remote.error ? <Failure error={remote.error} retry={remote.reload} /> : !remote.data?.groups.length ? (
+        <section className={styles.emptyDay}>
+          <h3>Você ainda não participa de grupos</h3>
+          <p>Entre em um grupo para acompanhar seu cronograma.</p>
+          <Link className={styles.primaryButton} href="/grupos?view=discover">Descobrir grupos</Link>
+        </section>
+      ) : (
+      <>
+      <nav aria-label="Grupos no calendário">
+        {remote.data.groups.map((group) => <p key={group.id}><Link href={`/grupos/${group.id}#cronograma`}>{group.name}</Link> · {group.subject} · {group.term}</p>)}
+      </nav>
       <div className={styles.calendarLayout}>
         <section aria-label="Calendário mensal" className={styles.calendarBoard}>
           <div className={styles.calendarBoardHeader}>
             <div>
-              <p className={styles.label}>Aulas e encontros</p>
+              <p className={styles.label}>Aulas publicadas</p>
               <p className={styles.calendarBoardHint}>
                 Selecione uma data para visualizar os detalhes da agenda.
               </p>
@@ -130,9 +174,6 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
             <div className={styles.calendarLegend}>
               <span>
                 <i className={styles.dotClass} /> Aula
-              </span>
-              <span>
-                <i className={styles.dotMeeting} /> Encontro
               </span>
             </div>
           </div>
@@ -180,7 +221,7 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
                 {selectedEvents.map((event) => (
                   <article
                     className={styles.dayEvent}
-                    key={`${event.title}-${event.time}`}
+                    key={event.id}
                   >
                     <div
                       className={
@@ -208,13 +249,18 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
                           ? " (Adiada)"
                           : event.occurrenceStatus === "held"
                           ? " (Realizada)"
-                          : event.occurrenceStatus === "cancelled" ? " (Cancelada)" : ""}
+                          : event.occurrenceStatus === "cancelled"
+                          ? " (Cancelada)"
+                          : ""}
                       </span>
                       <h4>{event.title}</h4>
                       <p>
                         <Clock aria-hidden size={15} /> {event.time}
                       </p>
-                      <small>{event.context} · {event.groupName}</small>
+                      <small>
+                        {event.context} · {event.groupName}
+                      </small>
+                      <p><Link href={event.href!}>Detalhar aula no grupo</Link></p>
                     </div>
                   </article>
                 ))}
@@ -223,15 +269,17 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
               <div className={styles.emptyDay}>
                 <CalendarBlank aria-hidden size={25} />
                 <h4>Dia livre</h4>
-                <p>Nenhuma aula ou encontro agendado para esta data.</p>
+                <p>Nenhuma aula publicada para esta data.</p>
               </div>
             )}
-            <Link className={styles.dayAction} href="/progresso">
-              Ver meu progresso <ArrowRight aria-hidden size={15} />
+            <Link className={styles.dayAction} href="/disciplinas">
+              Ver minhas disciplinas <ArrowRight aria-hidden size={15} />
             </Link>
           </section>
         </aside>
       </div>
+      </>
+      )}
     </div>
   );
 }
@@ -261,7 +309,7 @@ function CalendarDayButton({
           className={
             event.type === "Aula" ? styles.dayEventClass : styles.dayEventMeeting
           }
-          key={`${event.title}-${event.time}`}
+          key={event.id}
           title={`${event.type}: ${event.title} · ${event.time}`}
         >
           {event.time.split("–")[0]}
