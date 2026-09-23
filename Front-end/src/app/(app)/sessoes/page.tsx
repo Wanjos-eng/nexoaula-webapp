@@ -9,28 +9,22 @@ import {
   Video,
 } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
-import { useDemoSessions } from "@/modules/marketplace/marketplace.demo";
+import { useMarketplace } from "@/modules/marketplace/useMarketplace";
+import { marketplacePath, type PublishedSession } from "@/modules/marketplace/marketplace.api";
 import { formatCents } from "@/modules/marketplace/marketplace.types";
 import styles from "./page.module.css";
 
 export default function SessoesPage() {
   const [query, setQuery] = useState("");
-  const { sessions: allSessions } = useDemoSessions();
-
-  const sessions = useMemo(() => {
-    if (!query.trim()) return allSessions;
-    const q = query.toLowerCase();
-    return allSessions.filter(
-      (s) =>
-        s.title.toLowerCase().includes(q) ||
-        s.subject_name.toLowerCase().includes(q) ||
-        s.tutor_name.toLowerCase().includes(q),
-    );
-  }, [allSessions, query]);
-
-  const scheduled = sessions.filter((s) => s.status === "scheduled");
+  const [subject, setSubject] = useState("");
+  const [offset, setOffset] = useState(0);
+  const params = new URLSearchParams({ topic: query, limit: "20", offset: String(offset) });
+  if (subject) params.set("subject_id", subject);
+  const { data: sessions = [], error, loading, refresh } = useMarketplace<PublishedSession[]>(`${marketplacePath}/sessions?${params}`);
+  const { data: subjects = [] } = useMarketplace<{ id: string; name: string }[]>("/v1/academic/subjects?limit=100");
+  const scheduled = sessions;
 
   return (
     <main className={styles.page}>
@@ -61,19 +55,25 @@ export default function SessoesPage() {
       <div className={styles.searchBar}>
         <label className={styles.searchLabel} htmlFor="session-search">
           <MagnifyingGlass aria-hidden size={20} />
-          <span className="sr-only">Buscar sessão por título, disciplina ou tutor</span>
+          <span className="sr-only">Buscar sessão por assunto</span>
           <input
             id="session-search"
             className={styles.searchInput}
-            placeholder="Buscar por título, disciplina ou tutor…"
+            placeholder="Buscar por assunto…"
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setOffset(0); }}
           />
         </label>
       </div>
 
-      {scheduled.length === 0 ? (
+      <label>Disciplina
+        <select value={subject} onChange={(e) => { setSubject(e.target.value); setOffset(0); }}>
+          <option value="">Todas as disciplinas</option>
+          {subjects.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </label>
+      {loading ? <p role="status">Carregando sessões…</p> : error ? <div role="alert">{error} <button onClick={refresh}>Tentar novamente</button></div> : scheduled.length === 0 ? (
         <div className={styles.empty}>
           <Storefront aria-hidden size={40} />
           <p>Nenhuma sessão encontrada para sua busca.</p>
@@ -156,6 +156,10 @@ export default function SessoesPage() {
           })}
         </ul>
       )}
+      <nav aria-label="Paginação das sessões">
+        <button disabled={loading || offset === 0} onClick={() => setOffset(Math.max(0, offset - 20))}>Anterior</button>
+        <button disabled={loading || sessions.length < 20} onClick={() => setOffset(offset + 20)}>Próxima</button>
+      </nav>
     </main>
   );
 }

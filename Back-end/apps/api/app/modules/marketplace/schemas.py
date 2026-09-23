@@ -117,3 +117,38 @@ class SessionResponse(Output):
     status: Literal["draft", "scheduled", "completed", "cancelled"]
     created_at: datetime
     updated_at: datetime
+
+
+class SessionDiscoveryResponse(SessionResponse):
+    tutor_name: str
+    subject_name: str
+    enrolled_count: int
+    available_seats: int
+    commission_cents: int
+
+
+class EnrollmentRequest(Input):
+    """All booking and financial values are determined by the server."""
+
+
+class TransactionResponse(Output):
+    id: UUID
+    amount_cents: int
+    commission_cents: int
+    currency: Literal["BRL"]
+    status: Literal["completed"]
+    created_at: datetime
+    completed_at: datetime
+
+
+class BookingResponse(Output):
+    booking_id: UUID
+    session_id: UUID
+    status: Literal["confirmed", "cancelled"]
+    booked_at: datetime
+    cancelled_at: datetime | None
+    transaction: TransactionResponse
+
+
+class BookingHistoryResponse(BookingResponse):
+    session: SessionDiscoveryResponse
