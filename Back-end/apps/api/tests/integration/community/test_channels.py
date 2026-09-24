@@ -1,9 +1,11 @@
+import os
 from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import text
 
+from app.core.config import settings
 from app.modules.community.models import GroupStatus, GroupVisibility, GroupJoinPolicy, MembershipRole, MembershipStatus
 from test_groups import (
     API_PREFIX,
@@ -13,7 +15,14 @@ from test_groups import (
     anyio_backend,
 )
 
-pytestmark = [pytest.mark.anyio, pytest.mark.database]
+pytestmark = [
+    pytest.mark.anyio,
+    pytest.mark.database,
+    pytest.mark.skipif(
+        not (settings.DATABASE_URL or os.getenv("DATABASE_URL")),
+        reason="DATABASE_URL is required for real PostgreSQL community integration test",
+    ),
+]
 
 
 @pytest.fixture
