@@ -6,6 +6,126 @@ from uuid import UUID
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
+class MeetingModality(str, Enum):
+    IN_PERSON = "in_person"
+    ONLINE = "online"
+    HYBRID = "hybrid"
+
+
+class MeetingStatus(str, Enum):
+    SCHEDULED = "scheduled"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class MeetingParticipantStatus(str, Enum):
+    INTERESTED = "interested"
+    CONFIRMED = "confirmed"
+    CANCELLED = "cancelled"
+    ATTENDED = "attended"
+
+
+class MeetingCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    group_id: UUID = Field(alias="groupId")
+    channel_id: UUID | None = Field(default=None, alias="channelId")
+    title: str = Field(min_length=1, max_length=200)
+    description: str | None = None
+    modality: MeetingModality
+    location: str | None = Field(default=None, max_length=250)
+    external_url: str | None = Field(default=None, alias="externalUrl")
+    starts_at: AwareDatetime = Field(alias="startsAt")
+    ends_at: AwareDatetime | None = Field(default=None, alias="endsAt")
+    topic_ids: list[UUID] = Field(default_factory=list, alias="topicIds")
+
+    @model_validator(mode="after")
+    def validate_meeting(self):
+        if self.ends_at is not None and self.starts_at >= self.ends_at:
+            raise ValueError("O início deve ser anterior ao fim do encontro.")
+        if self.modality == MeetingModality.IN_PERSON and not self.location:
+            raise ValueError("Informe o local para encontros presenciais.")
+        if self.modality == MeetingModality.ONLINE and not self.external_url:
+            raise ValueError("Informe a URL para encontros online.")
+        if self.modality == MeetingModality.HYBRID and (not self.location or not self.external_url):
+            raise ValueError("Encontros híbridos exigem local e URL.")
+        return self
+
+
+class MeetingUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    channel_id: UUID | None = Field(default=None, alias="channelId")
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = None
+    modality: MeetingModality | None = None
+    location: str | None = Field(default=None, max_length=250)
+    external_url: str | None = Field(default=None, alias="externalUrl")
+    starts_at: AwareDatetime | None = Field(default=None, alias="startsAt")
+    ends_at: AwareDatetime | None = Field(default=None, alias="endsAt")
+    status: MeetingStatus | None = None
+    topic_ids: list[UUID] | None = Field(default=None, alias="topicIds")
+
+    @model_validator(mode="after")
+    def validate_meeting_update(self):
+        if self.starts_at is not None and self.ends_at is not None and self.starts_at >= self.ends_at:
+            raise ValueError("O início deve ser anterior ao fim do encontro.")
+        for field in ("status", "title", "modality", "starts_at"):
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise ValueError(f"{field} não aceita valor nulo.")
+        return self
+
+
+class MeetingResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, serialize_by_alias=True)
+
+    id: UUID
+    group_id: UUID = Field(serialization_alias="groupId")
+    channel_id: UUID | None = Field(serialization_alias="channelId")
+    organizer_id: UUID = Field(serialization_alias="organizerId")
+    title: str
+    description: str | None
+    modality: MeetingModality
+    location: str | None
+    external_url: str | None = Field(serialization_alias="externalUrl")
+    starts_at: AwareDatetime = Field(serialization_alias="startsAt")
+    ends_at: AwareDatetime | None = Field(serialization_alias="endsAt")
+    status: MeetingStatus
+    created_at: AwareDatetime = Field(serialization_alias="createdAt")
+    updated_at: AwareDatetime = Field(serialization_alias="updatedAt")
+    topic_ids: list[UUID] = Field(default_factory=list, serialization_alias="topicIds")
+    confirmed_count: int = Field(default=0, serialization_alias="confirmedCount")
+    participant_status: MeetingParticipantStatus | None = Field(default=None, serialization_alias="participantStatus")
+
+
+class MeetingParticipantUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    status: MeetingParticipantStatus = MeetingParticipantStatus.INTERESTED
+
+
+class MeetingParticipantResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, serialize_by_alias=True)
+
+    meeting_id: UUID = Field(serialization_alias="meetingId")
+    user_id: UUID = Field(serialization_alias="userId")
+    status: MeetingParticipantStatus
+    updated_at: AwareDatetime = Field(serialization_alias="updatedAt")
+
+
+class MeetingTopicCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    subject_topic_id: UUID = Field(alias="subjectTopicId")
+
+
+class MeetingTopicResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, serialize_by_alias=True)
+
+    meeting_id: UUID = Field(serialization_alias="meetingId")
+    subject_topic_id: UUID = Field(serialization_alias="subjectTopicId")
+
+
 class GroupVisibility(str, Enum):
     PUBLIC = "public"
     UNLISTED = "unlisted"
@@ -198,6 +318,7 @@ class GroupTopicResponse(BaseModel):
     group_id: UUID = Field(serialization_alias="groupId")
     subject_topic_id: UUID | None = Field(default=None, serialization_alias="subjectTopicId")
     custom_title: str | None = Field(default=None, serialization_alias="customTitle")
+    topic_name: str | None = Field(default=None, serialization_alias="topicName")
     created_at: datetime = Field(serialization_alias="createdAt")
 
 

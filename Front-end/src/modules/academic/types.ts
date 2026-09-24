@@ -91,11 +91,12 @@ export type AcademicCalendarEvent = {
   groupName: string;
   id: string;
   title: string;
-  type: "Aula" | "Encontro" | "Entrega";
+  type: "Aula" | "Encontro" | "Mentoria/Tutoria" | "Entrega";
   date: string; // YYYY-MM-DD
   time: string;
   context: string;
   occurrenceStatus?: OccurrenceStatus;
+  eventStatus?: "scheduled" | "cancelled" | "completed";
   href?: string;
 };
 

@@ -7,6 +7,7 @@ import {
   CaretLeft,
   CaretRight,
   Clock,
+  GraduationCap,
   UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
@@ -18,9 +19,24 @@ import "react-day-picker/style.css";
 
 import type { AcademicCalendarEvent } from "@/modules/academic/types";
 import { academicGroups, readAll, type Lesson } from "@/modules/groups/schedule";
+import { listMyMeetings, type Meeting } from "@/modules/groups/meetings.api";
 import { useRemote } from "@/modules/groups/useRemote";
 import { Failure, Loading } from "@/modules/groups/AsyncState";
 import styles from "@/components/academic/AcademicPage.module.css";
+
+type TutorBookingForCalendar = {
+  booking_id: string;
+  session_id: string;
+  status: "confirmed" | "cancelled";
+  session: {
+    title: string;
+    tutor_name: string;
+    subject_name: string;
+    starts_at: string;
+    ends_at: string;
+    status: "draft" | "scheduled" | "completed" | "cancelled";
+  };
+};
 
 function formatDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
@@ -43,12 +59,17 @@ export function AcademicCalendarView() {
   last.setDate(last.getDate() + 42);
   const start = first.toISOString(), end = last.toISOString();
   const fetcher = useCallback(async (signal: AbortSignal) => {
-    const groups = await academicGroups(signal);
-    if (!groups.length) return { groups, events: [] as AcademicCalendarEvent[] };
+    const [groups, meetings, bookings] = await Promise.all([
+      academicGroups(signal),
+      listMyMeetings(start, end, signal),
+      readAll<TutorBookingForCalendar>("marketplace/bookings/mine", signal),
+    ]);
     const query = new URLSearchParams({ start, end });
-    const lessons = await readAll<Lesson>(`groups/me/lessons?${query}`, signal);
+    const lessons = groups.length
+      ? await readAll<Lesson>(`groups/me/lessons?${query}`, signal)
+      : [];
     const byId = new Map(groups.map((group) => [group.id, group]));
-    const events = lessons.flatMap((lesson): AcademicCalendarEvent[] => {
+    const lessonEvents = lessons.flatMap((lesson): AcademicCalendarEvent[] => {
       const group = byId.get(lesson.groupId);
       if (!group) return [];
       const date = new Date(lesson.scheduledAt);
@@ -61,6 +82,40 @@ export function AcademicCalendarView() {
         href: `/grupos/${group.id}#aula-${lesson.id}`,
       }];
     });
+    const meetingEvents = meetings.flatMap((meeting): AcademicCalendarEvent[] => {
+      const group = byId.get(meeting.groupId);
+      if (!group) return [];
+      const date = new Date(meeting.startsAt);
+      return [{
+        id: `meeting-${meeting.id}`,
+        groupName: group.name,
+        title: meeting.title,
+        type: "Encontro",
+        date: formatDateKey(date),
+        time: `${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}${meeting.endsAt ? `–${new Date(meeting.endsAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}`,
+        context: `${group.subject} · ${group.section}`,
+        eventStatus: meeting.status,
+        href: `/grupos/${group.id}#encontros`,
+      }];
+    });
+    const tutoringEvents = bookings.flatMap((booking): AcademicCalendarEvent[] => {
+      if (booking.status !== "confirmed" || booking.session.status !== "scheduled") return [];
+      const date = new Date(booking.session.starts_at);
+      return [{
+        id: `tutoring-${booking.booking_id}`,
+        groupName: booking.session.tutor_name,
+        title: booking.session.title,
+        type: "Mentoria/Tutoria",
+        date: formatDateKey(date),
+        time: `${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}–${new Date(booking.session.ends_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
+        context: booking.session.subject_name,
+        eventStatus: booking.session.status,
+        href: `/sessoes/${booking.session_id}`,
+      }];
+    });
+    const events = [...lessonEvents, ...meetingEvents, ...tutoringEvents].sort(
+      (left, right) => `${left.date}T${left.time}`.localeCompare(`${right.date}T${right.time}`),
+    );
     return { groups, events };
   }, [start, end]);
   const remote = useRemote(`${start}/${end}`, fetcher, true);
@@ -111,7 +166,7 @@ export function AcademicCalendarView() {
         <div>
           <p className={styles.eyebrow}>Agenda acadêmica</p>
           <h2>Calendário</h2>
-          <p>Aulas publicadas nos grupos dos quais você participa.</p>
+          <p>Aulas, encontros dos grupos ativos e mentorias com inscrição confirmada.</p>
         </div>
         <Link className={styles.primaryButton} href="/grupos">
           Ver meus grupos
@@ -151,10 +206,10 @@ export function AcademicCalendarView() {
       </section>
 
       {/* Layout */}
-      {remote.loading ? <Loading /> : remote.error ? <Failure error={remote.error} retry={remote.reload} /> : !remote.data?.groups.length ? (
+      {remote.loading ? <Loading /> : remote.error ? <Failure error={remote.error} retry={remote.reload} /> : !remote.data?.groups.length && !remote.data?.events.length ? (
         <section className={styles.emptyDay}>
-          <h3>Você ainda não participa de grupos</h3>
-          <p>Entre em um grupo para acompanhar seu cronograma.</p>
+          <h3>Agenda dos seus grupos</h3>
+          <p>Entre em grupos ou confirme uma mentoria para ver atividades nesta agenda.</p>
           <Link className={styles.primaryButton} href="/grupos?view=discover">Descobrir grupos</Link>
         </section>
       ) : (
@@ -166,7 +221,7 @@ export function AcademicCalendarView() {
         <section aria-label="Calendário mensal" className={styles.calendarBoard}>
           <div className={styles.calendarBoardHeader}>
             <div>
-              <p className={styles.label}>Aulas publicadas</p>
+              <p className={styles.label}>Atividades agendadas</p>
               <p className={styles.calendarBoardHint}>
                 Selecione uma data para visualizar os detalhes da agenda.
               </p>
@@ -175,6 +230,8 @@ export function AcademicCalendarView() {
               <span>
                 <i className={styles.dotClass} /> Aula
               </span>
+              <span><i className={styles.dotMeeting} /> Encontro</span>
+              <span><i className={styles.dotTutoring} /> Mentoria/Tutoria</span>
             </div>
           </div>
 
@@ -225,23 +282,21 @@ export function AcademicCalendarView() {
                   >
                     <div
                       className={
-                        event.type === "Aula"
-                          ? styles.eventIconClass
-                          : styles.eventIconMeeting
+                        event.type === "Aula" || event.type === "Entrega" ? styles.eventIconClass : event.type === "Encontro" ? styles.eventIconMeeting : styles.eventIconTutoring
                       }
                     >
-                      {event.type === "Aula" ? (
+                      {event.type === "Aula" || event.type === "Entrega" ? (
                         <BookOpenText aria-hidden size={20} />
-                      ) : (
+                      ) : event.type === "Encontro" ? (
                         <UsersThree aria-hidden size={20} />
+                      ) : (
+                        <GraduationCap aria-hidden size={20} />
                       )}
                     </div>
                     <div>
                       <span
                         className={
-                          event.type === "Aula"
-                            ? styles.eventTypeClass
-                            : styles.eventTypeMeeting
+                          event.type === "Aula" || event.type === "Entrega" ? styles.eventTypeClass : event.type === "Encontro" ? styles.eventTypeMeeting : styles.eventTypeTutoring
                         }
                       >
                         {event.type}
@@ -251,6 +306,10 @@ export function AcademicCalendarView() {
                           ? " (Realizada)"
                           : event.occurrenceStatus === "cancelled"
                           ? " (Cancelada)"
+                          : event.eventStatus === "cancelled"
+                          ? " (Cancelado)"
+                          : event.eventStatus === "completed"
+                          ? " (Encerrado)"
                           : ""}
                       </span>
                       <h4>{event.title}</h4>
@@ -260,7 +319,7 @@ export function AcademicCalendarView() {
                       <small>
                         {event.context} · {event.groupName}
                       </small>
-                      <p><Link href={event.href!}>Detalhar aula no grupo</Link></p>
+                      {event.href ? <p><Link href={event.href}>{event.type === "Aula" ? "Detalhar aula no grupo" : event.type === "Encontro" ? "Ver encontro no grupo" : "Ver detalhes da mentoria"}</Link></p> : null}
                     </div>
                   </article>
                 ))}
@@ -269,7 +328,7 @@ export function AcademicCalendarView() {
               <div className={styles.emptyDay}>
                 <CalendarBlank aria-hidden size={25} />
                 <h4>Dia livre</h4>
-                <p>Nenhuma aula publicada para esta data.</p>
+                <p>Nenhuma atividade agendada para esta data.</p>
               </div>
             )}
             <Link className={styles.dayAction} href="/disciplinas">
@@ -307,7 +366,7 @@ function CalendarDayButton({
       {events.slice(0, 2).map((event) => (
         <span
           className={
-            event.type === "Aula" ? styles.dayEventClass : styles.dayEventMeeting
+            event.type === "Aula" || event.type === "Entrega" ? styles.dayEventClass : event.type === "Encontro" ? styles.dayEventMeeting : styles.dayEventTutoring
           }
           key={event.id}
           title={`${event.type}: ${event.title} · ${event.time}`}

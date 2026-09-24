@@ -1,0 +1,38 @@
+.section{display:grid;gap:16px;margin-top:18px;padding:22px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;box-shadow:var(--shadow-card)}
+.header,.cardHead,.actions,.organizerActions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.eyebrow{color:var(--color-green);font-size:.65rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.header h2{margin-top:4px;font-size:1.15rem}
+.list{display:grid;gap:12px}
+.card{display:grid;gap:10px;padding:16px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface-subtle)}
+.card h3{margin-top:7px;font-size:.98rem}
+.statusBadge,.cancelledBadge,.confirmedCount{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:.62rem;font-weight:800}
+.statusBadge{color:var(--color-green);background:var(--color-surface-soft)}
+.cancelledBadge{color:#a12b2b;background:#fde8e7}
+.confirmedCount{color:var(--color-text-muted);background:var(--color-surface)}
+.meta,.topic,.description,.empty,.disabledHint{font-size:.73rem;line-height:1.5;color:var(--color-text-muted)}
+.topic{color:var(--color-green);font-weight:700}
+.description{color:var(--color-text)}
+.external{width:max-content;color:var(--color-green);font-size:.72rem;font-weight:750;text-decoration:underline;text-underline-offset:3px}
+.actions,.organizerActions{justify-content:flex-start}
+.primary,.secondary,.selected,.danger,.textButton,.dangerText{min-height:36px;padding:0 12px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:.69rem;font-weight:750;cursor:pointer}
+.primary{color:#fff;background:var(--color-green);border-color:var(--color-green)}
+.secondary{color:var(--color-text);background:var(--color-surface);border-color:var(--color-border)}
+.selected{color:#fff;background:var(--color-green-hover);border-color:var(--color-green-hover)}
+.danger{color:#fff;background:#a12b2b;border-color:#a12b2b}
+.textButton,.dangerText{padding-inline:4px;background:transparent;color:var(--color-text-muted)}
+.dangerText{color:#a12b2b}
+.primary:disabled,.secondary:disabled,.selected:disabled,.danger:disabled,.textButton:disabled{opacity:.55;cursor:not-allowed}
+.organizerActions{padding-top:8px;border-top:1px solid var(--color-border)}
+.feedback{color:var(--color-green);font-size:.72rem}
+.disabledHint{padding:8px 10px;color:#8f2828;background:#fde8e7;border-radius:6px}
+.backdrop{position:fixed;z-index:100;inset:0;display:grid;place-items:center;padding:20px;background:rgb(15 23 18 / 55%)}
+.modal{width:min(100%,560px);max-height:min(90vh,850px);overflow:auto;padding:22px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;box-shadow:0 20px 60px rgb(0 0 0 / 20%)}
+.modal h2{margin-bottom:16px;font-size:1.1rem}
+.modal>p{margin-bottom:18px;color:var(--color-text-muted);font-size:.78rem;line-height:1.6}
+.form{display:grid;gap:12px}
+.form label{display:grid;gap:5px;color:var(--color-text);font-size:.7rem;font-weight:750}
+.form input,.form select,.form textarea{width:100%;min-height:38px;padding:8px 10px;color:var(--color-text);background:var(--color-surface);border:1px solid var(--color-border);border-radius:7px;font:inherit;font-size:.75rem}
+.form textarea{resize:vertical}
+.form small{color:var(--color-text-muted);font-size:.66rem}
+.validation{color:#a12b2b;font-size:.7rem}
+@media(max-width:560px){.section{padding:16px}.cardHead{align-items:flex-start}.confirmedCount{margin-left:auto}.modal{padding:17px}}

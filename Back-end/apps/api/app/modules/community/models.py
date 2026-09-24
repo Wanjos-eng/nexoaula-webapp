@@ -81,6 +81,25 @@ class TopicProgressStatus(str, Enum):
     MASTERED = "mastered"
 
 
+class MeetingModality(str, Enum):
+    IN_PERSON = "in_person"
+    ONLINE = "online"
+    HYBRID = "hybrid"
+
+
+class MeetingStatus(str, Enum):
+    SCHEDULED = "scheduled"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class MeetingParticipantStatus(str, Enum):
+    INTERESTED = "interested"
+    CONFIRMED = "confirmed"
+    CANCELLED = "cancelled"
+    ATTENDED = "attended"
+
+
 GROUP_VISIBILITY = SqlEnum(
     GroupVisibility,
     name="group_visibility",
@@ -131,6 +150,9 @@ TOPIC_PROGRESS_STATUS = SqlEnum(
     name="topic_progress_status",
     values_callable=lambda enum: [item.value for item in enum],
 )
+MEETING_MODALITY = SqlEnum(MeetingModality, name="meeting_modality", values_callable=lambda enum: [item.value for item in enum])
+MEETING_STATUS = SqlEnum(MeetingStatus, name="meeting_status", values_callable=lambda enum: [item.value for item in enum])
+MEETING_PARTICIPANT_STATUS = SqlEnum(MeetingParticipantStatus, name="meeting_participant_status", values_callable=lambda enum: [item.value for item in enum])
 
 
 
@@ -543,4 +565,61 @@ class StudentTopicProgress(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class Meeting(Base):
+    __tablename__ = "meetings"
+    __table_args__ = (
+        ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["organizer_id"], ["users.id"], ondelete="RESTRICT"),
+        CheckConstraint("ends_at IS NULL OR ends_at > starts_at", name="chk_meetings_time_range"),
+        CheckConstraint(
+            "(modality = 'in_person' AND location IS NOT NULL) OR "
+            "(modality = 'online' AND external_url IS NOT NULL) OR "
+            "(modality = 'hybrid' AND location IS NOT NULL AND external_url IS NOT NULL)",
+            name="chk_meetings_modality_fields",
+        ),
+        Index("ix_meetings_group_id_starts_at", "group_id", "starts_at"),
+        Index("ix_meetings_status_starts_at", "status", "starts_at"),
+    )
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    # Optional identifier with deliberately no FK to channels (issue #120).
+    channel_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    organizer_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    modality: Mapped[MeetingModality] = mapped_column(MEETING_MODALITY, nullable=False)
+    location: Mapped[str | None] = mapped_column(String(250))
+    external_url: Mapped[str | None] = mapped_column(Text)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[MeetingStatus] = mapped_column(MEETING_STATUS, nullable=False, server_default=text("'scheduled'::meeting_status"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class MeetingParticipant(Base):
+    __tablename__ = "meeting_participants"
+    __table_args__ = (
+        ForeignKeyConstraint(["meeting_id"], ["meetings.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="RESTRICT"),
+        UniqueConstraint("user_id", "meeting_id", name="uq_meeting_participants_user_id_meeting_id"),
+        Index("ix_meeting_participants_user_id_status", "user_id", "status"),
+    )
+    meeting_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    status: Mapped[MeetingParticipantStatus] = mapped_column(MEETING_PARTICIPANT_STATUS, nullable=False, server_default=text("'interested'::meeting_participant_status"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class MeetingTopic(Base):
+    __tablename__ = "meeting_topics"
+    __table_args__ = (
+        ForeignKeyConstraint(["meeting_id"], ["meetings.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["subject_topic_id"], ["subject_topics.id"], ondelete="RESTRICT"),
+        Index("ix_meeting_topics_subject_topic_id", "subject_topic_id"),
+    )
+    meeting_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    subject_topic_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
 

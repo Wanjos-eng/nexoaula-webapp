@@ -37,6 +37,7 @@ import type {
   TopicProgressStatus,
 } from "../academic/types";
 import s from "./AcademicCommunity.module.css";
+import { GroupMeetings } from "./GroupMeetings";
 
 type EditableLesson = { title: string; description: string; date: string; topicIds: string[] };
 
@@ -311,6 +312,8 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
   const nowIso = new Date().toISOString();
 
   return (
+    <>
+    <GroupMeetings groupId={groupId} canManage={canManage} />
     <section className={s.panel} id="cronograma" aria-label="Plano e cronograma">
       <div className={s.header}>
         <h2>Plano e cronograma</h2>
@@ -750,5 +753,6 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
         </form>
       )}
     </section>
+    </>
   );
 }
