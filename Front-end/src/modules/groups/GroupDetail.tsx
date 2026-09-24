@@ -16,6 +16,8 @@ import { Failure, Loading } from "./AsyncState";
 import { GroupForm } from "./GroupForm";
 import { GroupSchedule } from "./GroupSchedule";
 import { invalidateGroups } from "./schedule";
+import { ChannelManager } from "./ChannelManager";
+import { useChannels } from "./useChannels";
 import s from "./AcademicCommunity.module.css";
 
 export function GroupDetail({ groupId }: { groupId: string }) {
@@ -178,6 +180,9 @@ export function GroupDetail({ groupId }: { groupId: string }) {
               }}
             />
           ) : null}
+          {participation.status === "active" ? (
+            <ChannelView groupId={groupId} />
+          ) : null}
           {participation.canManage ? (
             <MemberManagement
               key={`member-management-${groupId}`}
@@ -189,7 +194,15 @@ export function GroupDetail({ groupId }: { groupId: string }) {
               }}
             />
           ) : null}
+          {participation.role === "owner" ? (
+            <ChannelManager
+              key={`channel-management-${groupId}`}
+              groupId={groupId}
+              onUpdated={() => remote.reload()}
+            />
+          ) : null}
         </>
+
       ) : null}
     </div>
   );
@@ -384,6 +397,45 @@ function MemberManagement({
           </button>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function ChannelView({ groupId }: { groupId: string }) {
+  const { channels, loading, error, reload } = useChannels(groupId);
+
+  if (loading) return <section className={s.panel}><Loading /></section>;
+  if (error) return <section className={s.panel}><Failure error={error} retry={reload} /></section>;
+  if (!channels?.length) return null;
+
+  return (
+    <section className={s.panel}>
+      <div>
+        <p className={s.eyebrow}>Comunidade</p>
+        <h2>Canais de discussão</h2>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "1rem" }}>
+        {channels.map(channel => (
+          <div key={channel.id} className={s.row} style={{ padding: "1rem", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+            <div>
+              <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                # {channel.name}
+                {channel.status === "archived" && <span className={s.badge}>Arquivado</span>}
+              </h3>
+              {channel.description && <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>{channel.description}</p>}
+            </div>
+            <div className={s.actions}>
+              {channel.status === "active" ? (
+                <button className={s.secondary} disabled>
+                  Chat disponível em breve
+                </button>
+              ) : (
+                <span style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>Este canal foi arquivado e está somente leitura.</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

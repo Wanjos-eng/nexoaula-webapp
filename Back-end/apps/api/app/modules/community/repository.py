@@ -13,6 +13,8 @@ from app.modules.community.errors import CommunityError, CommunityPersistenceErr
 from app.modules.community.models import (
     AttendanceAdjustmentOutcome,
     AttendanceStatus,
+    Channel,
+    ChannelStatus,
     GroupJoinRequest,
     GroupMember,
     GroupStatus,
@@ -35,6 +37,8 @@ from app.modules.community.models import (
     TopicProgressStatus,
 )
 from app.modules.community.schemas import (
+    ChannelCreate,
+    ChannelUpdate,
     GroupCreate,
     GroupTopicCreate,
     LessonOccurrenceCreate,
@@ -108,6 +112,13 @@ class CommunityRepository(Protocol):
     def list_topic_progress(self, user_id: UUID, group_id: UUID | None = None) -> list[tuple[StudentTopicProgress, UUID]]: ...
     def list_student_adjustments(self, user_id: UUID, unread_only: bool = False) -> list[StudentAttendanceAdjustment]: ...
     def mark_adjustment_seen(self, user_id: UUID, adjustment_id: UUID) -> StudentAttendanceAdjustment: ...
+
+    # --- TASK #120: Canais por assunto ---
+    def list_channels(self, group_id: UUID) -> list[Channel]: ...
+    def create_channel(self, group_id: UUID, created_by: UUID, data: ChannelCreate) -> Channel: ...
+    def find_channel_by_id(self, channel_id: UUID) -> Channel | None: ...
+    def update_channel(self, channel: Channel, data: ChannelUpdate) -> Channel: ...
+    def archive_channel(self, channel: Channel) -> Channel: ...
 
 
 
@@ -242,6 +253,18 @@ class SqlAlchemyCommunityRepository:
             group_id=group_id, user_id=owner_id, role=MembershipRole.OWNER.value,
             status=MembershipStatus.ACTIVE.value, joined_at=now,
         ))
+        
+        # --- TASK #120: Default channel ---
+        self._session.add(Channel(
+            id=uuid4(),
+            group_id=group_id,
+            name="geral",
+            description="Canal principal do grupo.",
+            created_by=owner_id,
+            status=ChannelStatus.ACTIVE.value,
+            created_at=now,
+        ))
+        
         self._session.flush()
         return group
 
@@ -866,3 +889,68 @@ class SqlAlchemyCommunityUnitOfWork:
     def rollback(self) -> None:
         if self._session is not None:
             self._session.rollback()
+
+    # --- TASK #120: Implementação de canais ---
+
+    def list_channels(self, group_id: UUID) -> list[Channel]:
+        stmt = (
+            select(Channel)
+            .where(Channel.group_id == group_id)
+            .order_by(Channel.created_at)
+        )
+        return list(self._session.scalars(stmt))
+
+    def create_channel(self, group_id: UUID, created_by: UUID, data: ChannelCreate) -> Channel:
+        existing = self._session.scalar(
+            select(Channel.id).where(
+                Channel.group_id == group_id,
+                Channel.name == data.name,
+            )
+        )
+        if existing is not None:
+            raise CommunityError(
+                f"Já existe um canal com o nome '{data.name}' neste grupo.", 409
+            )
+        channel = Channel(
+            id=uuid4(),
+            group_id=group_id,
+            subject_topic_id=data.subject_topic_id,
+            name=data.name,
+            description=data.description,
+            created_by=created_by,
+            status=ChannelStatus.ACTIVE.value,
+            created_at=datetime.now(UTC),
+        )
+        self._session.add(channel)
+        self._session.flush()
+        return channel
+
+    def find_channel_by_id(self, channel_id: UUID) -> Channel | None:
+        return self._session.get(Channel, channel_id)
+
+    def update_channel(self, channel: Channel, data: ChannelUpdate) -> Channel:
+        if data.name is not None and data.name != channel.name:
+            existing = self._session.scalar(
+                select(Channel.id).where(
+                    Channel.group_id == channel.group_id,
+                    Channel.name == data.name,
+                    Channel.id != channel.id,
+                )
+            )
+            if existing is not None:
+                raise CommunityError(
+                    f"Já existe um canal com o nome '{data.name}' neste grupo.", 409
+                )
+            channel.name = data.name
+        if "description" in data.model_fields_set:
+            channel.description = data.description
+        self._session.flush()
+        return channel
+
+    def archive_channel(self, channel: Channel) -> Channel:
+        if channel.status == ChannelStatus.ARCHIVED.value:
+            raise CommunityError("Canal já está arquivado.", 409)
+        channel.status = ChannelStatus.ARCHIVED.value
+        channel.archived_at = datetime.now(UTC)
+        self._session.flush()
+        return channel

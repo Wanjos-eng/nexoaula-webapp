@@ -544,3 +544,52 @@ class StudentTopicProgress(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
+
+
+# --- TASK #120: Canais por assunto (sem channel_messages nesta entrega) ---
+
+
+class ChannelStatus(str, Enum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
+CHANNEL_STATUS = SqlEnum(
+    ChannelStatus,
+    name="channel_status",
+    values_callable=lambda enum: [item.value for item in enum],
+)
+
+
+class Channel(Base):
+    __tablename__ = "channels"
+    __table_args__ = (
+        ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["subject_topic_id"], ["subject_topics.id"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["created_by"], ["users.id"], ondelete="RESTRICT"),
+        UniqueConstraint("group_id", "name", name="uq_channels_group_name"),
+        UniqueConstraint("id", "group_id", name="uq_channels_id_group_id"),
+        CheckConstraint(
+            "(status = 'active' AND archived_at IS NULL) OR "
+            "(status = 'archived' AND archived_at IS NOT NULL)",
+            name="chk_channels_archive_state",
+        ),
+        Index("ix_channels_group_id", "group_id"),
+        Index("ix_channels_subject_topic_id", "subject_topic_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    subject_topic_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    status: Mapped[ChannelStatus] = mapped_column(
+        CHANNEL_STATUS, nullable=False, server_default=text("'active'::channel_status")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

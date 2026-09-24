@@ -579,3 +579,46 @@ class CommunityService:
                           status: MembershipResultStatus) -> MembershipResponse:
         return MembershipResponse(group_id=member.group_id, user_id=member.user_id,
                                   status=status, joined_at=member.joined_at)
+
+    # --- TASK #120: Canais ---
+
+    def list_channels(self, group_id: UUID, user_id: UUID) -> list["ChannelResponse"]:
+        from app.modules.community.schemas import ChannelResponse
+        with self._uow as uow:
+            if not uow.community.is_active_member(group_id, user_id):
+                raise CommunityError("Apenas participantes do grupo podem ver os canais.", 403)
+            channels = uow.community.list_channels(group_id)
+            return [ChannelResponse.model_validate(c) for c in channels]
+
+    def create_channel(self, group_id: UUID, user_id: UUID, data: "ChannelCreate") -> "ChannelResponse":
+        from app.modules.community.schemas import ChannelResponse
+        with self._uow as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem gerenciar canais.", 403)
+            channel = uow.community.create_channel(group_id, user_id, data)
+            uow.commit()
+            return ChannelResponse.model_validate(channel)
+
+    def update_channel(self, group_id: UUID, channel_id: UUID, user_id: UUID, data: "ChannelUpdate") -> "ChannelResponse":
+        from app.modules.community.schemas import ChannelResponse
+        with self._uow as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem gerenciar canais.", 403)
+            channel = uow.community.find_channel_by_id(channel_id)
+            if channel is None or channel.group_id != group_id:
+                raise CommunityError("Canal não encontrado.", 404)
+            updated = uow.community.update_channel(channel, data)
+            uow.commit()
+            return ChannelResponse.model_validate(updated)
+
+    def archive_channel(self, group_id: UUID, channel_id: UUID, user_id: UUID) -> "ChannelResponse":
+        from app.modules.community.schemas import ChannelResponse
+        with self._uow as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem gerenciar canais.", 403)
+            channel = uow.community.find_channel_by_id(channel_id)
+            if channel is None or channel.group_id != group_id:
+                raise CommunityError("Canal não encontrado.", 404)
+            archived = uow.community.archive_channel(channel)
+            uow.commit()
+            return ChannelResponse.model_validate(archived)
