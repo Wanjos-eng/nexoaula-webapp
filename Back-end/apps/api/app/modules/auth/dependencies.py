@@ -60,7 +60,26 @@ def get_authentication_service() -> AuthenticationService:
     )
 
 
-cookie_session = APIKeyCookie(name=settings.auth_cookie_name, auto_error=False)
+from starlette.requests import Request
+
+
+class SessionCookieSecurity(APIKeyCookie):
+    def __init__(self) -> None:
+        super().__init__(
+            name=settings.auth_cookie_name,
+            scheme_name="APIKeyCookie",
+            auto_error=False,
+        )
+
+    async def __call__(self, request: Request) -> str | None:
+        return (
+            request.cookies.get(settings.auth_cookie_name)
+            or request.cookies.get("__Host-nexoaula_session")
+            or request.cookies.get("nexoaula_session")
+        )
+
+
+cookie_session = SessionCookieSecurity()
 
 
 def authenticated_subject(
@@ -78,3 +97,7 @@ def active_subject(
 ) -> UUID:
     service.current_user(user_id)
     return user_id
+
+
+get_current_user = active_subject
+

@@ -24,7 +24,7 @@ PREFIX = "/api/v1/marketplace"
 def market(monkeypatch):
     if not os.getenv("DATABASE_URL"):
         pytest.skip("PostgreSQL required")
-    engine = create_engine(os.environ["DATABASE_URL"])
+    engine = create_engine(os.environ["DATABASE_URL"], connect_args={"options": "-c timezone=utc"})
     connection = engine.connect()
     transaction = connection.begin()
     factory = sessionmaker(

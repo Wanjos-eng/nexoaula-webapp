@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from typing import Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -270,3 +271,105 @@ class TeachingPlanResponse(BaseModel):
     source_file_id: UUID | None = Field(default=None, serialization_alias="sourceFileId")
     created_at: datetime = Field(serialization_alias="createdAt")
     lessons: list[ScheduledLessonResponse] = Field(default_factory=list)
+
+
+class LessonOccurrenceCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    status: Literal["held", "cancelled", "postponed"]
+    scheduled_lesson_id: UUID | None = Field(default=None, alias="scheduledLessonId")
+    actual_started_at: AwareDatetime | None = Field(default=None, alias="actualStartedAt")
+    actual_ended_at: AwareDatetime | None = Field(default=None, alias="actualEndedAt")
+    rescheduled_to: AwareDatetime | None = Field(default=None, alias="rescheduledTo")
+    notes: str | None = Field(default=None)
+    topic_ids: list[UUID] | None = Field(default=None, alias="topicIds")
+    supersedes_occurrence_id: UUID | None = Field(default=None, alias="supersedesOccurrenceId")
+
+    @model_validator(mode="after")
+    def validate_status_rules(self):
+        if self.status == "held":
+            if self.actual_started_at is None or self.actual_ended_at is None:
+                raise ValueError("Aula realizada exige início e fim reais.")
+            if self.actual_ended_at <= self.actual_started_at:
+                raise ValueError("Término da aula deve ser posterior ao início.")
+            if self.rescheduled_to is not None:
+                raise ValueError("Aula realizada não pode ter data de reagendamento.")
+        elif self.status == "cancelled":
+            if self.actual_started_at is not None or self.actual_ended_at is not None:
+                raise ValueError("Aula cancelada não pode ter início ou término real.")
+            if self.rescheduled_to is not None:
+                raise ValueError("Aula cancelada não pode ter data de reagendamento.")
+        elif self.status == "postponed":
+            if self.actual_started_at is not None or self.actual_ended_at is not None:
+                raise ValueError("Aula adiada não pode ter início ou término real.")
+            if self.rescheduled_to is None:
+                raise ValueError("Aula adiada exige nova data de reagendamento.")
+        return self
+
+
+class LessonOccurrenceResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True, from_attributes=True)
+
+    id: UUID
+    group_id: UUID = Field(serialization_alias="groupId")
+    scheduled_lesson_id: UUID | None = Field(default=None, serialization_alias="scheduledLessonId")
+    supersedes_occurrence_id: UUID | None = Field(default=None, serialization_alias="supersedesOccurrenceId")
+    status: str
+    actual_started_at: datetime | None = Field(default=None, serialization_alias="actualStartedAt")
+    actual_ended_at: datetime | None = Field(default=None, serialization_alias="actualEndedAt")
+    rescheduled_to: datetime | None = Field(default=None, serialization_alias="rescheduledTo")
+    notes: str | None = None
+    recorded_by: UUID = Field(serialization_alias="recordedBy")
+    created_at: datetime = Field(serialization_alias="createdAt")
+    topic_ids: list[UUID] = Field(default_factory=list, serialization_alias="topicIds")
+
+
+class StudentAttendanceCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    lesson_occurrence_id: UUID = Field(alias="lessonOccurrenceId")
+    status: Literal["present", "absent"]
+    notes: str | None = None
+
+
+class StudentAttendanceResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True, from_attributes=True)
+
+    lesson_occurrence_id: UUID = Field(serialization_alias="lessonOccurrenceId")
+    group_id: UUID = Field(serialization_alias="groupId")
+    status: str
+    notes: str | None = None
+    updated_at: datetime = Field(serialization_alias="updatedAt")
+
+
+class StudentTopicProgressUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    status: Literal["pending", "reviewing", "mastered"]
+    notes: str | None = None
+
+
+class StudentTopicProgressResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True, from_attributes=True)
+
+    group_topic_id: UUID = Field(serialization_alias="groupTopicId")
+    group_id: UUID = Field(serialization_alias="groupId")
+    status: str
+    notes: str | None = None
+    updated_at: datetime = Field(serialization_alias="updatedAt")
+
+
+class AttendanceAdjustmentResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True, from_attributes=True)
+
+    id: UUID
+    user_id: UUID = Field(serialization_alias="userId")
+    source_occurrence_id: UUID = Field(serialization_alias="sourceOccurrenceId")
+    target_occurrence_id: UUID = Field(serialization_alias="targetOccurrenceId")
+    target_status: str = Field(serialization_alias="targetStatus")
+    outcome: str
+    previous_status: str = Field(serialization_alias="previousStatus")
+    previous_notes: str | None = Field(default=None, serialization_alias="previousNotes")
+    created_at: datetime = Field(serialization_alias="createdAt")
+    notice_seen_at: datetime | None = Field(default=None, serialization_alias="noticeSeenAt")
+

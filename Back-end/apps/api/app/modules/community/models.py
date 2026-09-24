@@ -58,6 +58,29 @@ class JoinRequestStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class LessonOccurrenceStatus(str, Enum):
+    HELD = "held"
+    CANCELLED = "cancelled"
+    POSTPONED = "postponed"
+
+
+class AttendanceStatus(str, Enum):
+    PRESENT = "present"
+    ABSENT = "absent"
+
+
+class AttendanceAdjustmentOutcome(str, Enum):
+    TRANSFERRED = "transferred"
+    INVALIDATED = "invalidated"
+    KEPT_EXISTING = "kept_existing"
+
+
+class TopicProgressStatus(str, Enum):
+    PENDING = "pending"
+    REVIEWING = "reviewing"
+    MASTERED = "mastered"
+
+
 GROUP_VISIBILITY = SqlEnum(
     GroupVisibility,
     name="group_visibility",
@@ -88,6 +111,27 @@ JOIN_REQUEST_STATUS = SqlEnum(
     name="join_request_status",
     values_callable=lambda enum: [item.value for item in enum],
 )
+LESSON_OCCURRENCE_STATUS = SqlEnum(
+    LessonOccurrenceStatus,
+    name="lesson_occurrence_status",
+    values_callable=lambda enum: [item.value for item in enum],
+)
+ATTENDANCE_STATUS = SqlEnum(
+    AttendanceStatus,
+    name="attendance_status",
+    values_callable=lambda enum: [item.value for item in enum],
+)
+ATTENDANCE_ADJUSTMENT_OUTCOME = SqlEnum(
+    AttendanceAdjustmentOutcome,
+    name="attendance_adjustment_outcome",
+    values_callable=lambda enum: [item.value for item in enum],
+)
+TOPIC_PROGRESS_STATUS = SqlEnum(
+    TopicProgressStatus,
+    name="topic_progress_status",
+    values_callable=lambda enum: [item.value for item in enum],
+)
+
 
 
 class StudyGroup(Base):
@@ -341,3 +385,162 @@ class ScheduledLessonTopic(Base):
     group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
     lesson_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
     group_topic_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+
+
+class LessonOccurrence(Base):
+    __tablename__ = "lesson_occurrences"
+    __table_args__ = (
+        ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(
+            ["scheduled_lesson_id", "group_id"],
+            ["scheduled_lessons.id", "scheduled_lessons.group_id"],
+            name="fk_lesson_occurrences_scheduled_lesson",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["supersedes_occurrence_id", "group_id"],
+            ["lesson_occurrences.id", "lesson_occurrences.group_id"],
+            name="fk_lesson_occurrences_supersedes",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["group_id", "recorded_by"],
+            ["group_members.group_id", "group_members.user_id"],
+            name="fk_lesson_occurrences_recorded_by",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint("id", "group_id", name="uq_lesson_occurrences_id_group_id"),
+        UniqueConstraint("id", "status", name="uq_lesson_occurrences_id_status"),
+        CheckConstraint(
+            "actual_ended_at IS NULL OR (actual_started_at IS NOT NULL AND actual_ended_at > actual_started_at)",
+            name="chk_lesson_occurrences_time_range",
+        ),
+        CheckConstraint(
+            "(status = 'held' AND actual_started_at IS NOT NULL AND actual_ended_at IS NOT NULL AND actual_ended_at <= created_at AND rescheduled_to IS NULL) OR (status = 'cancelled' AND actual_started_at IS NULL AND actual_ended_at IS NULL AND rescheduled_to IS NULL) OR (status = 'postponed' AND actual_started_at IS NULL AND actual_ended_at IS NULL AND rescheduled_to IS NOT NULL)",
+            name="chk_lesson_occurrences_status_fields",
+        ),
+        CheckConstraint(
+            "supersedes_occurrence_id IS NULL OR supersedes_occurrence_id <> id",
+            name="chk_lesson_occurrences_not_self_superseding",
+        ),
+        Index("ix_lesson_occurrences_group_id_created_at", "group_id", "created_at"),
+        Index("ix_lesson_occurrences_scheduled_lesson_id_created_at", "scheduled_lesson_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    scheduled_lesson_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    supersedes_occurrence_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True), unique=True)
+    status: Mapped[LessonOccurrenceStatus] = mapped_column(LESSON_OCCURRENCE_STATUS, nullable=False)
+    actual_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    actual_ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rescheduled_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+    recorded_by: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class OccurrenceTopic(Base):
+    __tablename__ = "occurrence_topics"
+    __table_args__ = (
+        ForeignKeyConstraint(["lesson_occurrence_id"], ["lesson_occurrences.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["group_topic_id"], ["group_topics.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["subject_topic_id"], ["subject_topics.id"], ondelete="RESTRICT"),
+        Index("ix_occurrence_topics_group_topic_id", "group_topic_id"),
+    )
+
+    lesson_occurrence_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    group_topic_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    subject_topic_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+
+
+class StudentLessonAttendance(Base):
+    __tablename__ = "student_lesson_attendance"
+    __table_args__ = (
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["lesson_occurrence_id", "occurrence_status"],
+            ["lesson_occurrences.id", "lesson_occurrences.status"],
+            name="fk_student_lesson_attendance_occurrence",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("occurrence_status = 'held'", name="chk_attendance_held_only"),
+        Index("ix_student_lesson_attendance_lesson_occurrence_id", "lesson_occurrence_id"),
+    )
+
+    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    lesson_occurrence_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    occurrence_status: Mapped[LessonOccurrenceStatus] = mapped_column(
+        LESSON_OCCURRENCE_STATUS, nullable=False, server_default=text("'held'::lesson_occurrence_status")
+    )
+    status: Mapped[AttendanceStatus] = mapped_column(ATTENDANCE_STATUS, nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class StudentAttendanceAdjustment(Base):
+    __tablename__ = "student_attendance_adjustments"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["user_id", "source_occurrence_id"],
+            ["student_lesson_attendance.user_id", "student_lesson_attendance.lesson_occurrence_id"],
+            name="fk_student_attendance_adjustments_source",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["target_occurrence_id", "target_status"],
+            ["lesson_occurrences.id", "lesson_occurrences.status"],
+            name="fk_student_attendance_adjustments_target",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint("user_id", "target_occurrence_id", name="uq_student_attendance_adjustments_user_target"),
+        CheckConstraint("source_occurrence_id <> target_occurrence_id", name="chk_attendance_adjustment_distinct_occurrences"),
+        CheckConstraint(
+            "(outcome = 'invalidated' AND target_status IN ('cancelled', 'postponed')) OR (outcome IN ('transferred', 'kept_existing') AND target_status = 'held')",
+            name="chk_attendance_adjustment_outcome",
+        ),
+        CheckConstraint("notice_seen_at IS NULL OR notice_seen_at >= created_at", name="chk_attendance_adjustment_notice_time"),
+        Index("ix_student_attendance_adjustments_user_seen", "user_id", "notice_seen_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    source_occurrence_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    target_occurrence_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    target_status: Mapped[LessonOccurrenceStatus] = mapped_column(LESSON_OCCURRENCE_STATUS, nullable=False)
+    outcome: Mapped[AttendanceAdjustmentOutcome] = mapped_column(ATTENDANCE_ADJUSTMENT_OUTCOME, nullable=False)
+    previous_status: Mapped[AttendanceStatus] = mapped_column(ATTENDANCE_STATUS, nullable=False)
+    previous_notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    notice_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class StudentTopicProgress(Base):
+    __tablename__ = "student_topic_progress"
+    __table_args__ = (
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["group_topic_id"], ["group_topics.id"], ondelete="RESTRICT"),
+        Index("ix_student_topic_progress_user_status", "user_id", "status"),
+        Index("ix_student_topic_progress_group_topic_id", "group_topic_id"),
+    )
+
+    user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    group_topic_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+    status: Mapped[TopicProgressStatus] = mapped_column(
+        TOPIC_PROGRESS_STATUS, nullable=False, server_default=text("'pending'::topic_progress_status")
+    )
+    notes: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+

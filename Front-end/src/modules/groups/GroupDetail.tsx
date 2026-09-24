@@ -180,7 +180,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
           ) : null}
           {participation.canManage ? (
             <MemberManagement
-              key={groupId}
+              key={`member-management-${groupId}`}
               groupId={groupId}
               onChanged={(message, error) => {
                 setFeedback(message);
