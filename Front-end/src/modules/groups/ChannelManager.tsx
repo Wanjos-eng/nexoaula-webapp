@@ -99,7 +99,7 @@ export function ChannelManager({ groupId, onUpdated }: { groupId: string; onUpda
       </div>
 
       {feedback && <div role="status" className={s.success}>{feedback}</div>}
-      {formError && <Failure error={formError} />}
+      {formError ? <Failure error={formError} /> : null}
 
       <div className={s.actions} style={{ marginTop: "1rem", marginBottom: "1rem" }}>
         {!isCreating && !editingChannel && (

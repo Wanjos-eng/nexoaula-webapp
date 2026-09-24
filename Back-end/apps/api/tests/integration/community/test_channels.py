@@ -4,7 +4,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import text
 
-from app.modules.community.models import GroupStatus, GroupVisibility, JoinPolicy, MembershipRole, MembershipStatus
+from app.modules.community.models import GroupStatus, GroupVisibility, GroupJoinPolicy, MembershipRole, MembershipStatus
 from test_groups import (
     API_PREFIX,
     BASE_URL,
@@ -56,7 +56,7 @@ async def setup_db(active_session):
             VALUES (:group,:user,:subject,:section,'Test Group',:vis,:join,:status)
         """), {
             "group": group_id, "user": active_session, "subject": subject_id, "section": section_id,
-            "vis": GroupVisibility.PUBLIC.value, "join": JoinPolicy.OPEN.value, "status": GroupStatus.ACTIVE.value
+            "vis": GroupVisibility.PUBLIC.value, "join": GroupJoinPolicy.OPEN.value, "status": GroupStatus.ACTIVE.value
         })
 
         # Insert membership
