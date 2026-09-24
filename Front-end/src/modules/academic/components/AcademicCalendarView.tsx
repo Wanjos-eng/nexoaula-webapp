@@ -207,9 +207,9 @@ export function AcademicCalendarView() {
 
       {/* Layout */}
       {remote.loading ? <Loading /> : remote.error ? <Failure error={remote.error} retry={remote.reload} /> : !remote.data?.groups.length && !remote.data?.events.length ? (
-        <section className={styles.emptyDay}>
-          <h3>Agenda dos seus grupos</h3>
-          <p>Entre em grupos ou confirme uma mentoria para ver atividades nesta agenda.</p>
+        <section className={styles.emptyDay} data-testid="calendar-empty-state" aria-labelledby="calendar-empty-title">
+          <h2 id="calendar-empty-title">Você ainda não participa de grupos</h2>
+          <p>Entre em um grupo para visualizar seus próximos encontros.</p>
           <Link className={styles.primaryButton} href="/grupos?view=discover">Descobrir grupos</Link>
         </section>
       ) : (

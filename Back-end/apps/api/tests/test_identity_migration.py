@@ -53,6 +53,9 @@ def test_only_released_tables_exist(database_engine):
         "student_lesson_attendance",
         "student_attendance_adjustments",
         "student_topic_progress",
+        "meetings",
+        "meeting_participants",
+        "meeting_topics",
     }
 
 
