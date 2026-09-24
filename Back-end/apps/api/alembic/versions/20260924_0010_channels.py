@@ -15,7 +15,11 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE TYPE channel_status AS ENUM ('active', 'archived')")
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE channel_status AS ENUM ('active', 'archived');
+        EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    """)
 
     op.create_table(
         'channels',
@@ -49,4 +53,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table('channels')
-    op.execute('DROP TYPE channel_status')
+    op.execute('DROP TYPE IF EXISTS channel_status')
