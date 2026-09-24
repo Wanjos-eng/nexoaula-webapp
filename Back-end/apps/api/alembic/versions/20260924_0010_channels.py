@@ -21,6 +21,8 @@ def upgrade() -> None:
         EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     """)
 
+    channel_status = postgresql.ENUM('active', 'archived', name='channel_status', create_type=False)
+
     op.create_table(
         'channels',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True,
@@ -33,9 +35,8 @@ def upgrade() -> None:
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('created_by', postgresql.UUID(as_uuid=True),
                   sa.ForeignKey('users.id', ondelete='RESTRICT'), nullable=False),
-        sa.Column('status', sa.Enum('active', 'archived', name='channel_status',
-                                    create_type=False), nullable=False,
-                  server_default=sa.text("'active'")),
+        sa.Column('status', channel_status, nullable=False,
+                  server_default=sa.text("'active'::channel_status")),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False,
                   server_default=sa.text('now()')),
         sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
