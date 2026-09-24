@@ -2,7 +2,7 @@ import { apiClient } from "@/lib/api";
 import { read } from "./api";
 import { invalidateGroups, type GroupTopic } from "./schedule";
 
-export type MeetingStatus = "scheduled" | "cancelled" | "completed";
+export type MeetingStatus = "scheduled" | "cancelled" | "completed" | "postponed";
 export type MeetingModality = "in_person" | "online" | "hybrid";
 export type MeetingParticipantStatus = "interested" | "confirmed" | "cancelled" | "attended";
 
@@ -38,9 +38,11 @@ export type MeetingCreateInput = {
   topicIds: string[];
 };
 
-export type MeetingUpdateInput = Partial<Omit<MeetingCreateInput, "groupId">> & {
-  status?: MeetingStatus;
-};
+export type MeetingUpdateInput = Partial<Omit<MeetingCreateInput, "groupId">>;
+
+export type MeetingOutcomeInput =
+  | { status: "completed" | "cancelled" }
+  | { status: "postponed"; startsAt: string; endsAt: string };
 
 export type MeetingParticipation = {
   meetingId: string;
@@ -76,6 +78,12 @@ export async function updateMeeting(meetingId: string, input: MeetingUpdateInput
 
 export async function cancelMeeting(meetingId: string): Promise<Meeting> {
   const { data } = await apiClient.post<Meeting>(`/v1/meetings/${meetingId}/cancel`, { body: {} });
+  invalidateGroups();
+  return data;
+}
+
+export async function reportMeetingOutcome(meetingId: string, input: MeetingOutcomeInput): Promise<Meeting> {
+  const { data } = await apiClient.put<Meeting>(`/v1/meetings/${meetingId}/outcome`, { body: input });
   invalidateGroups();
   return data;
 }

@@ -310,6 +310,8 @@ export function AcademicCalendarView() {
                           ? " (Cancelado)"
                           : event.eventStatus === "completed"
                           ? " (Encerrado)"
+                          : event.eventStatus === "postponed"
+                          ? " (Adiado)"
                           : ""}
                       </span>
                       <h4>{event.title}</h4>

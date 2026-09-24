@@ -96,7 +96,7 @@ export type AcademicCalendarEvent = {
   time: string;
   context: string;
   occurrenceStatus?: OccurrenceStatus;
-  eventStatus?: "scheduled" | "cancelled" | "completed";
+  eventStatus?: "scheduled" | "cancelled" | "completed" | "postponed";
   href?: string;
 };
 

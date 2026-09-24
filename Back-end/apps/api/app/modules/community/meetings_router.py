@@ -8,6 +8,7 @@ from app.modules.auth.dependencies import active_subject
 from app.modules.community.dependencies import get_community_service
 from app.modules.community.schemas import (
     MeetingCreate,
+    MeetingOutcomeUpdate,
     MeetingParticipantResponse,
     MeetingParticipantUpsert,
     MeetingResponse,
@@ -81,6 +82,13 @@ def update_meeting(meeting_id: UUID, payload: MeetingUpdate, user_id: UserId,
 def cancel_meeting(meeting_id: UUID, user_id: UserId,
                    service: Service) -> MeetingResponse:
     return service.cancel_meeting(meeting_id, user_id)
+
+
+@router.put("/api/v1/meetings/{meeting_id}/outcome", response_model=MeetingResponse,
+            summary="Registrar resultado do encontro", openapi_extra=MUTATION_SECURITY)
+def report_meeting_outcome(meeting_id: UUID, payload: MeetingOutcomeUpdate,
+                           user_id: UserId, service: Service) -> MeetingResponse:
+    return service.report_meeting_outcome(meeting_id, user_id, payload)
 
 
 @router.put("/api/v1/meetings/{meeting_id}/participants/me",

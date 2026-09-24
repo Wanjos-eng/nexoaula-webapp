@@ -16,6 +16,7 @@ class MeetingStatus(str, Enum):
     SCHEDULED = "scheduled"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
+    POSTPONED = "postponed"
 
 
 class MeetingParticipantStatus(str, Enum):
@@ -63,16 +64,34 @@ class MeetingUpdate(BaseModel):
     external_url: str | None = Field(default=None, alias="externalUrl")
     starts_at: AwareDatetime | None = Field(default=None, alias="startsAt")
     ends_at: AwareDatetime | None = Field(default=None, alias="endsAt")
-    status: MeetingStatus | None = None
     topic_ids: list[UUID] | None = Field(default=None, alias="topicIds")
 
     @model_validator(mode="after")
     def validate_meeting_update(self):
         if self.starts_at is not None and self.ends_at is not None and self.starts_at >= self.ends_at:
             raise ValueError("O início deve ser anterior ao fim do encontro.")
-        for field in ("status", "title", "modality", "starts_at"):
+        for field in ("title", "modality", "starts_at"):
             if field in self.model_fields_set and getattr(self, field) is None:
                 raise ValueError(f"{field} não aceita valor nulo.")
+        return self
+
+
+class MeetingOutcomeUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    status: Literal["completed", "postponed", "cancelled"]
+    starts_at: AwareDatetime | None = Field(default=None, alias="startsAt")
+    ends_at: AwareDatetime | None = Field(default=None, alias="endsAt")
+
+    @model_validator(mode="after")
+    def validate_outcome(self):
+        if self.status == "postponed":
+            if self.starts_at is None or self.ends_at is None:
+                raise ValueError("Informe os novos horários para adiar o encontro.")
+            if self.starts_at >= self.ends_at:
+                raise ValueError("O início deve ser anterior ao fim do encontro.")
+        elif self.starts_at is not None or self.ends_at is not None:
+            raise ValueError("Novos horários só podem ser informados ao adiar o encontro.")
         return self
 
 

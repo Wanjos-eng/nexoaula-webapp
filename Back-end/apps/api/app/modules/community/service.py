@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.modules.community.errors import CommunityError
@@ -32,6 +32,7 @@ from app.modules.community.schemas import (
     GroupTopicResponse,
     GroupUpdate,
     MeetingCreate,
+    MeetingOutcomeUpdate,
     MeetingParticipantResponse,
     MeetingParticipantStatus,
     MeetingResponse,
@@ -155,6 +156,36 @@ class CommunityService:
             uow.commit()
             return self._meeting_response(uow, meeting, user_id)
 
+    def report_meeting_outcome(self, meeting_id: UUID, user_id: UUID,
+                               data: MeetingOutcomeUpdate) -> MeetingResponse:
+        now = datetime.now(UTC)
+        with self._uow_factory() as uow:
+            meeting = uow.community.find_meeting(meeting_id, lock=True)
+            if meeting is None:
+                raise CommunityError("Encontro não encontrado.", 404)
+            if meeting.organizer_id != user_id:
+                raise CommunityError("Somente quem criou o encontro pode registrar o resultado.", 403)
+            status_value = self._value(meeting.status)
+            if status_value not in (ModelMeetingStatus.SCHEDULED.value, ModelMeetingStatus.POSTPONED.value):
+                raise CommunityError("O resultado deste encontro já foi registrado.", 409)
+
+            if data.status == "completed":
+                end_time = meeting.ends_at or meeting.starts_at
+                if now < end_time:
+                    raise CommunityError("O encontro só pode ser marcado como realizado após o horário de término.", 409)
+                meeting.status = ModelMeetingStatus.COMPLETED
+            elif data.status == "postponed":
+                if data.starts_at <= now:
+                    raise CommunityError("O novo início deve estar no futuro.", 422)
+                meeting.starts_at = data.starts_at
+                meeting.ends_at = data.ends_at
+                meeting.status = ModelMeetingStatus.POSTPONED
+            else:
+                meeting.status = ModelMeetingStatus.CANCELLED
+            meeting.updated_at = now
+            uow.commit()
+            return self._meeting_response(uow, meeting, user_id)
+
     def put_meeting_participant(self, meeting_id: UUID, user_id: UUID,
                                 participant_status: MeetingParticipantStatus) -> MeetingParticipantResponse:
         with self._uow_factory() as uow:
@@ -207,8 +238,13 @@ class CommunityService:
 
     @staticmethod
     def _ensure_meeting_mutable(meeting: Meeting) -> None:
-        if CommunityService._value(meeting.status) != ModelMeetingStatus.SCHEDULED.value:
+        if CommunityService._value(meeting.status) not in (
+            ModelMeetingStatus.SCHEDULED.value, ModelMeetingStatus.POSTPONED.value
+        ):
             raise CommunityError("Encontros cancelados ou encerrados não podem ser alterados.", 409)
+        end_time = meeting.ends_at or meeting.starts_at
+        if datetime.now(UTC) >= end_time:
+            raise CommunityError("O prazo para alterar a participação deste encontro terminou.", 409)
 
     def list_mine(self, user_id: UUID, offset: int, limit: int) -> list[GroupResponse]:
         with self._uow_factory() as uow:

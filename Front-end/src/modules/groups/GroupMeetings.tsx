@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState, type FormEvent } from "react";
+import { useAuthSession } from "@/modules/auth";
 import { useRemote } from "./useRemote";
 import { Failure, Loading } from "./AsyncState";
 import { localDateTime, type GroupTopic } from "./schedule";
@@ -10,10 +11,12 @@ import {
   listGroupMeetings,
   listMeetingTopics,
   putMeetingParticipation,
+  reportMeetingOutcome,
   updateMeeting,
   type Meeting,
   type MeetingCreateInput,
   type MeetingModality,
+  type MeetingOutcomeInput,
   type MeetingParticipantStatus,
 } from "./meetings.api";
 import s from "./GroupMeetings.module.css";
@@ -30,8 +33,13 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
     return { meetings, topics };
   }, [groupId]);
   const remote = useRemote(`meetings-${groupId}`, fetcher, true);
+  const { user } = useAuthSession();
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Meeting | null>(null);
+  const [outcomeTarget, setOutcomeTarget] = useState<Meeting | null>(null);
+  const [outcome, setOutcome] = useState<"completed" | "postponed" | "cancelled">("completed");
+  const [newStartsAt, setNewStartsAt] = useState("");
+  const [newEndsAt, setNewEndsAt] = useState("");
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [feedback, setFeedback] = useState("");
@@ -82,7 +90,7 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
   }
 
   async function changeParticipation(meeting: Meeting, status: MeetingParticipantStatus) {
-    if (lock.current || meeting.status !== "scheduled") return;
+    if (lock.current || !isMeetingOpen(meeting)) return;
     lock.current = true;
     setParticipatingId(meeting.id);
     setError(undefined);
@@ -95,6 +103,36 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
     } finally {
       lock.current = false;
       setParticipatingId(null);
+    }
+  }
+
+  async function submitOutcome() {
+    if (!outcomeTarget || lock.current) return;
+    let payload: MeetingOutcomeInput;
+    if (outcome === "postponed") {
+      const start = new Date(newStartsAt);
+      const end = new Date(newEndsAt);
+      if (!newStartsAt || !newEndsAt || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start <= new Date() || start >= end) {
+        setError(new Error("Informe novos horários válidos no futuro; o fim deve ser posterior ao início."));
+        return;
+      }
+      payload = { status: "postponed", startsAt: start.toISOString(), endsAt: end.toISOString() };
+    } else {
+      payload = { status: outcome };
+    }
+    lock.current = true;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await reportMeetingOutcome(outcomeTarget.id, payload);
+      setFeedback(outcome === "completed" ? "Encontro registrado como realizado." : outcome === "postponed" ? "Encontro adiado e novo horário registrado." : "Encontro cancelado. O histórico foi preservado.");
+      setOutcomeTarget(null);
+      remote.reload();
+    } catch (cause) {
+      setError(cause);
+    } finally {
+      lock.current = false;
+      setBusy(false);
     }
   }
 
@@ -114,8 +152,8 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
       ) : (
         <div className={s.list}>
           {remote.data.meetings.map((meeting) => {
-            const disabled = meeting.status !== "scheduled";
-            const statusLabel = meeting.status === "cancelled" ? "Cancelado" : meeting.status === "completed" ? "Encerrado" : "Agendado";
+            const disabled = !isMeetingOpen(meeting);
+            const statusLabel = meeting.status === "cancelled" ? "Cancelado" : meeting.status === "completed" ? "Realizado" : meeting.status === "postponed" ? "Adiado" : "Agendado";
             const date = new Date(meeting.startsAt);
             const timeRange = `${formatTime(date)}${meeting.endsAt ? ` – ${formatTime(new Date(meeting.endsAt))}` : ""}`;
             const currentStatus = meeting.participantStatus;
@@ -143,11 +181,15 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
                     {currentStatus && currentStatus !== "cancelled" ? <button className={s.textButton} disabled={participatingId === meeting.id} onClick={() => void changeParticipation(meeting, "cancelled")} type="button">Desmarcar</button> : null}
                   </div>
                 )}
-                {canManage && meeting.status === "scheduled" ? (
+                {canManage && (meeting.status === "scheduled" || meeting.status === "postponed") ? (
                   <div className={s.organizerActions}>
                     <button className={s.textButton} onClick={() => setEditor({ kind: "edit", meeting })} type="button">Editar</button>
                     <button className={s.dangerText} onClick={() => setCancelTarget(meeting)} type="button">Cancelar encontro</button>
+                    {meeting.organizerId === user.id ? <button className={s.textButton} onClick={() => { setOutcomeTarget(meeting); setOutcome("completed"); setError(undefined); }} type="button">Registrar resultado</button> : null}
                   </div>
+                ) : null}
+                {!canManage && meeting.organizerId === user.id && (meeting.status === "scheduled" || meeting.status === "postponed") ? (
+                  <div className={s.organizerActions}><button className={s.textButton} onClick={() => { setOutcomeTarget(meeting); setOutcome("completed"); setError(undefined); }} type="button">Registrar resultado</button></div>
                 ) : null}
               </article>
             );
@@ -170,6 +212,28 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
             <div className={s.actions}>
               <button className={s.danger} disabled={busy} onClick={() => void confirmCancellation()} type="button">Confirmar cancelamento</button>
               <button className={s.secondary} disabled={busy} onClick={() => setCancelTarget(null)} type="button">Manter encontro</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+      {outcomeTarget ? (
+        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOutcomeTarget(null); }}>
+          <section className={s.modal} role="dialog" aria-modal="true" aria-labelledby="meeting-outcome-title">
+            <h2 id="meeting-outcome-title">Registrar resultado</h2>
+            <p>Atualize o histórico de “{outcomeTarget.title}”.</p>
+            <div className={s.form}>
+              <label>Resultado<select value={outcome} onChange={(event) => setOutcome(event.target.value as typeof outcome)}>
+                <option value="completed">Realizado</option><option value="postponed">Adiado</option><option value="cancelled">Cancelado</option>
+              </select></label>
+              {outcome === "postponed" ? <>
+                <label>Novo início<input type="datetime-local" value={newStartsAt} onChange={(event) => setNewStartsAt(event.target.value)} /></label>
+                <label>Novo fim<input type="datetime-local" value={newEndsAt} onChange={(event) => setNewEndsAt(event.target.value)} /></label>
+              </> : null}
+              {outcome === "completed" && isMeetingOpen(outcomeTarget) ? <p className={s.meta}>O resultado “Realizado” fica disponível após o horário de término.</p> : null}
+              <div className={s.actions}>
+                <button className={s.primary} disabled={busy || (outcome === "completed" && isMeetingOpen(outcomeTarget))} onClick={() => void submitOutcome()} type="button">{busy ? "Salvando…" : "Salvar resultado"}</button>
+                <button className={s.secondary} disabled={busy} onClick={() => setOutcomeTarget(null)} type="button">Fechar</button>
+              </div>
             </div>
           </section>
         </div>
@@ -256,6 +320,11 @@ function MeetingForm({
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function isMeetingOpen(meeting: Meeting): boolean {
+  if (meeting.status !== "scheduled" && meeting.status !== "postponed") return false;
+  return Date.now() < new Date(meeting.endsAt ?? meeting.startsAt).getTime();
 }
 
 function modalityLabel(modality: MeetingModality): string {
