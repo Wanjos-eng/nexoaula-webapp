@@ -7,12 +7,15 @@ from fastapi import APIRouter, Depends, Query, status
 from app.modules.auth.dependencies import active_subject
 from app.modules.community.dependencies import get_community_service
 from app.modules.community.schemas import (
+    AttendanceAdjustmentResponse,
     GroupCreate,
     GroupDiscoveryResponse,
     GroupResponse,
     GroupTopicCreate,
     GroupTopicResponse,
     GroupUpdate,
+    LessonOccurrenceCreate,
+    LessonOccurrenceResponse,
     MembershipAction,
     MembershipResponse,
     ParticipantResponse,
@@ -20,6 +23,10 @@ from app.modules.community.schemas import (
     ScheduledLessonCreate,
     ScheduledLessonResponse,
     ScheduledLessonUpdate,
+    StudentAttendanceCreate,
+    StudentAttendanceResponse,
+    StudentTopicProgressResponse,
+    StudentTopicProgressUpdate,
     TeachingPlanCreate,
     TeachingPlanResponse,
 )
@@ -194,3 +201,92 @@ def replace_plan(group_id: UUID, plan_id: UUID, user_id: UserId, payload: Teachi
              openapi_extra=MUTATION_SECURITY)
 def publish_plan(group_id: UUID, plan_id: UUID, user_id: UserId, service: Service):
     return service.publish_plan(group_id, plan_id, user_id)
+
+
+# --- TASK #114: Ocorrências de Aula, Frequência e Progresso ---
+
+
+@router.post("/{group_id}/occurrences", response_model=LessonOccurrenceResponse,
+             status_code=status.HTTP_201_CREATED, summary="Registrar ocorrência de aula",
+             openapi_extra=MUTATION_SECURITY)
+def create_occurrence(group_id: UUID, user_id: UserId, payload: LessonOccurrenceCreate,
+                      service: Service) -> LessonOccurrenceResponse:
+    return service.create_occurrence(group_id, user_id, payload)
+
+
+@router.get("/{group_id}/occurrences", response_model=list[LessonOccurrenceResponse],
+            summary="Listar ocorrências do grupo")
+def list_occurrences(group_id: UUID, user_id: UserId, service: Service,
+                     current_only: bool = Query(default=True, alias="currentOnly"),
+                     scheduled_lesson_id: UUID | None = Query(default=None, alias="scheduledLessonId")) -> list[LessonOccurrenceResponse]:
+    return service.list_occurrences(group_id, user_id, current_only=current_only, scheduled_lesson_id=scheduled_lesson_id)
+
+
+@router.get("/{group_id}/occurrences/{occurrence_id}", response_model=LessonOccurrenceResponse,
+            summary="Obter dados da ocorrência de aula")
+def get_occurrence(group_id: UUID, occurrence_id: UUID, user_id: UserId,
+                   service: Service) -> LessonOccurrenceResponse:
+    return service.get_occurrence(group_id, occurrence_id, user_id)
+
+
+# --- Rotas Pessoais de Frequência e Progresso (/api/v1/me) ---
+
+me_router = APIRouter(prefix="/api/v1/me", tags=["Personal"])
+
+
+@me_router.get("/lessons", response_model=list[ScheduledLessonResponse], summary="Meu cronograma vigente")
+def user_calendar_me(user_id: UserId, service: Service,
+                     start: AwareDatetime | None = None, end: AwareDatetime | None = None,
+                     period: Literal["past", "future"] | None = None,
+                     offset: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=100)):
+    return service.user_calendar(user_id, start, end, period, offset, limit)
+
+
+@me_router.get("/attendance", response_model=list[StudentAttendanceResponse],
+               summary="Listar frequência privada")
+def list_attendance(user_id: UserId, service: Service,
+                    group_id: UUID | None = Query(default=None, alias="groupId")) -> list[StudentAttendanceResponse]:
+    return service.list_attendance(user_id, group_id=group_id)
+
+
+@me_router.post("/attendance", response_model=StudentAttendanceResponse,
+                status_code=status.HTTP_201_CREATED, summary="Registrar ou atualizar frequência privada",
+                openapi_extra=MUTATION_SECURITY)
+def record_attendance(user_id: UserId, payload: StudentAttendanceCreate,
+                      service: Service) -> StudentAttendanceResponse:
+    return service.record_attendance(user_id, payload)
+
+
+@me_router.delete("/attendance/{occurrence_id}", status_code=status.HTTP_204_NO_CONTENT,
+                  summary="Remover registro de frequência privada", openapi_extra=MUTATION_SECURITY)
+def delete_attendance(occurrence_id: UUID, user_id: UserId, service: Service) -> None:
+    service.delete_attendance(user_id, occurrence_id)
+
+
+@me_router.get("/progress", response_model=list[StudentTopicProgressResponse],
+               summary="Listar progresso privado de tópicos")
+def list_progress(user_id: UserId, service: Service,
+                  group_id: UUID | None = Query(default=None, alias="groupId")) -> list[StudentTopicProgressResponse]:
+    return service.list_topic_progress(user_id, group_id=group_id)
+
+
+@me_router.put("/progress/{group_topic_id}", response_model=StudentTopicProgressResponse,
+               summary="Atualizar progresso privado de tópico", openapi_extra=MUTATION_SECURITY)
+def update_progress(group_topic_id: UUID, user_id: UserId, payload: StudentTopicProgressUpdate,
+                    service: Service) -> StudentTopicProgressResponse:
+    return service.update_topic_progress(user_id, group_topic_id, payload)
+
+
+@me_router.get("/attendance-adjustments", response_model=list[AttendanceAdjustmentResponse],
+               summary="Listar avisos de ajuste de frequência")
+def list_adjustments(user_id: UserId, service: Service,
+                     unread_only: bool = Query(default=False, alias="unreadOnly")) -> list[AttendanceAdjustmentResponse]:
+    return service.list_student_adjustments(user_id, unread_only=unread_only)
+
+
+@me_router.patch("/attendance-adjustments/{adjustment_id}/seen", response_model=AttendanceAdjustmentResponse,
+                 summary="Marcar aviso de ajuste como visto", openapi_extra=MUTATION_SECURITY)
+def mark_adjustment_seen(adjustment_id: UUID, user_id: UserId,
+                         service: Service) -> AttendanceAdjustmentResponse:
+    return service.mark_adjustment_seen(user_id, adjustment_id)
+

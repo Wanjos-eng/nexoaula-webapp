@@ -1,5 +1,35 @@
 export type OccurrenceStatus = "held" | "cancelled" | "postponed" | "scheduled";
 export type PersonalAttendanceStatus = "present" | "absent" | "unrecorded";
+export type TopicProgressStatus = "pending" | "reviewing" | "mastered";
+
+export type PersonalAttendanceRecord = {
+  lessonOccurrenceId: string;
+  groupId: string;
+  status: "present" | "absent";
+  notes?: string | null;
+  updatedAt: string;
+};
+
+export type StudentTopicProgressRecord = {
+  groupTopicId: string;
+  groupId: string;
+  status: TopicProgressStatus;
+  notes?: string | null;
+  updatedAt: string;
+};
+
+export type StudentAttendanceAdjustmentRecord = {
+  id: string;
+  userId: string;
+  sourceOccurrenceId: string;
+  targetOccurrenceId: string;
+  targetStatus: OccurrenceStatus;
+  outcome: "transferred" | "invalidated" | "kept_existing";
+  previousStatus: "present" | "absent";
+  previousNotes?: string | null;
+  createdAt: string;
+  noticeSeenAt?: string | null;
+};
 
 export type PlannedLesson = {
   id: string;

@@ -48,6 +48,11 @@ def test_only_released_tables_exist(database_engine):
         "teaching_plans",
         "scheduled_lessons",
         "scheduled_lesson_topics",
+        "lesson_occurrences",
+        "occurrence_topics",
+        "student_lesson_attendance",
+        "student_attendance_adjustments",
+        "student_topic_progress",
     }
 
 

@@ -9,14 +9,19 @@ from app.modules.community.models import (
     GroupStatus as ModelGroupStatus,
     GroupVisibility as ModelGroupVisibility,
     JoinRequestStatus,
+    LessonOccurrence,
     MembershipRole,
     MembershipStatus,
     ScheduledLesson,
+    StudentAttendanceAdjustment,
+    StudentLessonAttendance,
+    StudentTopicProgress,
     StudyGroup,
     TeachingPlan,
 )
 from app.modules.community.repository import CommunityUnitOfWork, GroupDiscoveryRecord
 from app.modules.community.schemas import (
+    AttendanceAdjustmentResponse,
     GroupCreate,
     GroupDiscoveryResponse,
     GroupResponse,
@@ -26,6 +31,8 @@ from app.modules.community.schemas import (
     GroupUpdate,
     GroupVisibility,
     JoinPolicy,
+    LessonOccurrenceCreate,
+    LessonOccurrenceResponse,
     MembershipAction,
     MembershipActionType,
     MembershipResponse,
@@ -35,6 +42,10 @@ from app.modules.community.schemas import (
     ScheduledLessonCreate,
     ScheduledLessonResponse,
     ScheduledLessonUpdate,
+    StudentAttendanceCreate,
+    StudentAttendanceResponse,
+    StudentTopicProgressResponse,
+    StudentTopicProgressUpdate,
     TeachingPlanCreate,
     TeachingPlanResponse,
 )
@@ -387,6 +398,155 @@ class CommunityService:
         with self._uow_factory() as uow:
             return [ScheduledLessonResponse.model_validate(lesson).model_copy(update={"topic_ids": topics})
                     for lesson, topics in uow.community.list_user_lessons(user_id, start, end, period, offset, limit)]
+
+    def create_occurrence(
+        self, group_id: UUID, user_id: UUID, data: LessonOccurrenceCreate
+    ) -> LessonOccurrenceResponse:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem registrar ocorrência de aula.", 403)
+            occ, topic_ids = uow.community.create_lesson_occurrence(group_id, user_id, data)
+            uow.commit()
+            return self._to_occurrence_response(occ, topic_ids)
+
+    def list_occurrences(
+        self, group_id: UUID, user_id: UUID, current_only: bool = True, scheduled_lesson_id: UUID | None = None
+    ) -> list[LessonOccurrenceResponse]:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_member(group_id, user_id):
+                raise CommunityError("Apenas membros podem visualizar ocorrências de aula.", 403)
+            occurrences = uow.community.list_lesson_occurrences(
+                group_id, current_only=current_only, scheduled_lesson_id=scheduled_lesson_id
+            )
+            return [self._to_occurrence_response(occ, topic_ids) for occ, topic_ids in occurrences]
+
+    def get_occurrence(
+        self, group_id: UUID, occurrence_id: UUID, user_id: UUID
+    ) -> LessonOccurrenceResponse:
+        self.get_group(group_id, user_id)
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_member(group_id, user_id):
+                raise CommunityError("Apenas membros podem visualizar ocorrências de aula.", 403)
+            res = uow.community.find_lesson_occurrence_by_id(occurrence_id)
+            if not res or res[0].group_id != group_id:
+                raise CommunityError("Ocorrência não encontrada.", 404)
+            return self._to_occurrence_response(res[0], res[1])
+
+    def record_attendance(
+        self, user_id: UUID, data: StudentAttendanceCreate
+    ) -> StudentAttendanceResponse:
+        with self._uow_factory() as uow:
+            att, group_id = uow.community.record_student_attendance(
+                user_id, data.lesson_occurrence_id, data.status, data.notes
+            )
+            uow.commit()
+            return self._to_attendance_response(att, group_id)
+
+    def delete_attendance(self, user_id: UUID, occurrence_id: UUID) -> None:
+        with self._uow_factory() as uow:
+            uow.community.delete_student_attendance(user_id, occurrence_id)
+            uow.commit()
+
+    def list_attendance(
+        self, user_id: UUID, group_id: UUID | None = None
+    ) -> list[StudentAttendanceResponse]:
+        with self._uow_factory() as uow:
+            results = uow.community.list_student_attendance(user_id, group_id=group_id)
+            return [self._to_attendance_response(att, gid) for att, gid in results]
+
+    def update_topic_progress(
+        self, user_id: UUID, group_topic_id: UUID, data: StudentTopicProgressUpdate
+    ) -> StudentTopicProgressResponse:
+        with self._uow_factory() as uow:
+            prog, group_id = uow.community.update_topic_progress(
+                user_id, group_topic_id, data.status, data.notes
+            )
+            uow.commit()
+            return self._to_progress_response(prog, group_id)
+
+    def list_topic_progress(
+        self, user_id: UUID, group_id: UUID | None = None
+    ) -> list[StudentTopicProgressResponse]:
+        with self._uow_factory() as uow:
+            results = uow.community.list_topic_progress(user_id, group_id=group_id)
+            return [self._to_progress_response(prog, gid) for prog, gid in results]
+
+    def list_student_adjustments(
+        self, user_id: UUID, unread_only: bool = False
+    ) -> list[AttendanceAdjustmentResponse]:
+        with self._uow_factory() as uow:
+            adjustments = uow.community.list_student_adjustments(user_id, unread_only=unread_only)
+            return [self._to_adjustment_response(adj) for adj in adjustments]
+
+    def mark_adjustment_seen(
+        self, user_id: UUID, adjustment_id: UUID
+    ) -> AttendanceAdjustmentResponse:
+        with self._uow_factory() as uow:
+            adj = uow.community.mark_adjustment_seen(user_id, adjustment_id)
+            uow.commit()
+            return self._to_adjustment_response(adj)
+
+    @classmethod
+    def _to_occurrence_response(
+        cls, occ: LessonOccurrence, topic_ids: list[UUID]
+    ) -> LessonOccurrenceResponse:
+        return LessonOccurrenceResponse(
+            id=occ.id,
+            group_id=occ.group_id,
+            scheduled_lesson_id=occ.scheduled_lesson_id,
+            supersedes_occurrence_id=occ.supersedes_occurrence_id,
+            status=cls._value(occ.status),
+            actual_started_at=occ.actual_started_at,
+            actual_ended_at=occ.actual_ended_at,
+            rescheduled_to=occ.rescheduled_to,
+            notes=occ.notes,
+            recorded_by=occ.recorded_by,
+            created_at=occ.created_at,
+            topic_ids=topic_ids,
+        )
+
+    @classmethod
+    def _to_attendance_response(
+        cls, att: StudentLessonAttendance, group_id: UUID
+    ) -> StudentAttendanceResponse:
+        return StudentAttendanceResponse(
+            lesson_occurrence_id=att.lesson_occurrence_id,
+            group_id=group_id,
+            status=cls._value(att.status),
+            notes=att.notes,
+            updated_at=att.updated_at,
+        )
+
+    @classmethod
+    def _to_progress_response(
+        cls, prog: StudentTopicProgress, group_id: UUID
+    ) -> StudentTopicProgressResponse:
+        return StudentTopicProgressResponse(
+            group_topic_id=prog.group_topic_id,
+            group_id=group_id,
+            status=cls._value(prog.status),
+            notes=prog.notes,
+            updated_at=prog.updated_at,
+        )
+
+    @classmethod
+    def _to_adjustment_response(
+        cls, adj: StudentAttendanceAdjustment
+    ) -> AttendanceAdjustmentResponse:
+        return AttendanceAdjustmentResponse(
+            id=adj.id,
+            user_id=adj.user_id,
+            source_occurrence_id=adj.source_occurrence_id,
+            target_occurrence_id=adj.target_occurrence_id,
+            target_status=cls._value(adj.target_status),
+            outcome=cls._value(adj.outcome),
+            previous_status=cls._value(adj.previous_status),
+            previous_notes=adj.previous_notes,
+            created_at=adj.created_at,
+            notice_seen_at=adj.notice_seen_at,
+        )
 
     @staticmethod
     def _ensure_capacity(repository, group: StudyGroup) -> None:

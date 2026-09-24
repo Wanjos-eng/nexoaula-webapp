@@ -4,30 +4,40 @@ from types import TracebackType
 from typing import Any, Protocol, Self
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.modules.academic.models import AcademicTerm, ClassSection, Subject
 from app.modules.community.errors import CommunityError, CommunityPersistenceError
 from app.modules.community.models import (
+    AttendanceAdjustmentOutcome,
+    AttendanceStatus,
     GroupJoinRequest,
     GroupMember,
     GroupStatus,
     GroupTopic,
     GroupVisibility,
     JoinRequestStatus,
+    LessonOccurrence,
+    LessonOccurrenceStatus,
     MembershipRole,
     MembershipStatus,
+    OccurrenceTopic,
     ScheduledLesson,
     ScheduledLessonTopic,
+    StudentAttendanceAdjustment,
+    StudentLessonAttendance,
+    StudentTopicProgress,
     StudyGroup,
     SubjectTopic,
     TeachingPlan,
+    TopicProgressStatus,
 )
 from app.modules.community.schemas import (
     GroupCreate,
     GroupTopicCreate,
+    LessonOccurrenceCreate,
     ParticipantResponse,
     ScheduledLessonCreate,
     ScheduledLessonUpdate,
@@ -86,6 +96,19 @@ class CommunityRepository(Protocol):
     def replace_draft(self, group_id: UUID, plan_id: UUID, data: TeachingPlanCreate) -> TeachingPlan: ...
     def list_user_lessons(self, user_id: UUID, start: datetime | None, end: datetime | None,
                          period: str | None, offset: int, limit: int) -> list[tuple[ScheduledLesson, list[UUID]]]: ...
+
+    # --- TASK #114: Ocorrências de Aula, Frequência e Progresso ---
+    def create_lesson_occurrence(self, group_id: UUID, recorded_by: UUID, data: LessonOccurrenceCreate) -> tuple[LessonOccurrence, list[UUID]]: ...
+    def list_lesson_occurrences(self, group_id: UUID, current_only: bool = True, scheduled_lesson_id: UUID | None = None) -> list[tuple[LessonOccurrence, list[UUID]]]: ...
+    def find_lesson_occurrence_by_id(self, occurrence_id: UUID) -> tuple[LessonOccurrence, list[UUID]] | None: ...
+    def record_student_attendance(self, user_id: UUID, occurrence_id: UUID, status: str, notes: str | None) -> tuple[StudentLessonAttendance, UUID]: ...
+    def delete_student_attendance(self, user_id: UUID, occurrence_id: UUID) -> None: ...
+    def list_student_attendance(self, user_id: UUID, group_id: UUID | None = None) -> list[tuple[StudentLessonAttendance, UUID]]: ...
+    def update_topic_progress(self, user_id: UUID, group_topic_id: UUID, status: str, notes: str | None) -> tuple[StudentTopicProgress, UUID]: ...
+    def list_topic_progress(self, user_id: UUID, group_id: UUID | None = None) -> list[tuple[StudentTopicProgress, UUID]]: ...
+    def list_student_adjustments(self, user_id: UUID, unread_only: bool = False) -> list[StudentAttendanceAdjustment]: ...
+    def mark_adjustment_seen(self, user_id: UUID, adjustment_id: UUID) -> StudentAttendanceAdjustment: ...
+
 
 
 class CommunityUnitOfWork(Protocol):
@@ -483,6 +506,328 @@ class SqlAlchemyCommunityRepository:
         lessons = list(self._session.scalars(stmt.order_by(ScheduledLesson.scheduled_at, ScheduledLesson.id).offset(offset).limit(limit)))
         return [(lesson, list(self._session.scalars(select(ScheduledLessonTopic.group_topic_id).where(
             ScheduledLessonTopic.lesson_id == lesson.id)))) for lesson in lessons]
+
+    def create_lesson_occurrence(
+        self, group_id: UUID, recorded_by: UUID, data: LessonOccurrenceCreate
+    ) -> tuple[LessonOccurrence, list[UUID]]:
+        if not self.is_active_organizer(group_id, recorded_by):
+            raise CommunityError("Apenas organizadores podem registrar ocorrência de aula.", 403)
+
+        now = datetime.now(UTC)
+        if data.status == "held":
+            if data.actual_ended_at is None or data.actual_ended_at > now:
+                raise CommunityError("Aulas futuras ou em andamento não podem ser registradas como realizadas.", 422)
+
+        prev: LessonOccurrence | None = None
+        if data.supersedes_occurrence_id:
+            prev = self._session.get(LessonOccurrence, data.supersedes_occurrence_id)
+            if not prev or prev.group_id != group_id:
+                raise CommunityError("A ocorrência a ser corrigida não pertence a este grupo.", 422)
+            already_superseded = self._session.scalar(
+                select(LessonOccurrence.id).where(
+                    LessonOccurrence.supersedes_occurrence_id == prev.id
+                )
+            )
+            if already_superseded:
+                raise CommunityError("Esta ocorrência já foi retificada.", 409)
+
+        scheduled_lesson_id = data.scheduled_lesson_id
+        if scheduled_lesson_id is None and prev is not None:
+            scheduled_lesson_id = prev.scheduled_lesson_id
+
+        if scheduled_lesson_id:
+            lesson = self._session.get(ScheduledLesson, scheduled_lesson_id)
+            if not lesson or lesson.group_id != group_id:
+                raise CommunityError("A aula informada não pertence ao grupo.", 422)
+
+        effective_topic_ids = data.topic_ids
+        if effective_topic_ids is None and scheduled_lesson_id:
+            effective_topic_ids = list(
+                self._session.scalars(
+                    select(ScheduledLessonTopic.group_topic_id).where(
+                        ScheduledLessonTopic.lesson_id == scheduled_lesson_id
+                    )
+                )
+            )
+        elif effective_topic_ids is None and prev is not None:
+            effective_topic_ids = list(
+                self._session.scalars(
+                    select(OccurrenceTopic.group_topic_id).where(
+                        OccurrenceTopic.lesson_occurrence_id == prev.id
+                    )
+                )
+            )
+
+        if effective_topic_ids:
+            self._validate_topic_ids(group_id, effective_topic_ids)
+
+        occurrence = LessonOccurrence(
+            group_id=group_id,
+            scheduled_lesson_id=scheduled_lesson_id,
+            supersedes_occurrence_id=data.supersedes_occurrence_id,
+            status=LessonOccurrenceStatus(data.status),
+            actual_started_at=data.actual_started_at,
+            actual_ended_at=data.actual_ended_at,
+            rescheduled_to=data.rescheduled_to,
+            notes=data.notes,
+            recorded_by=recorded_by,
+        )
+        self._session.add(occurrence)
+        self._session.flush()
+
+        saved_topic_ids: list[UUID] = []
+        if effective_topic_ids:
+            for t_id in effective_topic_ids:
+                gt = self._session.get(GroupTopic, t_id)
+                self._session.add(
+                    OccurrenceTopic(
+                        lesson_occurrence_id=occurrence.id,
+                        group_topic_id=t_id,
+                        subject_topic_id=gt.subject_topic_id if gt else None,
+                    )
+                )
+                saved_topic_ids.append(t_id)
+            self._session.flush()
+
+        if data.supersedes_occurrence_id:
+            prev_attendances = list(
+                self._session.scalars(
+                    select(StudentLessonAttendance).where(
+                        StudentLessonAttendance.lesson_occurrence_id == data.supersedes_occurrence_id
+                    )
+                )
+            )
+            for prev_att in prev_attendances:
+                if occurrence.status == LessonOccurrenceStatus.HELD:
+                    existing = self._session.get(
+                        StudentLessonAttendance, (prev_att.user_id, occurrence.id)
+                    )
+                    if existing:
+                        outcome = AttendanceAdjustmentOutcome.KEPT_EXISTING
+                    else:
+                        outcome = AttendanceAdjustmentOutcome.TRANSFERRED
+                        self._session.add(
+                            StudentLessonAttendance(
+                                user_id=prev_att.user_id,
+                                lesson_occurrence_id=occurrence.id,
+                                occurrence_status=LessonOccurrenceStatus.HELD,
+                                status=prev_att.status,
+                                notes=prev_att.notes,
+                            )
+                        )
+                    self._session.add(
+                        StudentAttendanceAdjustment(
+                            user_id=prev_att.user_id,
+                            source_occurrence_id=prev_att.lesson_occurrence_id,
+                            target_occurrence_id=occurrence.id,
+                            target_status=occurrence.status,
+                            outcome=outcome,
+                            previous_status=prev_att.status,
+                            previous_notes=prev_att.notes,
+                        )
+                    )
+                else:
+                    self._session.add(
+                        StudentAttendanceAdjustment(
+                            user_id=prev_att.user_id,
+                            source_occurrence_id=prev_att.lesson_occurrence_id,
+                            target_occurrence_id=occurrence.id,
+                            target_status=occurrence.status,
+                            outcome=AttendanceAdjustmentOutcome.INVALIDATED,
+                            previous_status=prev_att.status,
+                            previous_notes=prev_att.notes,
+                        )
+                    )
+            self._session.flush()
+
+        return (occurrence, saved_topic_ids)
+
+    def list_lesson_occurrences(
+        self, group_id: UUID, current_only: bool = True, scheduled_lesson_id: UUID | None = None
+    ) -> list[tuple[LessonOccurrence, list[UUID]]]:
+        stmt = select(LessonOccurrence).where(LessonOccurrence.group_id == group_id)
+        if current_only:
+            successor_alias = LessonOccurrence.__table__.alias("successor")
+            stmt = stmt.where(
+                ~exists(
+                    select(1).select_from(successor_alias).where(
+                        successor_alias.c.supersedes_occurrence_id == LessonOccurrence.id
+                    )
+                )
+            )
+        if scheduled_lesson_id:
+            stmt = stmt.where(LessonOccurrence.scheduled_lesson_id == scheduled_lesson_id)
+        stmt = stmt.order_by(LessonOccurrence.created_at.desc())
+        occurrences = list(self._session.scalars(stmt))
+        result = []
+        for occ in occurrences:
+            topic_ids = list(
+                self._session.scalars(
+                    select(OccurrenceTopic.group_topic_id).where(
+                        OccurrenceTopic.lesson_occurrence_id == occ.id
+                    )
+                )
+            )
+            result.append((occ, topic_ids))
+        return result
+
+    def find_lesson_occurrence_by_id(
+        self, occurrence_id: UUID
+    ) -> tuple[LessonOccurrence, list[UUID]] | None:
+        occ = self._session.get(LessonOccurrence, occurrence_id)
+        if not occ:
+            return None
+        topic_ids = list(
+            self._session.scalars(
+                select(OccurrenceTopic.group_topic_id).where(
+                    OccurrenceTopic.lesson_occurrence_id == occ.id
+                )
+            )
+        )
+        return (occ, topic_ids)
+
+    def record_student_attendance(
+        self, user_id: UUID, occurrence_id: UUID, status: str, notes: str | None
+    ) -> tuple[StudentLessonAttendance, UUID]:
+        occ = self._session.get(LessonOccurrence, occurrence_id)
+        if not occ:
+            raise CommunityError("Ocorrência não encontrada.", 404)
+        if not self.is_active_member(occ.group_id, user_id):
+            raise CommunityError("Apenas participantes ativos podem registrar presença.", 403)
+        if occ.status != LessonOccurrenceStatus.HELD or occ.actual_ended_at is None:
+            raise CommunityError("Apenas aulas realizadas podem receber frequência.", 422)
+
+        now = datetime.now(UTC)
+        if occ.actual_ended_at > now:
+            raise CommunityError("Aulas em andamento ou futuras não podem receber frequência.", 422)
+
+        is_superseded = self._session.scalar(
+            select(1).where(LessonOccurrence.supersedes_occurrence_id == occ.id)
+        )
+        if is_superseded:
+            raise CommunityError("Não é permitido registrar presença em aula superada por retificação.", 422)
+
+        att = self._session.get(StudentLessonAttendance, (user_id, occ.id))
+        if att:
+            att.status = AttendanceStatus(status)
+            att.notes = notes
+            att.updated_at = now
+        else:
+            att = StudentLessonAttendance(
+                user_id=user_id,
+                lesson_occurrence_id=occ.id,
+                occurrence_status=LessonOccurrenceStatus.HELD,
+                status=AttendanceStatus(status),
+                notes=notes,
+                updated_at=now,
+            )
+            self._session.add(att)
+        self._session.flush()
+        return (att, occ.group_id)
+
+    def delete_student_attendance(self, user_id: UUID, occurrence_id: UUID) -> None:
+        occ = self._session.get(LessonOccurrence, occurrence_id)
+        if not occ:
+            raise CommunityError("Ocorrência não encontrada.", 404)
+        if not self.is_active_member(occ.group_id, user_id):
+            raise CommunityError("Apenas participantes ativos podem remover presença.", 403)
+        att = self._session.get(StudentLessonAttendance, (user_id, occ.id))
+        if att:
+            self._session.delete(att)
+            self._session.flush()
+
+    def list_student_attendance(
+        self, user_id: UUID, group_id: UUID | None = None
+    ) -> list[tuple[StudentLessonAttendance, UUID]]:
+        successor_alias = LessonOccurrence.__table__.alias("successor")
+        stmt = (
+            select(StudentLessonAttendance, LessonOccurrence.group_id)
+            .join(LessonOccurrence, LessonOccurrence.id == StudentLessonAttendance.lesson_occurrence_id)
+            .join(
+                GroupMember,
+                (GroupMember.group_id == LessonOccurrence.group_id)
+                & (GroupMember.user_id == user_id)
+                & (GroupMember.status == MembershipStatus.ACTIVE.value),
+            )
+            .where(
+                StudentLessonAttendance.user_id == user_id,
+                LessonOccurrence.status == LessonOccurrenceStatus.HELD,
+                ~exists(
+                    select(1).select_from(successor_alias).where(
+                        successor_alias.c.supersedes_occurrence_id == LessonOccurrence.id
+                    )
+                ),
+            )
+        )
+        if group_id:
+            stmt = stmt.where(LessonOccurrence.group_id == group_id)
+        return list(self._session.execute(stmt).all())
+
+    def update_topic_progress(
+        self, user_id: UUID, group_topic_id: UUID, status: str, notes: str | None
+    ) -> tuple[StudentTopicProgress, UUID]:
+        gt = self._session.get(GroupTopic, group_topic_id)
+        if not gt:
+            raise CommunityError("Tópico não encontrado.", 404)
+        if not self.is_active_member(gt.group_id, user_id):
+            raise CommunityError("Apenas participantes ativos podem atualizar o progresso de tópicos.", 403)
+
+        prog = self._session.get(StudentTopicProgress, (user_id, group_topic_id))
+        now = datetime.now(UTC)
+        if prog:
+            prog.status = TopicProgressStatus(status)
+            prog.notes = notes
+            prog.updated_at = now
+        else:
+            prog = StudentTopicProgress(
+                user_id=user_id,
+                group_topic_id=group_topic_id,
+                status=TopicProgressStatus(status),
+                notes=notes,
+                updated_at=now,
+            )
+            self._session.add(prog)
+        self._session.flush()
+        return (prog, gt.group_id)
+
+    def list_topic_progress(
+        self, user_id: UUID, group_id: UUID | None = None
+    ) -> list[tuple[StudentTopicProgress, UUID]]:
+        stmt = (
+            select(StudentTopicProgress, GroupTopic.group_id)
+            .join(GroupTopic, GroupTopic.id == StudentTopicProgress.group_topic_id)
+            .join(
+                GroupMember,
+                (GroupMember.group_id == GroupTopic.group_id)
+                & (GroupMember.user_id == user_id)
+                & (GroupMember.status == MembershipStatus.ACTIVE.value),
+            )
+            .where(StudentTopicProgress.user_id == user_id)
+        )
+        if group_id:
+            stmt = stmt.where(GroupTopic.group_id == group_id)
+        return list(self._session.execute(stmt).all())
+
+    def list_student_adjustments(
+        self, user_id: UUID, unread_only: bool = False
+    ) -> list[StudentAttendanceAdjustment]:
+        stmt = select(StudentAttendanceAdjustment).where(
+            StudentAttendanceAdjustment.user_id == user_id
+        )
+        if unread_only:
+            stmt = stmt.where(StudentAttendanceAdjustment.notice_seen_at.is_(None))
+        stmt = stmt.order_by(StudentAttendanceAdjustment.created_at.desc())
+        return list(self._session.scalars(stmt))
+
+    def mark_adjustment_seen(
+        self, user_id: UUID, adjustment_id: UUID
+    ) -> StudentAttendanceAdjustment:
+        adj = self._session.get(StudentAttendanceAdjustment, adjustment_id)
+        if not adj or adj.user_id != user_id:
+            raise CommunityError("Aviso não encontrado.", 404)
+        adj.notice_seen_at = datetime.now(UTC)
+        self._session.flush()
+        return adj
 
 
 class SqlAlchemyCommunityUnitOfWork:
