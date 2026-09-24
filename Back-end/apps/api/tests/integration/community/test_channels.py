@@ -13,7 +13,7 @@ from test_groups import (
     anyio_backend,
 )
 
-pytestmark = pytest.mark.anyio
+pytestmark = [pytest.mark.anyio, pytest.mark.database]
 
 
 @pytest.fixture

@@ -11,9 +11,12 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-pytestmark = pytest.mark.skipif(
-    not DATABASE_URL, reason="DATABASE_URL is required for PostgreSQL migration tests"
-)
+pytestmark = [
+    pytest.mark.database,
+    pytest.mark.skipif(
+        not DATABASE_URL, reason="DATABASE_URL is required for PostgreSQL migration tests"
+    ),
+]
 
 
 @pytest.fixture
