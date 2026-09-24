@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = '0010_channels'
-down_revision = '0009_lesson_occurrences_attendance_progress'
+down_revision = '0009_occurrences_attendance'
 branch_labels = None
 depends_on = None
 
