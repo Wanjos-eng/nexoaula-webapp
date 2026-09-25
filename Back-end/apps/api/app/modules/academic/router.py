@@ -1,6 +1,6 @@
 from typing import Annotated
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from app.modules.academic.dependencies import get_academic_service
 from app.modules.academic.service import AcademicService
 from app.modules.academic.schemas import (
@@ -52,6 +52,44 @@ def get_profile(user_id: UserId, service: Service):
 )
 def update_profile(payload: AcademicProfileUpdate, user_id: UserId, service: Service):
     return service.update_profile(user_id, payload)
+
+
+@router.post(
+    "/profile/avatar",
+    response_model=AcademicProfileResponse,
+    openapi_extra=MUTATION_SECURITY,
+)
+async def upload_profile_avatar(
+    user_id: UserId,
+    service: Service,
+    file: UploadFile = File(...),
+):
+    content = await file.read()
+    return service.upload_avatar(
+        user_id,
+        content=content,
+        original_filename=file.filename,
+        content_type=file.content_type,
+    )
+
+
+@router.delete(
+    "/profile/avatar",
+    response_model=AcademicProfileResponse,
+    openapi_extra=MUTATION_SECURITY,
+)
+def delete_profile_avatar(user_id: UserId, service: Service):
+    return service.delete_avatar(user_id)
+
+
+@router.get("/profile/avatar")
+def get_own_profile_avatar(user_id: UserId, service: Service):
+    content, mime_type = service.get_avatar_file(user_id)
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
 
 
 @router.post(

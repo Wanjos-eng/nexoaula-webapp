@@ -36,6 +36,10 @@ class AcademicProfileResponse(Output):
     user_id: UUID = Field(serialization_alias="userId")
     display_name: str = Field(serialization_alias="displayName")
     bio: str | None = None
+    avatar_file_id: UUID | None = Field(
+        default=None, serialization_alias="avatarFileId"
+    )
+    avatar_url: str | None = Field(default=None, serialization_alias="avatarUrl")
     institution_id: UUID | None = Field(
         default=None, serialization_alias="institutionId"
     )

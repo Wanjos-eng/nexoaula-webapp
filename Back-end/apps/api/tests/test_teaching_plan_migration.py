@@ -26,7 +26,7 @@ def planning(graph):
     ("INSERT INTO teaching_plans(group_id,creator_id) VALUES (:group,:user)", '23505'),
     ("UPDATE teaching_plans SET version=0 WHERE id=:plan", '23514'),
     ("UPDATE teaching_plans SET status='published' WHERE id=:plan", '23514'),
-    ("UPDATE teaching_plans SET source_file_id=gen_random_uuid() WHERE id=:plan", '23514'),
+    ("UPDATE teaching_plans SET source_file_id=gen_random_uuid() WHERE id=:plan", '23503'),
     ("INSERT INTO group_topics(group_id,subject_id) VALUES (:group,:subject)", '23514'),
     ("INSERT INTO group_topics(group_id,subject_id,custom_title) VALUES (:group,:other_subject,'Wrong subject')", '23503'),
     ("INSERT INTO group_topics(group_id,subject_id,subject_topic_id) VALUES (:group,:subject,gen_random_uuid())", '23503'),

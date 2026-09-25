@@ -244,7 +244,7 @@ Table files {
   id uuid [pk, default: `gen_random_uuid()`]
   owner_id uuid [not null]
   purpose file_purpose [not null]
-  storage_provider varchar(40) [not null, default: 'object_storage']
+  storage_provider varchar(40) [not null, default: 'local']
   storage_key text [not null, unique]
   original_filename varchar(255)
   mime_type varchar(150) [not null]
@@ -476,6 +476,7 @@ Table teaching_plans {
   version integer [not null]
   status teaching_plan_status [not null, default: 'draft']
   based_on_plan_id uuid
+  source_file_id uuid
   created_by uuid [not null]
   published_by uuid
   created_at timestamptz [not null, default: `now()`]
@@ -1149,6 +1150,7 @@ Ref: teaching_plans.group_id > study_groups.id [delete: restrict]
 Ref: teaching_plans.(based_on_plan_id, group_id) > teaching_plans.(id, group_id) [delete: restrict]
 Ref: teaching_plans.(group_id, created_by) > group_members.(group_id, user_id) [delete: restrict]
 Ref: teaching_plans.(group_id, published_by) > group_members.(group_id, user_id) [delete: restrict]
+Ref: teaching_plans.source_file_id > files.id [delete: set null]
 Ref: teaching_plan_imports.teaching_plan_id > teaching_plans.id [delete: cascade]
 Ref: teaching_plan_imports.source_file_id > files.id [delete: restrict]
 Ref: teaching_plan_imports.requested_by > users.id [delete: restrict]

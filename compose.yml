@@ -29,6 +29,9 @@ services:
       AUTH_COOKIE_SECURE: "false"
       AUTH_JWT_SECRET: e2e-only-secret-change-me-32-bytes-minimum
       AUTH_ALLOWED_ORIGINS: '["http://localhost:${WEB_PORT:-3000}","http://127.0.0.1:${WEB_PORT:-3000}"]'
+      STORAGE_PATH: /app/storage
+    volumes:
+      - storage_data:/app/storage
     depends_on:
       db:
         condition: service_healthy
@@ -74,3 +77,4 @@ services:
 
 volumes:
   postgres_data:
+  storage_data:

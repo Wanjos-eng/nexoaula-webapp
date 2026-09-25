@@ -116,6 +116,20 @@ describe("apiClient.post", () => {
     expect(init?.body).toBe(JSON.stringify(loginBody));
   });
 
+  it("não serializa FormData nem sobrescreve Content-Type", async () => {
+    const formData = new FormData();
+    formData.append("file", new Blob(["abc"], { type: "image/png" }), "pic.png");
+    mockFetch.mockResolvedValueOnce(jsonResponse({ id: "file-1" }));
+
+    await apiClient.post("/v1/profile/avatar", { body: formData });
+
+    const [, init] = mockFetch.mock.calls[0];
+    const headers = new Headers(init?.headers);
+    expect(headers.get("Content-Type")).toBeNull();
+    expect(headers.get("X-NexoAula-CSRF")).toBe("1");
+    expect(init?.body).toBe(formData);
+  });
+
   it("trata resposta 204 No Content (ex: logout)", async () => {
     mockFetch.mockResolvedValueOnce(noContentResponse());
 

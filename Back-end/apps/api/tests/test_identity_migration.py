@@ -60,6 +60,7 @@ def test_only_released_tables_exist(database_engine):
         "meeting_participants",
         "meeting_topics",
         "planning_corrections",
+        "files",
     }
 
 
@@ -129,7 +130,7 @@ def test_constraints_indexes_and_enum_match_the_approved_model(database_engine):
     profile_fks = inspector.get_foreign_keys("user_profiles")
     token_fks = inspector.get_foreign_keys("auth_tokens")
     assert {(fk["referred_table"], fk["options"]["ondelete"]) for fk in profile_fks} == {
-        ("users", "CASCADE"), ("institutions", "RESTRICT"), ("courses", "RESTRICT")
+        ("users", "CASCADE"), ("institutions", "RESTRICT"), ("courses", "RESTRICT"), ("files", "SET NULL")
     }
     assert [(fk["referred_table"], fk["options"]["ondelete"]) for fk in token_fks] == [
         ("users", "CASCADE")

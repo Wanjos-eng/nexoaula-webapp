@@ -54,7 +54,7 @@ export function GroupPlanningCorrections({
   const lock = useRef(false);
   const [error, setError] = useState<unknown>();
   const [feedback, setFeedback] = useState("");
-  const corrections = remote.data ?? [];
+  const corrections = Array.isArray(remote.data) ? remote.data : [];
 
   function openSuggestion(next: CorrectionTarget) {
     setTarget(next);

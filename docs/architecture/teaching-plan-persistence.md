@@ -18,9 +18,9 @@ do grupo. Este recorte não implementa importação assistida ou cadeia de revis
 haver um plano publicado por grupo. A publicação e o arquivamento precisam ocorrer
 na mesma transação; a API é responsável pela autorização.
 
-`source_file_id` permanece anulável e restrito a NULL até #119 criar a tabela de
-arquivos, adicionar sua FK e remover `chk_teaching_plans_manual_source`. Não há
-anexos nesta entrega; planos manuais independem de storage.
+`source_file_id` referencia a tabela `files` (revisão 0015_files_and_storage / #119)
+com `ON DELETE SET NULL`. O anexo serve como fonte complementar de consulta e o
+cadastro manual do cronograma continua independente. Planos sem anexo mantêm `source_file_id` nulo.
 
 Para aplicar: `python -m alembic upgrade head`. Para reverter apenas este recorte:
 `python -m alembic downgrade 0007_marketplace_simulation`. O downgrade remove os
