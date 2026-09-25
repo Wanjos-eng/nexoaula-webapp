@@ -1368,3 +1368,92 @@
     padding-left: 44px;
   }
 }
+
+
+.attendanceSummary {
+  margin-top: 0;
+  background: linear-gradient(135deg, var(--color-info-soft), var(--color-surface));
+}
+
+.attendanceSummaryHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.attendanceSummaryHeader > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.attendanceStats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.attendanceStats > span {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0 var(--space-3);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid rgb(23 92 211 / 12%);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-caption);
+}
+
+.attendanceStats strong {
+  color: var(--color-info);
+  font-size: var(--font-size-small);
+}
+
+.scheduleFollowUp {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.followUpHeader {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.followUpHeader h3 {
+  font-size: var(--font-size-card-title);
+}
+
+.followUpHeader p {
+  max-width: 760px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.55;
+}
+
+@media (max-width: 700px) {
+  .attendanceSummaryHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .attendanceStats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .attendanceStats > span {
+    justify-content: center;
+    padding-inline: var(--space-2);
+  }
+}
+
+@media (max-width: 440px) {
+  .attendanceStats {
+    grid-template-columns: 1fr;
+  }
+}

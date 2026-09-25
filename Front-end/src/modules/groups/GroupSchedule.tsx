@@ -345,6 +345,27 @@ export function GroupSchedule({ groupId, canManage, personal = false }: { groupI
     && occ.actualEndedAt && Date.parse(occ.actualEndedAt) <= Date.parse(nowIso)
     && !myAttendance.some((record) => record.lessonOccurrenceId === occ.id)).length;
 
+  const attendanceSummary = (
+    <div className={`${s.personalPanel} ${s.attendanceSummary}`} id="frequencia">
+      <div className={s.attendanceSummaryHeader}>
+        <div>
+          <span className={s.subsectionEyebrow}>Acompanhamento pessoal</span>
+          <h3>Minha frequência</h3>
+        </div>
+        {!extraLoading && !extraError ? (
+          <div className={s.attendanceStats} aria-label="Resumo da frequência">
+            <span><strong>{myAttendance.filter((item) => item.status === "present").length}</strong> presenças</span>
+            <span><strong>{myAttendance.filter((item) => item.status === "absent").length}</strong> faltas</span>
+            <span><strong>{unrecordedCount}</strong> sem registro</span>
+          </div>
+        ) : null}
+      </div>
+      <p>Seu controle privado de presenças e faltas. Não substitui a frequência oficial.</p>
+      {extraLoading ? <p role="status">Carregando seus registros…</p> : null}
+      <p>Após o organizador confirmar que a aula foi realizada e encerrada, marque Presença ou Falta na aula correspondente.</p>
+    </div>
+  );
+
   return (
     <>
     {!personal && <GroupMeetings groupId={groupId} canManage={canManage} />}
@@ -422,22 +443,7 @@ export function GroupSchedule({ groupId, canManage, personal = false }: { groupI
       {feedback && <p role="status" className={s.success}>{feedback}</p>}
       {error ? <Failure error={error} /> : null}
       {extraError && !remote.error && !remote.loading ? <Failure error={extraError} retry={() => void loadExtraData()} /> : null}
-      <div className={s.personalPanel} id="frequencia">
-        <h3>Minha frequência</h3>
-        <p>Seu controle privado de presenças e faltas. Não substitui a frequência oficial.</p>
-        {extraLoading ? <p role="status">Carregando seus registros…</p> : !extraError ? <p>
-          <strong>{myAttendance.filter((item) => item.status === "present").length}</strong> presenças · <strong>{myAttendance.filter((item) => item.status === "absent").length}</strong> faltas · <strong>{unrecordedCount}</strong> sem registro
-        </p> : null}
-        <p>Após o organizador confirmar que a aula foi realizada e encerrada, marque Presença ou Falta na aula abaixo.</p>
-      </div>
-      {!personal && <GroupPlanningCorrections
-        groupId={groupId}
-        canManage={canManage}
-        lessons={published?.lessons ?? []}
-        occurrences={occurrences}
-        topics={topics}
-        onApplied={() => { remote.reload(); void loadExtraData(); }}
-      />}
+      {personal ? attendanceSummary : null}
 
       {/* Adjustment Notices Banner */}
       {adjustments.length > 0 && (
@@ -1006,6 +1012,25 @@ export function GroupSchedule({ groupId, canManage, personal = false }: { groupI
           {busy && <p role="status" className={s.plannerSaving}>Salvando cronograma…</p>}
         </form>
       )}
+
+      {!personal ? (
+        <div className={s.scheduleFollowUp}>
+          <div className={s.followUpHeader}>
+            <span className={s.subsectionEyebrow}>Depois do planejamento</span>
+            <h3>Acompanhamento da disciplina</h3>
+            <p>Registre ocorrências, acompanhe sua frequência pessoal e trate ajustes sem misturar essas ações com a montagem do cronograma.</p>
+          </div>
+          <GroupPlanningCorrections
+            groupId={groupId}
+            canManage={canManage}
+            lessons={published?.lessons ?? []}
+            occurrences={occurrences}
+            topics={topics}
+            onApplied={() => { remote.reload(); void loadExtraData(); }}
+          />
+          {attendanceSummary}
+        </div>
+      ) : null}
     </section>
     </>
   );
