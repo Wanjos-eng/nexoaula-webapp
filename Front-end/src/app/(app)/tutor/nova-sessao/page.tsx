@@ -2,17 +2,21 @@
 
 import { CheckCircle, Storefront, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { BackButton } from "@/components/ui/BackButton";
+import { apiClient } from "@/lib/api";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import {
   marketplaceApi,
   marketplaceError,
+  marketplacePath,
+  type SessionOffer,
 } from "@/modules/marketplace/marketplace.api";
 import { formatCents } from "@/modules/marketplace/marketplace.types";
 import { useMarketplace } from "@/modules/marketplace/useMarketplace";
@@ -44,6 +48,8 @@ export default function NewTutorSessionPage() {
     "/v1/academic/subjects?limit=100",
   );
   const [offerId, setOfferId] = useState<string | null>(null);
+  const [editSessionId, setEditSessionId] = useState<string | null>(null);
+  const [loadingExisting, setLoadingExisting] = useState(true);
   const [busy, setBusy] = useState(false);
   const [state, setState] = useState<PublicationState>("editing");
   const [draft, setDraft] = useState<SessionDraft | null>(null);
@@ -51,6 +57,53 @@ export default function NewTutorSessionPage() {
   const { showToast } = useToast();
 
   const currentStep = steps.findIndex((step) => step.key === state);
+
+  useEffect(() => {
+    const sessionId = new URLSearchParams(window.location.search).get("edit");
+    setEditSessionId(sessionId);
+
+    if (!sessionId) {
+      setLoadingExisting(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    apiClient
+      .get<SessionOffer[]>(
+        `${marketplacePath}/sessions/mine?limit=100&offset=0`,
+        { signal: controller.signal },
+      )
+      .then(({ data }) => {
+        if (controller.signal.aborted) return;
+        const offer = data.find((item) => item.id === sessionId);
+        if (!offer || offer.status !== "draft") {
+          setError("Este rascunho não está disponível para edição.");
+          return;
+        }
+
+        setOfferId(offer.id);
+        setDraft({
+          title: offer.title,
+          subject: offer.subject_id,
+          description: offer.description ?? "",
+          startsAt: toLocalDateTimeInput(offer.starts_at),
+          endsAt: toLocalDateTimeInput(offer.ends_at),
+          location: offer.location ?? "",
+          externalUrl: offer.external_url ?? "",
+          modality: offer.modality,
+          capacity: offer.capacity,
+          priceCents: offer.price_cents,
+        });
+      })
+      .catch((cause: unknown) => {
+        if (!controller.signal.aborted) setError(marketplaceError(cause));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingExisting(false);
+      });
+
+    return () => controller.abort();
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -157,14 +210,44 @@ export default function NewTutorSessionPage() {
     }
   }
 
+  if (loadingExisting) {
+    return (
+      <div className={styles.page} role="status" aria-label="Carregando tutoria">
+        <BackButton fallback="/tutor">Voltar ao painel</BackButton>
+        <Skeleton variant="card" />
+      </div>
+    );
+  }
+
+  if (editSessionId && !offerId && error) {
+    return (
+      <div className={styles.page}>
+        <BackButton fallback="/tutor">Voltar ao painel</BackButton>
+        <PageHeader
+          description="O rascunho solicitado não pôde ser carregado."
+          eyebrow="Área do Tutor"
+          title="Editar tutoria"
+        />
+        <Card className={styles.formCard} role="alert">
+          <p>{error}</p>
+          <Link href="/tutor">Voltar ao painel</Link>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.page}>
       <BackButton fallback="/tutor">Voltar ao painel</BackButton>
 
       <PageHeader
-        description="Defina os detalhes, revise a apresentação e publique sua tutoria para a comunidade."
+        description={
+          editSessionId
+            ? "Atualize o rascunho, revise a apresentação e publique quando estiver pronto."
+            : "Defina os detalhes, revise a apresentação e publique sua tutoria para a comunidade."
+        }
         eyebrow="Área do Tutor"
-        title="Criar tutoria"
+        title={editSessionId ? "Editar tutoria" : "Criar tutoria"}
       />
 
       <ol className={styles.stepper} aria-label="Etapas de criação da tutoria">
@@ -344,7 +427,7 @@ export default function NewTutorSessionPage() {
                 loading={busy}
                 type="submit"
               >
-                Revisar tutoria
+                {editSessionId ? "Revisar alterações" : "Revisar tutoria"}
               </Button>
             </div>
           </form>
@@ -442,4 +525,12 @@ export default function NewTutorSessionPage() {
       ) : null}
     </div>
   );
+}
+
+function toLocalDateTimeInput(value: string): string {
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate(),
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
