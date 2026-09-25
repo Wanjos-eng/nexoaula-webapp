@@ -1054,7 +1054,7 @@ class CommunityService:
             if not uow.community.is_active_organizer(group_id, user_id):
                 raise CommunityError("Apenas organizadores podem gerenciar canais.", 403)
             self._require_channel_group(uow, group_id)
-            channel = uow.community.find_channel_by_id(channel_id)
+            channel = uow.community.find_channel_by_id(channel_id, lock=True)
             if channel is None or channel.group_id != group_id:
                 raise CommunityError("Canal não encontrado.", 404)
             updated = uow.community.update_channel(channel, data)
@@ -1066,7 +1066,7 @@ class CommunityService:
             if not uow.community.is_active_organizer(group_id, user_id):
                 raise CommunityError("Apenas organizadores podem gerenciar canais.", 403)
             self._require_channel_group(uow, group_id)
-            channel = uow.community.find_channel_by_id(channel_id)
+            channel = uow.community.find_channel_by_id(channel_id, lock=True)
             if channel is None or channel.group_id != group_id:
                 raise CommunityError("Canal não encontrado.", 404)
             archived = uow.community.archive_channel(channel)
