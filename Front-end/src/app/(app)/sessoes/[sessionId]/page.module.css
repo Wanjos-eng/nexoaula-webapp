@@ -223,6 +223,11 @@
   font-size: var(--font-size-caption) !important;
 }
 
+.successLinks {
+  display: grid;
+  gap: var(--space-2);
+}
+
 .secondaryLink {
   min-height: 38px;
   display: inline-flex;
@@ -243,6 +248,17 @@
 .secondaryLink:hover {
   background: var(--color-surface-hover);
   border-color: #c2cec8;
+}
+
+.textLink {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  text-align: center;
+}
+
+.textLink:hover {
+  color: var(--color-green);
 }
 
 .stateCard {
