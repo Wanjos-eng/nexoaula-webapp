@@ -459,7 +459,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
                               </p>
                             )}
                             {isPostponed && occ.rescheduledTo && (
-                              <p style={{ margin: 0 }}>
+                              <p>
                                 <strong>Reagendada para:</strong> {new Date(occ.rescheduledTo).toLocaleString("pt-BR")}
                               </p>
                             )}
@@ -540,16 +540,14 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
                                         </button>
                                         <button
                                           type="button"
-                                          style={{ fontSize: "11px", padding: "4px 8px", minHeight: "28px" }}
-                                          className={currentStatus === "reviewing" ? s.primary : s.secondary}
+                                          className={`${currentStatus === "reviewing" ? s.primary : s.secondary} ${s.microButton}`}
                                           onClick={() => handleUpdateProgress(top.id, "reviewing")}
                                         >
                                           Em revisão
                                         </button>
                                         <button
                                           type="button"
-                                          style={{ fontSize: "11px", padding: "4px 8px", minHeight: "28px" }}
-                                          className={currentStatus === "mastered" ? s.primary : s.secondary}
+                                          className={`${currentStatus === "mastered" ? s.primary : s.secondary} ${s.microButton}`}
                                           onClick={() => handleUpdateProgress(top.id, "mastered")}
                                         >
                                           Dominado
