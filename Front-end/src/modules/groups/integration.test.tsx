@@ -117,7 +117,7 @@ describe("fluxos integrados com o cliente HTTP e respostas controladas", () => {
     });
     render(<GroupForm />);
     await screen.findByText("Um objetivo em comum");
-    fireEvent.change(screen.getByLabelText("Nome do grupo *"), {
+    fireEvent.change(screen.getByLabelText("Nome da comunidade *"), {
       target: { value: "Grupo novo" },
     });
     fireEvent.change(screen.getByLabelText("Disciplina *"), {
@@ -128,7 +128,7 @@ describe("fluxos integrados com o cliente HTTP e respostas controladas", () => {
     expect(posts).toBe(1);
     await act(async () => resolve(json(group, 201)));
     expect(
-      (await screen.findByRole("link", { name: "Acessar grupo" })).getAttribute(
+      (await screen.findByRole("link", { name: "Acessar comunidade" })).getAttribute(
         "href",
       ),
     ).toBe("/grupos/group-1");
@@ -151,7 +151,7 @@ describe("fluxos integrados com o cliente HTTP e respostas controladas", () => {
     );
     render(<GroupForm />);
     await screen.findByText("Um objetivo em comum");
-    fireEvent.change(screen.getByLabelText("Nome do grupo *"), {
+    fireEvent.change(screen.getByLabelText("Nome da comunidade *"), {
       target: { value: "Grupo novo" },
     });
     fireEvent.change(screen.getByLabelText("Disciplina *"), {
@@ -162,10 +162,10 @@ describe("fluxos integrados com o cliente HTTP e respostas controladas", () => {
       "A turma informada não pertence à disciplina selecionada.",
     );
     expect(
-      (screen.getByLabelText("Nome do grupo *") as HTMLInputElement).value,
+      (screen.getByLabelText("Nome da comunidade *") as HTMLInputElement).value,
     ).toBe("Grupo novo");
     fireEvent.submit(screen.getByRole("form"));
-    await screen.findByText("Grupo criado");
+    await screen.findByText("Comunidade criada");
   });
 
   it("envia filtros à API, pagina e apresenta estado vazio útil", async () => {
@@ -218,7 +218,7 @@ describe("fluxos integrados com o cliente HTTP e respostas controladas", () => {
       const view = render(<GroupDetail groupId="group-1" />);
       fireEvent.click(
         await screen.findByRole("button", {
-          name: policy === "open" ? "Entrar no grupo" : "Solicitar entrada",
+          name: policy === "open" ? "Entrar na comunidade" : "Solicitar entrada",
         }),
       );
       await screen.findByText(
@@ -229,11 +229,11 @@ describe("fluxos integrados com o cliente HTTP e respostas controladas", () => {
       view.unmount();
       render(<GroupDetail groupId="group-1" />);
       await screen.findByText(
-        policy === "open" ? "Você participa" : "Solicitação pendente",
+        policy === "open" ? "Membro" : "Solicitação pendente",
       );
       expect(screen.queryByText("Gerenciar participantes")).toBeNull();
       expect(
-        screen.queryByRole("button", { name: "Entrar no grupo" }),
+        screen.queryByRole("button", { name: "Entrar na comunidade" }),
       ).toBeNull();
     },
   );
@@ -286,8 +286,8 @@ describe("fluxos integrados com o cliente HTTP e respostas controladas", () => {
       return json(catalogs(url));
     });
     render(<GroupForm group={group} onSaved={saved} />);
-    await screen.findByText("Configurações do grupo");
-    fireEvent.change(screen.getByLabelText("Nome do grupo *"), {
+    await screen.findByText("Configurações da comunidade");
+    fireEvent.change(screen.getByLabelText("Nome da comunidade *"), {
       target: { value: "Novo nome" },
     });
     fireEvent.submit(screen.getByRole("form"));
@@ -379,7 +379,7 @@ describe("fluxos integrados com o cliente HTTP e respostas controladas", () => {
           screen.getByRole("link", { name: "Entrar novamente" }),
         ).toBeTruthy();
       expect(
-        screen.queryByRole("button", { name: "Entrar no grupo" }),
+        screen.queryByRole("button", { name: "Entrar na comunidade" }),
       ).toBeNull();
       expect(screen.queryByText("Estudos de Cálculo")).toBeNull();
     },

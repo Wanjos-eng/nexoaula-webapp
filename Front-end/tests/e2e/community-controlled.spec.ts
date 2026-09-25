@@ -192,7 +192,7 @@ for (const width of [1440, 390]) {
     await capture("profile");
     await page.getByRole("link", { name: "Explorar comunidades" }).click();
     await page
-      .getByRole("button", { name: "Descobrir grupos", exact: true })
+      .getByRole("button", { name: "Descobrir", exact: true })
       .first()
       .click();
     await expect(page.getByRole("heading", { name: group.name })).toBeVisible();
@@ -210,19 +210,19 @@ for (const width of [1440, 390]) {
     ).toBeVisible();
     await capture("pending");
     await page.goto("/grupos/novo");
-    await expect(page.getByLabel("Nome do grupo *")).toBeVisible();
-    await page.getByLabel("Nome do grupo *").fill("Cálculo em companhia");
+    await expect(page.getByLabel("Nome da comunidade *")).toBeVisible();
+    await page.getByLabel("Nome da comunidade *").fill("Cálculo em companhia");
     await page
       .getByLabel("Disciplina *", { exact: true })
       .selectOption("subject");
     await page.getByLabel("Turma (opcional)").selectOption("section");
     await page.getByLabel("Descrição").fill(group.description);
-    await page.getByLabel("Combinados do grupo").fill(group.rules);
+    await page.getByLabel("Combinados da comunidade").fill(group.rules);
     await capture("create");
     await page
-      .getByRole("button", { name: "Criar grupo", exact: true })
+      .getByRole("button", { name: "Criar comunidade", exact: true })
       .click();
-    await page.getByRole("link", { name: "Acessar grupo" }).click();
+    await page.getByRole("link", { name: "Acessar comunidade" }).click();
     await expect(
       page.getByRole("heading", { name: "Gerenciar participantes" }),
     ).toBeVisible();

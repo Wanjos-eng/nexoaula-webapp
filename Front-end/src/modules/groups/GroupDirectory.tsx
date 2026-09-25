@@ -218,7 +218,7 @@ export function GroupDirectory({
                 </div>
 
                 <div className={styles.cardCopy}>
-                  <h3>{group.name}</h3>
+                  <h3><Link href={`/grupos/${group.id}`}>{group.name}</Link></h3>
                   <p>
                     {group.description ||
                       "O organizador ainda não adicionou uma descrição."}

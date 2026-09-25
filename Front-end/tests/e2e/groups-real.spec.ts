@@ -105,14 +105,14 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       const academic = await prepareAcademicContext(owner);
 
       await owner.goto("/grupos/novo");
-      await owner.getByLabel("Nome do grupo *").fill(`Grupo E2E ${uniqueId()}`);
+      await owner.getByLabel("Nome da comunidade *").fill(`Grupo E2E ${uniqueId()}`);
       await owner.getByLabel("Disciplina *", { exact: true }).selectOption(academic.subjectId);
       await owner.getByLabel("Turma (opcional)").selectOption(academic.sectionId);
       await owner.getByLabel("Descrição").fill("Grupo criado pela jornada E2E real.");
-      await owner.getByLabel("Combinados do grupo").fill("Respeitar o ritmo de estudo.");
+      await owner.getByLabel("Combinados da comunidade").fill("Respeitar o ritmo de estudo.");
       await owner.getByLabel("Entrada").selectOption("approval_required");
-      await owner.getByRole("button", { name: "Criar grupo", exact: true }).click();
-      await owner.getByRole("link", { name: "Acessar grupo" }).click();
+      await owner.getByRole("button", { name: "Criar comunidade", exact: true }).click();
+      await owner.getByRole("link", { name: "Acessar comunidade" }).click();
       await expect(owner.getByRole("heading", { name: "Gerenciar participantes" })).toBeVisible();
       const groupUrl = owner.url();
       const groupId = new URL(groupUrl).pathname.split("/").pop();
@@ -143,7 +143,7 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await expect(member.getByRole("heading", { name: "Você ainda não participa de grupos" })).toBeVisible();
       await member.goto("/grupos?view=discover");
       await member.getByRole("search").getByLabel("Assunto ou nome").fill(groupName);
-      await member.getByRole("button", { name: "Buscar grupos" }).click();
+      await member.getByRole("button", { name: "Buscar comunidades" }).click();
       await member.getByRole("link", { name: groupName }).click();
       await expect(member.getByRole("heading", { name: groupName })).toBeVisible();
       await member.getByRole("button", { name: "Solicitar entrada" }).click();
@@ -164,7 +164,7 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await expect(owner.getByText("Nenhuma solicitação pendente.")).toBeVisible();
 
       await member.reload();
-      await expect(member.getByText("Você participa", { exact: true })).toBeVisible();
+      await expect(member.getByText("Membro", { exact: true })).toBeVisible();
       await expect(member.getByRole("heading", { name: "Aula publicada E2E" })).toBeVisible();
       await expect(member.getByRole("button", { name: "Criar nova versão" })).toHaveCount(0);
       const denied = await member.request.post(`/api/v1/groups/${groupId}/plans`, {
