@@ -741,10 +741,10 @@ export function GroupSchedule({ groupId, canManage, personal = false }: { groupI
 
               {currentPlan.sourceFileId ? (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", background: "var(--color-surface-hover, #23272f)", padding: "12px 16px", borderRadius: "10px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ fontSize: "20px" }}>📄</span>
-                    <div>
-                      <span style={{ fontWeight: 600, fontSize: "14px" }}>{currentPlan.sourceFileName ?? "plano-de-ensino.pdf"}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+                    <span style={{ fontSize: "20px", flexShrink: 0 }}>📄</span>
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ fontWeight: 600, fontSize: "14px", overflowWrap: "anywhere" }}>{currentPlan.sourceFileName ?? "plano-de-ensino.pdf"}</span>
                       {currentPlan.sourceFileSize && (
                         <span style={{ fontSize: "12px", color: "var(--color-text-muted)", marginLeft: "8px" }}>
                           ({(currentPlan.sourceFileSize / (1024 * 1024)).toFixed(2)} MB)
@@ -752,7 +752,7 @@ export function GroupSchedule({ groupId, canManage, personal = false }: { groupI
                       )}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
                     <button
                       type="button"
                       className={s.secondary}
