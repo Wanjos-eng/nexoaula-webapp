@@ -118,6 +118,7 @@ test.describe("chat de canais com API e PostgreSQL reais", () => {
       await owner.getByRole("button", { name: "Enviar mensagem" }).click();
       await expect(owner.getByText("Mensagem inicial do organizador")).toBeVisible();
 
+      await member.bringToFront();
       await expect(member.getByText("Mensagem inicial do organizador")).toBeVisible({
         timeout: 12_000,
       });
@@ -133,6 +134,7 @@ test.describe("chat de canais com API e PostgreSQL reais", () => {
       await member.getByRole("button", { name: "Enviar mensagem" }).click();
       await expect(member.getByText("Resposta do participante")).toBeVisible();
 
+      await owner.bringToFront();
       await expect(owner.getByText("Resposta do participante")).toBeVisible({
         timeout: 12_000,
       });
@@ -146,6 +148,7 @@ test.describe("chat de canais com API e PostgreSQL reais", () => {
       await editDialog.getByRole("button", { name: "Salvar edição" }).click();
       await expect(owner.getByText("Mensagem inicial editada")).toBeVisible();
 
+      await member.bringToFront();
       await expect(member.getByText("Mensagem inicial editada").first()).toBeVisible({
         timeout: 12_000,
       });
@@ -160,6 +163,7 @@ test.describe("chat de canais com API e PostgreSQL reais", () => {
         .click();
       await expect(owner.getByText("Mensagem removida").first()).toBeVisible();
 
+      await member.bringToFront();
       await expect(member.getByText("Mensagem removida").first()).toBeVisible({
         timeout: 12_000,
       });
