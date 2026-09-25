@@ -47,7 +47,11 @@ async def chat_client(graph, monkeypatch):
         async with AsyncClient(
             transport=ASGITransport(app=app),
             base_url="https://testserver",
-            headers={"Origin": "https://testserver", "X-NexoAula-CSRF": "1"},
+            headers={
+                "Origin": "https://testserver",
+                "X-NexoAula-CSRF": "1",
+                "Content-Type": "application/json",
+            },
         ) as client:
             yield client, connection, ids
     finally:
