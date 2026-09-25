@@ -90,14 +90,14 @@ test.describe("chat de canais com API e PostgreSQL reais", () => {
         joinPolicy: "open",
         disciplineId: subject.id,
       });
-      const channel = await postJson<{ id: string }>(
-        owner,
-        `groups/${group.id}/channels`,
-        {
-          name: "geral",
-          description: "Conversa principal do teste E2E.",
-        },
+      const channelsResponse = await owner.request.get(
+        `/api/v1/groups/${group.id}/channels`,
       );
+      expect(channelsResponse.ok()).toBe(true);
+      const channel = (
+        (await channelsResponse.json()) as Array<{ id: string; name: string }>
+      ).find((item) => item.name === "geral");
+      expect(channel).toBeTruthy();
 
       await registerAndLogin(member, memberUser);
       await postJson(member, `groups/${group.id}/join`, {});
@@ -176,7 +176,7 @@ test.describe("chat de canais com API e PostgreSQL reais", () => {
       await expect(member.getByText("Mensagem removida").first()).toBeVisible();
 
       const archive = await owner.request.post(
-        `/api/v1/groups/${group.id}/channels/${channel.id}/archive`,
+        `/api/v1/groups/${group.id}/channels/${channel!.id}/archive`,
         { data: {}, headers: csrfHeaders },
       );
       expect(archive.ok()).toBe(true);
