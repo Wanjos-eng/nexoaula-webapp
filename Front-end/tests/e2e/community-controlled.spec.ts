@@ -174,6 +174,10 @@ for (const width of [1440, 1024, 768, 390]) {
         style: "nextjs-portal { display: none; }",
       });
     };
+    await page.goto("/inicio");
+    await expect(page.getByRole("heading", { name: "Olá, Ana" })).toBeVisible();
+    await capture("home");
+
     await page.goto("/perfil");
 
     if (width <= 820) {
@@ -243,5 +247,18 @@ for (const width of [1440, 1024, 768, 390]) {
         "Nenhuma solicitação pendente. Os novos pedidos aparecerão aqui.",
       ),
     ).toBeVisible();
+
+    await page.goto("/disciplinas");
+    await expect(
+      page.getByRole("heading", { name: "Minhas Disciplinas" }),
+    ).toBeVisible();
+    await expect(page.getByText("Professora Ada")).toBeVisible();
+    await capture("disciplines");
+
+    await page.goto("/calendario");
+    await expect(
+      page.getByRole("heading", { name: "Calendário" }),
+    ).toBeVisible();
+    await capture("calendar");
   });
 }
