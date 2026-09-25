@@ -100,7 +100,7 @@ export function ChannelManager({ groupId, onUpdated }: { groupId: string; onUpda
       <div>
         <p className={s.eyebrow}>Organização</p>
         <h2>Gerenciar canais</h2>
-        <p>Organize os assuntos do grupo. O chat está previsto no roadmap e não faz parte desta entrega.</p>
+        <p>Organize os assuntos da comunidade em canais claros e fáceis de encontrar.</p>
       </div>
 
       {feedback && <div role="status" className={s.success}>{feedback}</div>}

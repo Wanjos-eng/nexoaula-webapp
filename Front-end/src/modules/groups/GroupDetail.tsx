@@ -1,6 +1,17 @@
 "use client";
-import Link from "next/link";
+
+import {
+  Hash,
+  LockKey,
+  UsersThree,
+} from "@phosphor-icons/react";
 import { useCallback, useRef, useState } from "react";
+
+import { BackButton } from "@/components/ui/BackButton";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { apiClient } from "@/lib/api";
 import {
   read,
@@ -12,13 +23,13 @@ import {
   type Participant,
 } from "./api";
 import { useRemote } from "./useRemote";
-import { Failure, Loading } from "./AsyncState";
+import { Failure } from "./AsyncState";
 import { GroupForm } from "./GroupForm";
 import { GroupSchedule } from "./GroupSchedule";
 import { invalidateGroups } from "./schedule";
 import { ChannelManager } from "./ChannelManager";
 import { useChannels } from "./useChannels";
-import s from "./AcademicCommunity.module.css";
+import styles from "./CommunityDetail.module.css";
 
 export function GroupDetail({ groupId }: { groupId: string }) {
   const fetcher = useCallback(
@@ -31,19 +42,22 @@ export function GroupDetail({ groupId }: { groupId: string }) {
     },
     [groupId],
   );
-  const remote = useRemote(groupId, fetcher);
+
+  const remote = useRemote(groupId, fetcher, true);
   const [channelRevision, setChannelRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [error, setError] = useState<unknown>();
   const [feedback, setFeedback] = useState("");
   const [editing, setEditing] = useState(false);
+
   async function join() {
     if (lock.current) return;
     lock.current = true;
     setBusy(true);
     setError(undefined);
     setFeedback("");
+
     try {
       const { data } = await apiClient.post<{ status: string }>(
         `/v1/groups/${groupId}/join`,
@@ -54,8 +68,8 @@ export function GroupDetail({ groupId }: { groupId: string }) {
           ? "Você entrou no grupo. Bons estudos!"
           : "Solicitação enviada. Aguarde a decisão de um organizador.",
       );
-    } catch (e) {
-      setError(e);
+    } catch (cause) {
+      setError(cause);
     } finally {
       invalidateGroups();
       remote.reload();
@@ -63,151 +77,238 @@ export function GroupDetail({ groupId }: { groupId: string }) {
       setBusy(false);
     }
   }
+
   const group = remote.data?.group;
   const participation = remote.data?.participation;
+
+  if (remote.loading) {
+    return (
+      <div className={styles.page} role="status" aria-label="Carregando comunidade">
+        <span className="sr-only">Carregando comunidade...</span>
+        <Skeleton className={styles.backSkeleton} variant="text" />
+        <Skeleton variant="card" />
+        <div className={styles.overviewGrid}>
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+        </div>
+      </div>
+    );
+  }
+
+  if (remote.error || !group || !participation) {
+    return (
+      <div className={styles.page}>
+        <BackButton fallback="/grupos">Voltar para comunidades</BackButton>
+        <Card className={styles.errorCard} role="alert">
+          <Failure error={remote.error ?? new Error("Comunidade indisponível.")} retry={remote.reload} />
+        </Card>
+      </div>
+    );
+  }
+
+  const isMember = participation.status === "active";
+  const roleLabel =
+    participation.role === "owner"
+      ? "Organizador"
+      : participation.role === "moderator"
+        ? "Moderador"
+        : isMember
+          ? "Membro"
+          : participation.status === "pending"
+            ? "Solicitação pendente"
+            : "Visitante";
+
   return (
-    <div className={s.page}>
-      <Link className={s.back} href="/grupos">
-        ← Voltar aos grupos
-      </Link>
+    <div className={styles.page}>
+      <BackButton fallback="/grupos">Voltar para comunidades</BackButton>
+
+      <section className={styles.hero}>
+        <div className={styles.heroBadges}>
+          {group.subjectName ? (
+            <Badge variant="success">{group.subjectName}</Badge>
+          ) : null}
+          <Badge>{visibilityLabels[group.visibility]}</Badge>
+          <Badge variant={isMember ? "info" : "neutral"}>{roleLabel}</Badge>
+        </div>
+
+        <div className={styles.heroCopy}>
+          <h1>{group.name}</h1>
+          <p>
+            {group.period ? `${group.period} · ` : ""}
+            {entryLabels[group.joinPolicy]} · {participation.memberCount}{" "}
+            {participation.memberCount === 1 ? "participante" : "participantes"}
+          </p>
+        </div>
+
+        {isMember ? (
+          <nav className={styles.sectionNav} aria-label="Seções da comunidade">
+            <a href="#visao-geral">Visão geral</a>
+            <a href="#encontros">Encontros</a>
+            <a href="#cronograma">Cronograma</a>
+            <a href="#canais">Canais</a>
+            {participation.canManage ? <a href="#membros">Membros</a> : null}
+            {participation.canManage ? <a href="#gestao">Gestão</a> : null}
+          </nav>
+        ) : null}
+      </section>
+
       {feedback ? (
-        <div role="status" className={s.success}>
+        <div className={styles.success} role="status">
           {feedback}
         </div>
       ) : null}
       {error ? <Failure error={error} /> : null}
-      {remote.loading ? (
-        <Loading />
-      ) : remote.error ? (
-        <Failure error={remote.error} retry={remote.reload} />
-      ) : group && participation ? (
-        <>
-          <header className={s.header}>
-            <div>
-              <p className={s.eyebrow}>
-                Grupo de estudo · {visibilityLabels[group.visibility]}
-              </p>
-              <h1 className={s.text}>{group.name}</h1>
-              <p>
-                {entryLabels[group.joinPolicy]} · {participation.memberCount}{" "}
-                {participation.memberCount === 1
-                  ? "participante"
-                  : "participantes"}
-              </p>
-            </div>
-            <span className={s.badge}>
-              {participation.role === "owner"
-                ? "Organizador"
-                : participation.status === "active"
-                  ? "Você participa"
-                  : participation.status === "pending"
-                    ? "Solicitação pendente"
-                    : "Conheça o grupo"}
-            </span>
-          </header>
-          <div className={s.columns}>
-            <section className={s.panel}>
-              <h2>Sobre o grupo</h2>
-              <p className={s.text}>
-                {group.description ||
-                  "O organizador ainda não adicionou uma descrição."}
-              </p>
-              <h2>Combinados</h2>
-              <p className={s.text}>
-                {group.rules || "Nenhum combinado informado."}
-              </p>
-            </section>
-            <aside className={s.panel}>
-              <h2>Participação</h2>
-              {participation.status === "active" ? (
-                <p>Você faz parte deste grupo.</p>
-              ) : participation.status === "pending" ? (
-                <p>
-                  Seu pedido está com os organizadores. Volte aqui para
-                  acompanhar a resposta.
-                </p>
-              ) : group.status !== "active" ? (
-                <p>Este grupo não aceita novos participantes.</p>
-              ) : group.joinPolicy === "invite_only" ||
-                group.visibility === "private" ? (
-                <p>Este grupo recebe participantes somente por convite.</p>
-              ) : (
-                <>
-                  <p>
-                    {group.joinPolicy === "open"
-                      ? "Entre e faça parte desta comunidade de estudos."
-                      : "Envie seu pedido para os organizadores do grupo."}
-                  </p>
-                  <button
-                    className={s.primary}
-                    disabled={busy}
-                    onClick={() => void join()}
-                  >
-                    {busy
-                      ? "Enviando…"
-                      : group.joinPolicy === "open"
-                        ? "Entrar no grupo"
-                        : "Solicitar entrada"}
-                  </button>
-                </>
-              )}
-              <button className={s.secondary} onClick={remote.reload}>
-                Atualizar participação
-              </button>
-              {participation.role === "owner" ? (
-                <button
-                  className={s.secondary}
-                  aria-expanded={editing}
-                  onClick={() => setEditing(!editing)}
-                >
-                  Configurar grupo
-                </button>
-              ) : null}
-            </aside>
-          </div>
-          {participation.status === "active" ? (
-            <GroupSchedule key={groupId} groupId={groupId} canManage={participation.canManage} />
-          ) : (
-            <section className={s.panel}><h2>Plano e cronograma</h2><p>Entre no grupo para acessar as aulas publicadas.</p></section>
-          )}
-          {editing && participation.role === "owner" ? (
-            <GroupForm
-              group={group}
-              onSaved={() => {
-                setEditing(false);
-                setFeedback("Configurações salvas.");
-                invalidateGroups();
-                remote.reload();
-              }}
-            />
-          ) : null}
-          {participation.status === "active" ? (
-            <ChannelView key={`${groupId}/${channelRevision}`} groupId={groupId} />
-          ) : null}
-          {participation.canManage ? (
-            <MemberManagement
-              key={`member-management-${groupId}`}
-              groupId={groupId}
-              onChanged={(message, error) => {
-                setFeedback(message);
-                setError(error);
-                remote.reload();
-              }}
-            />
-          ) : null}
-          {participation.canManage ? (
-            <ChannelManager
-              key={`channel-management-${groupId}`}
-              groupId={groupId}
-              onUpdated={() => setChannelRevision(revision => revision + 1)}
-            />
-          ) : null}
-        </>
 
+      <div className={styles.overviewGrid} id="visao-geral">
+        <Card className={styles.aboutCard}>
+          <div>
+            <p className={styles.eyebrow}>Sobre</p>
+            <h2>Visão geral</h2>
+          </div>
+
+          <div className={styles.aboutSection}>
+            <h3>Sobre a comunidade</h3>
+            <p>
+              {group.description ||
+                "O organizador ainda não adicionou uma descrição."}
+            </p>
+          </div>
+
+          <div className={styles.aboutSection}>
+            <h3>Combinados</h3>
+            <p>{group.rules || "Nenhum combinado informado."}</p>
+          </div>
+        </Card>
+
+        <Card className={styles.participationCard}>
+          <div className={styles.participationIcon}>
+            {group.visibility === "private" ? (
+              <LockKey aria-hidden size={22} />
+            ) : (
+              <UsersThree aria-hidden size={22} />
+            )}
+          </div>
+          <div>
+            <p className={styles.eyebrow}>Participação</p>
+            <h2>{roleLabel}</h2>
+          </div>
+
+          {isMember ? (
+            <p>Você faz parte desta comunidade e pode acessar o conteúdo compartilhado.</p>
+          ) : participation.status === "pending" ? (
+            <p>Seu pedido está com os organizadores. Volte aqui para acompanhar a resposta.</p>
+          ) : group.status !== "active" ? (
+            <p>Esta comunidade não aceita novos participantes no momento.</p>
+          ) : group.joinPolicy === "invite_only" ||
+            group.visibility === "private" ? (
+            <p>Esta comunidade recebe participantes somente por convite.</p>
+          ) : (
+            <>
+              <p>
+                {group.joinPolicy === "open"
+                  ? "Entre e participe deste espaço de estudos."
+                  : "Envie um pedido para os organizadores da comunidade."}
+              </p>
+              <Button
+                disabled={busy}
+                loading={busy}
+                onClick={() => void join()}
+                type="button"
+              >
+                {group.joinPolicy === "open"
+                  ? "Entrar na comunidade"
+                  : "Solicitar entrada"}
+              </Button>
+            </>
+          )}
+
+          <div className={styles.participationActions}>
+            <Button
+              disabled={busy}
+              onClick={remote.reload}
+              size="sm"
+              type="button"
+              variant="secondary"
+            >
+              Atualizar
+            </Button>
+            {participation.role === "owner" ? (
+              <Button
+                aria-expanded={editing}
+                onClick={() => setEditing((current) => !current)}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                Configurar
+              </Button>
+            ) : null}
+          </div>
+        </Card>
+      </div>
+
+      {isMember ? (
+        <GroupSchedule
+          key={groupId}
+          groupId={groupId}
+          canManage={participation.canManage}
+        />
+      ) : (
+        <Card className={styles.lockedCard}>
+          <LockKey aria-hidden size={28} />
+          <div>
+            <h2>Conteúdo da comunidade</h2>
+            <p>Entre na comunidade para acessar encontros, cronograma e conteúdos compartilhados.</p>
+          </div>
+        </Card>
+      )}
+
+      {editing && participation.role === "owner" ? (
+        <div id="configuracoes">
+          <GroupForm
+            group={group}
+            onSaved={() => {
+              setEditing(false);
+              setFeedback("Configurações salvas.");
+              invalidateGroups();
+              remote.reload();
+            }}
+          />
+        </div>
+      ) : null}
+
+      {isMember ? (
+        <ChannelView
+          key={`${groupId}/${channelRevision}`}
+          groupId={groupId}
+        />
+      ) : null}
+
+      {participation.canManage ? (
+        <MemberManagement
+          key={`member-management-${groupId}`}
+          groupId={groupId}
+          onChanged={(message, nextError) => {
+            setFeedback(message);
+            setError(nextError);
+            remote.reload();
+          }}
+        />
+      ) : null}
+
+      {participation.canManage ? (
+        <div id="gestao">
+          <ChannelManager
+            key={`channel-management-${groupId}`}
+            groupId={groupId}
+            onUpdated={() => setChannelRevision((revision) => revision + 1)}
+          />
+        </div>
       ) : null}
     </div>
   );
 }
+
 function MemberManagement({
   groupId,
   onChanged,
@@ -222,12 +323,13 @@ function MemberManagement({
     (signal: AbortSignal) => read<Participant[]>(path, signal),
     [path],
   );
-  const remote = useRemote(path, fetcher);
+  const remote = useRemote(path, fetcher, true);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [error, setError] = useState<unknown>();
   const [confirmation, setConfirmation] = useState<Participant>();
   const [message, setMessage] = useState("");
+
   async function act(
     member: Participant,
     action: "approve" | "reject" | "remove",
@@ -237,12 +339,15 @@ function MemberManagement({
     setBusy(true);
     setError(undefined);
     setMessage("");
+
     let resultMessage = "";
     let resultError: unknown;
+
     try {
-      await apiClient.patch(`/v1/groups/${groupId}/members/${member.userId}`, {
-        body: { action },
-      });
+      await apiClient.patch(
+        `/v1/groups/${groupId}/members/${member.userId}`,
+        { body: { action } },
+      );
       resultMessage =
         action === "approve"
           ? "Solicitação aprovada."
@@ -251,9 +356,9 @@ function MemberManagement({
             : "Participante removido.";
       setMessage(resultMessage);
       setConfirmation(undefined);
-    } catch (e) {
-      resultError = e;
-      setError(e);
+    } catch (cause) {
+      resultError = cause;
+      setError(cause);
     } finally {
       invalidateGroups();
       lock.current = false;
@@ -262,182 +367,218 @@ function MemberManagement({
       onChanged(resultMessage, resultError);
     }
   }
+
   return (
-    <section className={s.panel}>
-      <div>
-        <p className={s.eyebrow}>Organização</p>
-        <h2>Gerenciar participantes</h2>
+    <Card className={styles.managementCard} id="membros">
+      <div className={styles.managementHeading}>
+        <div>
+          <p className={styles.eyebrow}>Organização</p>
+          <h2>Gerenciar participantes</h2>
+        </div>
+        <div className={styles.managementTabs}>
+          <button
+            aria-pressed={pending}
+            className={pending ? styles.managementTabActive : ""}
+            disabled={busy}
+            onClick={() => {
+              setPending(true);
+              setOffset(0);
+              setConfirmation(undefined);
+            }}
+            type="button"
+          >
+            Solicitações
+          </button>
+          <button
+            aria-pressed={!pending}
+            className={!pending ? styles.managementTabActive : ""}
+            disabled={busy}
+            onClick={() => {
+              setPending(false);
+              setOffset(0);
+              setConfirmation(undefined);
+            }}
+            type="button"
+          >
+            Membros ativos
+          </button>
+        </div>
       </div>
-      <div className={s.actions}>
-        <button
-          disabled={busy}
-          className={pending ? s.primary : s.secondary}
-          onClick={() => {
-            setPending(true);
-            setOffset(0);
-            setConfirmation(undefined);
-          }}
-        >
-          Solicitações
-        </button>
-        <button
-          disabled={busy}
-          className={!pending ? s.primary : s.secondary}
-          onClick={() => {
-            setPending(false);
-            setOffset(0);
-            setConfirmation(undefined);
-          }}
-        >
-          Membros ativos
-        </button>
-      </div>
+
       {message ? (
-        <div role="status" className={s.success}>
+        <div className={styles.success} role="status">
           {message}
         </div>
       ) : null}
       {error ? <Failure error={error} /> : null}
+
       {remote.loading ? (
-        <Loading />
+        <div className={styles.memberList} role="status" aria-label="Carregando participantes">
+          <Skeleton variant="row" />
+          <Skeleton variant="row" />
+        </div>
       ) : remote.error ? (
         <Failure error={remote.error} retry={remote.reload} />
       ) : !remote.data?.length ? (
-        <p>
+        <p className={styles.emptyText}>
           {pending
             ? "Nenhuma solicitação pendente. Os novos pedidos aparecerão aqui."
             : "Nenhum participante nesta página."}
         </p>
       ) : (
-        remote.data.slice(0, PAGE_SIZE).map((member) => (
-          <div className={s.row} key={member.userId}>
-            <div>
-              <h3>{member.displayName}</h3>
-              <p>
-                {pending
-                  ? "Aguardando aprovação"
-                  : member.role === "owner"
-                    ? "Proprietário"
-                    : member.role === "moderator"
-                      ? "Moderador"
-                      : "Participante"}
-              </p>
-            </div>
-            <div className={s.actions}>
-              {pending ? (
-                <>
-                  <button
-                    className={s.primary}
+        <div className={styles.memberList}>
+          {remote.data.slice(0, PAGE_SIZE).map((member) => (
+            <div className={styles.memberRow} key={member.userId}>
+              <div>
+                <h3>{member.displayName}</h3>
+                <p>
+                  {pending
+                    ? "Aguardando aprovação"
+                    : member.role === "owner"
+                      ? "Proprietário"
+                      : member.role === "moderator"
+                        ? "Moderador"
+                        : "Participante"}
+                </p>
+              </div>
+              <div className={styles.memberActions}>
+                {pending ? (
+                  <>
+                    <Button
+                      disabled={busy}
+                      onClick={() => void act(member, "approve")}
+                      size="sm"
+                      type="button"
+                    >
+                      Aprovar
+                    </Button>
+                    <Button
+                      disabled={busy}
+                      onClick={() => void act(member, "reject")}
+                      size="sm"
+                      type="button"
+                      variant="secondary"
+                    >
+                      Recusar
+                    </Button>
+                  </>
+                ) : member.role !== "owner" ? (
+                  <Button
                     disabled={busy}
-                    onClick={() => void act(member, "approve")}
+                    onClick={() => setConfirmation(member)}
+                    size="sm"
+                    type="button"
+                    variant="danger"
                   >
-                    Aprovar
-                  </button>
-                  <button
-                    className={s.secondary}
-                    disabled={busy}
-                    onClick={() => void act(member, "reject")}
-                  >
-                    Recusar
-                  </button>
-                </>
-              ) : member.role !== "owner" ? (
-                <button
-                  className={s.danger}
-                  disabled={busy}
-                  onClick={() => setConfirmation(member)}
-                >
-                  Remover
-                </button>
-              ) : null}
+                    Remover
+                  </Button>
+                ) : null}
+              </div>
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       )}
+
       {confirmation ? (
-        <div className={s.error}>
+        <div className={styles.confirmation} role="alert">
           <p>
-            Remover {confirmation.displayName} do grupo? A pessoa perderá o
-            acesso de participante.
+            Remover <strong>{confirmation.displayName}</strong> da comunidade?
+            A pessoa perderá o acesso de participante.
           </p>
-          <div className={s.actions}>
-            <button
-              className={s.danger}
+          <div>
+            <Button
               disabled={busy}
               onClick={() => void act(confirmation, "remove")}
+              size="sm"
+              type="button"
+              variant="danger"
             >
               Confirmar remoção
-            </button>
-            <button
-              className={s.secondary}
+            </Button>
+            <Button
               disabled={busy}
               onClick={() => setConfirmation(undefined)}
+              size="sm"
+              type="button"
+              variant="secondary"
             >
               Cancelar
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
+
       {offset > 0 || (remote.data?.length ?? 0) > PAGE_SIZE ? (
-        <div className={s.actions}>
-          <button
-            className={s.secondary}
+        <div className={styles.pagination}>
+          <Button
             disabled={busy || remote.loading || !offset}
             onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+            size="sm"
+            type="button"
+            variant="secondary"
           >
             Anterior
-          </button>
-          <button
-            className={s.secondary}
+          </Button>
+          <Button
             disabled={
-              busy || remote.loading || (remote.data?.length ?? 0) <= PAGE_SIZE
+              busy ||
+              remote.loading ||
+              (remote.data?.length ?? 0) <= PAGE_SIZE
             }
             onClick={() => setOffset(offset + PAGE_SIZE)}
+            size="sm"
+            type="button"
+            variant="secondary"
           >
             Próxima
-          </button>
+          </Button>
         </div>
       ) : null}
-    </section>
+    </Card>
   );
 }
 
 function ChannelView({ groupId }: { groupId: string }) {
   const { channels, loading, error, reload } = useChannels(groupId);
 
-  if (loading) return <section className={s.panel}><Loading /></section>;
-  if (error) return <section className={s.panel}><Failure error={error} retry={reload} /></section>;
-  if (!channels?.length) return null;
-
   return (
-    <section className={s.panel}>
+    <Card className={styles.channelCard} id="canais">
       <div>
-        <p className={s.eyebrow}>Comunidade</p>
+        <p className={styles.eyebrow}>Comunidade</p>
         <h2>Canais por assunto</h2>
+        <p>Use os canais para organizar os temas e materiais da comunidade.</p>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "1rem" }}>
-        {channels.map(channel => (
-          <div key={channel.id} className={s.row} style={{ padding: "1rem", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
-            <div>
-              <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                # {channel.name}
-                {channel.status === "archived" && <span className={s.badge}>Arquivado</span>}
-              </h3>
-              <p>Assunto: {channel.topicName || "Sem assunto específico"}</p>
-              {channel.description && <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>{channel.description}</p>}
-            </div>
-            <div className={s.actions}>
-              {channel.status === "active" ? (
-                <button className={s.secondary} disabled>
-                  Chat disponível em breve
-                </button>
-              ) : (
-                <span style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>Este canal foi arquivado e está somente leitura.</span>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
+
+      {loading ? (
+        <div className={styles.channelList} role="status" aria-label="Carregando canais">
+          <Skeleton variant="row" />
+          <Skeleton variant="row" />
+        </div>
+      ) : error ? (
+        <Failure error={error} retry={reload} />
+      ) : !channels?.length ? (
+        <p className={styles.emptyText}>Nenhum canal criado nesta comunidade.</p>
+      ) : (
+        <div className={styles.channelList}>
+          {channels.map((channel) => (
+            <article className={styles.channelRow} key={channel.id}>
+              <div className={styles.channelIcon}>
+                <Hash aria-hidden size={18} />
+              </div>
+              <div>
+                <div className={styles.channelHeading}>
+                  <h3>{channel.name}</h3>
+                  {channel.status === "archived" ? (
+                    <Badge>Arquivado</Badge>
+                  ) : null}
+                </div>
+                <p>{channel.topicName || "Sem assunto específico"}</p>
+                {channel.description ? <small>{channel.description}</small> : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }

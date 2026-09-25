@@ -1,0 +1,402 @@
+.page {
+  display: grid;
+  gap: var(--space-6);
+  scroll-behavior: smooth;
+}
+
+.backSkeleton {
+  width: 180px;
+}
+
+.hero {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background:
+    linear-gradient(135deg, rgb(2 122 66 / 7%), transparent 52%),
+    var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.heroBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.heroCopy {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.heroCopy h1 {
+  max-width: 820px;
+  color: var(--color-text);
+  font-size: var(--font-size-page-title);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.heroCopy p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+}
+
+.sectionNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.sectionNav a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.sectionNav a:hover {
+  color: var(--color-green);
+  background: var(--color-success-soft);
+}
+
+.overviewGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.65fr);
+  gap: var(--space-5);
+  align-items: start;
+  scroll-margin-top: 84px;
+}
+
+.aboutCard,
+.participationCard,
+.managementCard,
+.channelCard,
+.lockedCard {
+  padding: var(--space-5);
+}
+
+.aboutCard {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.eyebrow {
+  color: var(--color-green);
+  font-size: var(--font-size-caption);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.aboutCard h2,
+.participationCard h2,
+.managementCard h2,
+.channelCard h2,
+.lockedCard h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-card-title);
+  line-height: 1.35;
+}
+
+.aboutSection {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.aboutSection h3 {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+}
+
+.aboutSection p,
+.participationCard > p,
+.channelCard > div:first-child > p:last-child,
+.lockedCard p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.participationCard {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.participationIcon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border-radius: var(--radius-md);
+}
+
+.participationCard > div:nth-child(2) {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.participationActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.success {
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border: 1px solid rgb(2 122 66 / 18%);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+  animation: community-state-in var(--motion-normal) var(--ease-standard);
+}
+
+.errorCard {
+  padding: var(--space-4);
+}
+
+.lockedCard {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.lockedCard > svg {
+  flex: 0 0 auto;
+  color: var(--color-green);
+}
+
+.lockedCard > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.managementCard,
+.channelCard {
+  display: grid;
+  gap: var(--space-5);
+  scroll-margin-top: 84px;
+}
+
+.managementHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.managementHeading > div:first-child,
+.channelCard > div:first-child {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.managementTabs {
+  display: inline-flex;
+  gap: var(--space-1);
+  padding: 4px;
+  background: var(--color-surface-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.managementTabs button {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+}
+
+.managementTabs .managementTabActive {
+  color: var(--color-green);
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px rgb(31 38 48 / 8%);
+}
+
+.memberList,
+.channelList {
+  display: grid;
+}
+
+.memberRow,
+.channelRow {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.memberRow:last-child,
+.channelRow:last-child {
+  border-bottom: 0;
+}
+
+.memberRow > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.memberRow h3,
+.channelRow h3 {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+}
+
+.memberRow p,
+.channelRow p,
+.channelRow small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  line-height: 1.45;
+}
+
+.memberActions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+}
+
+.confirmation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+}
+
+.confirmation > div {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.emptyText {
+  padding: var(--space-4);
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+  text-align: center;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.channelRow {
+  justify-content: flex-start;
+}
+
+.channelIcon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border-radius: var(--radius-sm);
+}
+
+.channelRow > div:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.channelHeading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@keyframes community-state-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .overviewGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .hero,
+  .aboutCard,
+  .participationCard,
+  .managementCard,
+  .channelCard {
+    padding: var(--space-4);
+  }
+
+  .managementHeading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .managementTabs {
+    width: 100%;
+  }
+
+  .managementTabs button {
+    flex: 1;
+  }
+
+  .memberRow,
+  .confirmation {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .memberActions,
+  .confirmation > div {
+    width: 100%;
+  }
+
+  .memberActions button,
+  .confirmation button {
+    flex: 1;
+  }
+}
