@@ -312,14 +312,16 @@ class CommunityService:
             ):
                 raise CommunityError("A turma informada não pertence à disciplina selecionada.", 400)
             group = uow.community.create_group(owner_id=user_id, data=data)
+            if data.subject_topic_ids:
+                uow.community.set_group_subject_topics(group, data.subject_topic_ids)
             uow.commit()
             return self._to_response(group, owner_id=user_id)
 
     def search_groups(self, subject: str | None, period: str | None,
                       topic: str | None, offset: int,
-                      limit: int) -> list[GroupDiscoveryResponse]:
+                      limit: int, **academic_filters: UUID) -> list[GroupDiscoveryResponse]:
         with self._uow_factory() as uow:
-            records = uow.community.search_public_groups(subject, period, topic, offset, limit)
+            records = uow.community.search_public_groups(subject, period, topic, offset, limit, **academic_filters)
             return [self._to_discovery_response(record) for record in records]
 
     def get_group(self, group_id: UUID, user_id: UUID) -> GroupResponse:
@@ -344,7 +346,13 @@ class CommunityService:
             owner_id = uow.community.find_active_owner_id(group_id) or group.created_by
             if user_id != owner_id:
                 raise CommunityError("Apenas o proprietário tem permissão para editar o grupo.", 403)
-            if updates:
+            if "subject_topic_ids" in updates:
+                if not uow.community.is_active_organizer(group_id, user_id):
+                    raise CommunityError("Apenas organizadores ativos podem configurar assuntos.", 403)
+                if self._value(group.status) != ModelGroupStatus.ACTIVE.value:
+                    raise CommunityError("Grupos inativos não podem alterar assuntos.", 409)
+                uow.community.set_group_subject_topics(group, updates.pop("subject_topic_ids"))
+            if updates or "subject_topic_ids" in data.model_fields_set:
                 group = uow.community.update_group(group, updates)
                 uow.commit()
             return self._to_response(group, owner_id=owner_id)

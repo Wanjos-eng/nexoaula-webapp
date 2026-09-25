@@ -1,7 +1,7 @@
 """Create auditable planning corrections.
 
-Revision ID: 0013_planning_corrections
-Revises: 0012_channels
+Revision ID: 0014_planning_corrections
+Revises: 0013_academic_discovery
 Create Date: 2026-09-26
 """
 
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 
-revision = "0013_planning_corrections"
-down_revision = "0012_channels"
+revision = "0014_planning_corrections"
+down_revision = "0013_academic_discovery"
 branch_labels = None
 depends_on = None
 

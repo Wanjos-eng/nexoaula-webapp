@@ -69,10 +69,18 @@ def search_groups(
     subject: str | None = Query(default=None, max_length=200),
     period: str | None = Query(default=None, max_length=80),
     topic: str | None = Query(default=None, max_length=200),
+    subject_id: UUID | None = Query(default=None, alias="subjectId"),
+    class_section_id: UUID | None = Query(default=None, alias="classSectionId"),
+    teacher_id: UUID | None = Query(default=None, alias="teacherId"),
+    subject_topic_id: UUID | None = Query(default=None, alias="subjectTopicId"),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
 ) -> list[GroupDiscoveryResponse]:
-    return service.search_groups(subject, period, topic, offset, limit)
+    return service.search_groups(subject, period, topic, offset, limit,
+                                 **{key: value for key, value in {
+                                     "subject_id": subject_id, "class_section_id": class_section_id,
+                                     "teacher_id": teacher_id, "subject_topic_id": subject_topic_id,
+                                 }.items() if value is not None})
 
 
 @router.get("/mine", response_model=list[GroupResponse], summary="Listar meus grupos")

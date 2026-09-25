@@ -265,6 +265,7 @@ class GroupCreate(BaseModel):
     join_policy: JoinPolicy = Field(default=JoinPolicy.OPEN, alias="joinPolicy")
     discipline_id: UUID = Field(alias="disciplineId")
     offering_id: UUID | None = Field(default=None, alias="offeringId")
+    subject_topic_ids: list[UUID] = Field(default_factory=list, alias="subjectTopicIds", max_length=100)
 
     @field_validator("name")
     @classmethod
@@ -293,9 +294,10 @@ class GroupUpdate(BaseModel):
     rules: str | None = Field(default=None, max_length=2000)
     visibility: GroupVisibility | None = None
     join_policy: JoinPolicy | None = Field(default=None, alias="joinPolicy")
+    subject_topic_ids: list[UUID] | None = Field(default=None, alias="subjectTopicIds", max_length=100)
     @model_validator(mode="after")
     def reject_null_required_fields(self) -> "GroupUpdate":
-        for field in ("name", "visibility", "join_policy"):
+        for field in ("name", "visibility", "join_policy", "subject_topic_ids"):
             if field in self.model_fields_set and getattr(self, field) is None:
                 raise ValueError(f"{field} não aceita valor nulo.")
         return self

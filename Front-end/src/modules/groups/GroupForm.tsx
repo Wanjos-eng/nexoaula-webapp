@@ -4,6 +4,7 @@ import Link from "next/link";
 import { apiClient } from "@/lib/api";
 import {
   catalog,
+  read,
   entryLabels,
   visibilityLabels,
   type Group,
@@ -30,18 +31,22 @@ export function GroupForm({
   onSaved?: (group: Group) => void;
 }) {
   const [draft, setDraft] = useState<GroupInput>(group ?? empty);
+  const [selectedTopics, setSelectedTopics] = useState<string[] | undefined>();
   const [created, setCreated] = useState<Group>();
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [error, setError] = useState<unknown>();
   const fetcher = useCallback(async (signal: AbortSignal) => {
-    const [subjects, sections, terms] = await Promise.all([
+    const [subjects, sections, terms, topics, subjectTopics, groupTopics] = await Promise.all([
       catalog("subjects", signal),
       catalog("class-sections", signal),
       catalog("academic-terms", signal),
+      catalog("topics", signal),
+      catalog("subject-topics", signal),
+      group ? read<{ subjectTopicId: string | null }[]>(`groups/${group.id}/topics`, signal) : Promise.resolve([]),
     ]);
-    return { subjects, sections, terms };
-  }, []);
+    return { subjects, sections, terms, topics, subjectTopics, groupTopics };
+  }, [group]);
   const remote = useRemote("group-catalog", fetcher);
   function change<K extends keyof GroupInput>(field: K, value: GroupInput[K]) {
     setDraft((d) => ({ ...d, [field]: value }));
@@ -71,6 +76,7 @@ export function GroupForm({
       rules: rules?.trim() || null,
       visibility,
       joinPolicy,
+      ...(!group || selectedTopics !== undefined ? { subjectTopicIds: selectedTopics ?? [] } : {}),
     };
     try {
       const response = group
@@ -138,13 +144,10 @@ export function GroupForm({
                 aria-label="Disciplina *"
                 required
                 value={draft.disciplineId}
-                onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    disciplineId: e.target.value,
-                    offeringId: null,
-                  })
-                }
+                onChange={(e) => {
+                  setSelectedTopics([]);
+                  setDraft({ ...draft, disciplineId: e.target.value, offeringId: null });
+                }}
               >
                 <option value="">Selecione uma disciplina</option>
                 {data.subjects.map((i) => (
@@ -181,6 +184,18 @@ export function GroupForm({
             acadêmica antes de criar um grupo.
           </p>
         ) : null}
+        <fieldset className={s.field} disabled={!draft.disciplineId}>
+          <legend>Assuntos do grupo (opcional)</legend>
+          <p>Selecione os assuntos da disciplina. Assuntos já usados em canais, aulas, encontros ou progresso precisam ser mantidos.</p>
+          {data.subjectTopics.filter((topic) => topic.subjectId === draft.disciplineId).map((topic) => {
+            const ids = selectedTopics ?? data.groupTopics.flatMap((item) => item.subjectTopicId ? [item.subjectTopicId] : []);
+            return <label key={topic.id}>
+              <input type="checkbox" checked={ids.includes(topic.id)} onChange={(event) => setSelectedTopics(event.target.checked ? [...ids, topic.id] : ids.filter((id) => id !== topic.id))} />
+              {data.topics.find((item) => item.id === topic.topicId)?.name}
+            </label>;
+          })}
+          {!data.subjectTopics.some((topic) => topic.subjectId === draft.disciplineId) ? <p role="status">{draft.disciplineId ? "Nenhum assunto cadastrado para esta disciplina." : "Selecione uma disciplina para ver os assuntos."}</p> : null}
+        </fieldset>
         <label className={s.field}>
           Descrição
           <textarea
