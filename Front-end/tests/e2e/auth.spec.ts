@@ -37,7 +37,7 @@ test.describe("autenticação real", () => {
     await page.getByLabel("Senha", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Entrar" }).click();
     await expect(page).toHaveURL(/\/inicio$/, { timeout: 5_000 });
-    await expect(page.getByRole("heading", { name: "Próxima aula" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Próximo compromisso" })).toBeVisible();
 
     const session = (await context.cookies()).find((cookie) => cookie.name.includes("nexoaula_session"));
     expect(session).toBeDefined();
