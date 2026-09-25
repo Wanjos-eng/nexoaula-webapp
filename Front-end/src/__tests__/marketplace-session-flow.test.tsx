@@ -10,6 +10,7 @@ import { apiClient, ApiError } from "@/lib/api";
 import type {
   Booking,
   PublishedSession,
+  SessionOffer,
 } from "@/modules/marketplace/marketplace.api";
 import type { TutorProfile } from "@/modules/marketplace/marketplace.types";
 
@@ -33,14 +34,17 @@ vi.mock("@/components/ui/Toast", () => ({
 let bookings: Booking[];
 let profile: TutorProfile | null;
 let session: PublishedSession;
+let mineOffers: SessionOffer[];
 
 const notice =
   "Nenhum pagamento foi processado. Esta é uma demonstração acadêmica.";
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  window.history.replaceState({}, "", "/");
   bookings = [];
   profile = null;
+  mineOffers = [];
   session = {
     id: "session-001",
     tutor_user_id: "tutor",
@@ -72,7 +76,7 @@ beforeEach(() => {
     } else if (path.endsWith("/tutor")) {
       data = profile;
     } else if (path.includes("/sessions/mine")) {
-      data = [];
+      data = mineOffers;
     } else if (path.endsWith("/sessions/session-001")) {
       data = session;
     } else {
@@ -293,6 +297,60 @@ describe("marketplace conectado à API", () => {
     );
     await screen.findByText(
       "Sua tutoria já está disponível para os estudantes.",
+    );
+  });
+
+  it("carrega um rascunho existente e salva a edição no mesmo ID", async () => {
+    mineOffers = [
+      {
+        id: "draft-001",
+        tutor_user_id: "student",
+        subject_id: "subject-1",
+        title: "Rascunho existente",
+        description: "Descrição inicial",
+        modality: "online",
+        location: null,
+        external_url: "https://example.test/sala",
+        starts_at: "2099-02-01T12:00:00Z",
+        ends_at: "2099-02-01T13:00:00Z",
+        capacity: 4,
+        price_cents: 3000,
+        currency: "BRL",
+        status: "draft",
+      },
+    ];
+    window.history.replaceState(
+      {},
+      "",
+      "/tutor/nova-sessao?edit=draft-001",
+    );
+    const patch = vi
+      .spyOn(apiClient, "patch")
+      .mockResolvedValue({ data: mineOffers[0], status: 200 });
+
+    render(<NewTutorSessionPage />);
+
+    await screen.findByRole("heading", { name: "Editar tutoria" });
+    const title = screen.getByLabelText("Título da tutoria") as HTMLInputElement;
+    expect(title.value).toBe("Rascunho existente");
+
+    fireEvent.change(title, {
+      target: { value: "Rascunho atualizado" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Salvar e revisar" }),
+    );
+
+    await screen.findByRole("heading", { name: "Revise sua tutoria" });
+    expect(patch).toHaveBeenCalledWith(
+      "/v1/marketplace/sessions/draft-001",
+      {
+        body: expect.objectContaining({
+          title: "Rascunho atualizado",
+          subject_id: "subject-1",
+          price_cents: 3000,
+        }),
+      },
     );
   });
 
