@@ -301,9 +301,14 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
                 {receipt?.notice ? (
                   <p className={styles.receiptNotice}>{receipt.notice}</p>
                 ) : null}
-                <Link className={styles.secondaryLink} href="/sessoes/minhas">
-                  Ver minhas tutorias
-                </Link>
+                <div className={styles.successLinks}>
+                  <Link className={styles.secondaryLink} href="/sessoes/minhas">
+                    Ver minhas tutorias
+                  </Link>
+                  <Link className={styles.textLink} href="/sessoes">
+                    Voltar para tutorias
+                  </Link>
+                </div>
                 <Button
                   fullWidth
                   onClick={() => setDialogMode("cancel")}
