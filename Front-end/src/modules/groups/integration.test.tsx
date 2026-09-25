@@ -223,7 +223,7 @@ describe("fluxos integrados com o cliente HTTP e respostas controladas", () => {
       );
       await screen.findByText(
         policy === "open"
-          ? "Você entrou no grupo. Bons estudos!"
+          ? "Você entrou na comunidade. Bons estudos!"
           : "Solicitação enviada. Aguarde a decisão de um organizador.",
       );
       view.unmount();

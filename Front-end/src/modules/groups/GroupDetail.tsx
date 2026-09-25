@@ -65,7 +65,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
       );
       setFeedback(
         data.status === "active"
-          ? "Você entrou no grupo. Bons estudos!"
+          ? "Você entrou na comunidade. Bons estudos!"
           : "Solicitação enviada. Aguarde a decisão de um organizador.",
       );
     } catch (cause) {

@@ -176,7 +176,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
       const created = await createGroupTopic(groupId, { customTitle: newTopicTitle.trim() });
       setTopics((prev) => [...prev, created]);
       setNewTopicTitle("");
-      setFeedback("Tópico adicionado ao grupo.");
+      setFeedback("Tópico adicionado à comunidade.");
     } catch (cause) {
       setError(cause);
     } finally {
@@ -337,7 +337,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
           {adjustments.map((adj) => (
             <div key={adj.id} className={s.adjustmentNotice}>
               <p className={s.adjustmentText}>
-                <strong>Aviso de retificação:</strong> Uma aula deste grupo foi retificada pelo organizador.
+                <strong>Aviso de retificação:</strong> Uma aula desta comunidade foi retificada pelo organizador.
                 Sua frequência anterior foi{" "}
                 <strong>{adj.outcome === "transferred" ? "transferida" : "invalidada"}</strong>.
               </p>
@@ -355,7 +355,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
 
       {/* Topic Management for Organizer */}
       {canManage && (
-        <div className={`${s.panel} ${s.topicManager}`} aria-label="Gestão de tópicos do grupo">
+        <div className={`${s.panel} ${s.topicManager}`} aria-label="Gestão de tópicos da comunidade">
           <h3 className={s.subsectionTitle}>Tópicos de estudo da comunidade</h3>
           {topics.length > 0 ? (
             <div className={s.topicBadges}>
@@ -367,7 +367,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
             </div>
           ) : (
             <p className={s.muted}>
-              Nenhum tópico cadastrado no grupo ainda.
+              Nenhum tópico cadastrado na comunidade ainda.
             </p>
           )}
           <form className={s.topicForm} onSubmit={handleAddTopic}>
@@ -566,7 +566,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
                 </div>
               ) : <p>O plano publicado ainda não contém aulas.</p>}
             </div>
-          ) : <p>O organizador ainda não publicou o cronograma deste grupo.</p>}
+          ) : <p>O organizador ainda não publicou o cronograma desta comunidade.</p>}
 
           {canManage && !editing && (
             <div className={`${s.actions} ${s.scheduleActions}`}>

@@ -141,7 +141,7 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
     <section className={s.section} aria-labelledby="group-meetings-title" id="encontros">
       <header className={s.header}>
         <div>
-          <p className={s.eyebrow}>Agenda do grupo</p>
+          <p className={s.eyebrow}>Agenda da comunidade</p>
           <h2 id="group-meetings-title">Encontros</h2>
         </div>
         {canManage ? <button className={s.primary} onClick={() => setEditor({ kind: "create" })} type="button">Agendar encontro</button> : null}
@@ -149,7 +149,7 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
       {feedback ? <p className={s.feedback} role="status">{feedback}</p> : null}
       {error && !editor && !cancelTarget && !outcomeTarget ? <Failure error={error} /> : null}
       {remote.loading ? <Loading /> : remote.error ? <Failure error={remote.error} retry={remote.reload} /> : !remote.data?.meetings.length ? (
-        <p className={s.empty}>Nenhum encontro registrado para este grupo.</p>
+        <p className={s.empty}>Nenhum encontro registrado para esta comunidade.</p>
       ) : (
         <div className={s.list}>
           {remote.data.meetings.map((meeting) => {
@@ -301,11 +301,11 @@ function MeetingForm({
   return (
     <form className={s.form} onSubmit={submit}>
       <label>Título<input maxLength={200} required value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-      <label>Tópico do grupo<select value={topicIds[0] ?? ""} onChange={(event) => setTopicIds(event.target.value ? [event.target.value] : [])}>
+      <label>Tópico da comunidade<select value={topicIds[0] ?? ""} onChange={(event) => setTopicIds(event.target.value ? [event.target.value] : [])}>
         <option value="">Sem tópico</option>
         {availableTopics.map((topic) => <option key={topic.id} value={topic.subjectTopicId ?? ""}>{topic.customTitle ?? topic.topicName ?? `Assunto ${topic.subjectTopicId?.slice(0, 8)}`}</option>)}
       </select></label>
-      {!availableTopics.length ? <small>Associe tópicos acadêmicos ao grupo para selecioná-los aqui.</small> : null}
+      {!availableTopics.length ? <small>Associe tópicos acadêmicos à comunidade para selecioná-los aqui.</small> : null}
       <label>Descrição<textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
       <label>Formato<select value={modality} onChange={(event) => setModality(event.target.value as MeetingModality)}>
         <option value="online">Online</option><option value="in_person">Presencial</option><option value="hybrid">Híbrido</option>
