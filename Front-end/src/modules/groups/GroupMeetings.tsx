@@ -226,40 +226,50 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
         </Dialog>
       ) : null}
       {cancelTarget ? (
-        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setCancelTarget(null); }}>
-          <section className={s.modal} role="dialog" aria-modal="true" aria-labelledby="cancel-meeting-title">
-            {error ? <Failure error={error} /> : null}
-            <h2 id="cancel-meeting-title">Cancelar encontro?</h2>
-            <p>“{cancelTarget.title}” ficará no histórico com status cancelado. As pessoas não poderão mais alterar a participação.</p>
-            <div className={s.actions}>
-              <button className={s.danger} disabled={busy} onClick={() => void confirmCancellation()} type="button">Confirmar cancelamento</button>
-              <button className={s.secondary} disabled={busy} onClick={() => setCancelTarget(null)} type="button">Manter encontro</button>
-            </div>
-          </section>
-        </div>
+        <Dialog
+          descriptionId="cancel-meeting-description"
+          onClose={() => {
+            if (!busy) setCancelTarget(null);
+          }}
+          titleId="cancel-meeting-title"
+        >
+          {error ? <Failure error={error} /> : null}
+          <h2 id="cancel-meeting-title">Cancelar encontro?</h2>
+          <p id="cancel-meeting-description">
+            “{cancelTarget.title}” ficará no histórico com status cancelado. As pessoas não poderão mais alterar a participação.
+          </p>
+          <div className={s.actions}>
+            <button className={s.danger} disabled={busy} onClick={() => void confirmCancellation()} type="button">Confirmar cancelamento</button>
+            <button className={s.secondary} disabled={busy} onClick={() => setCancelTarget(null)} type="button">Manter encontro</button>
+          </div>
+        </Dialog>
       ) : null}
       {outcomeTarget ? (
-        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setOutcomeTarget(null); }}>
-          <section className={s.modal} role="dialog" aria-modal="true" aria-labelledby="meeting-outcome-title">
-            {error ? <Failure error={error} /> : null}
-            <h2 id="meeting-outcome-title">Registrar resultado</h2>
-            <p>Atualize o histórico de “{outcomeTarget.title}”.</p>
-            <div className={s.form}>
-              <label>Resultado<select value={outcome} onChange={(event) => setOutcome(event.target.value as typeof outcome)}>
-                <option value="completed">Realizado</option><option value="postponed">Adiado</option><option value="cancelled">Cancelado</option>
-              </select></label>
-              {outcome === "postponed" ? <>
-                <label>Novo início<input type="datetime-local" value={newStartsAt} onChange={(event) => setNewStartsAt(event.target.value)} /></label>
-                <label>Novo fim<input type="datetime-local" value={newEndsAt} onChange={(event) => setNewEndsAt(event.target.value)} /></label>
-              </> : null}
-              {outcome === "completed" && isMeetingOpen(outcomeTarget) ? <p className={s.meta}>O resultado “Realizado” fica disponível após o horário de término.</p> : null}
-              <div className={s.actions}>
-                <button className={s.primary} disabled={busy || (outcome === "completed" && isMeetingOpen(outcomeTarget))} onClick={() => void submitOutcome()} type="button">{busy ? "Salvando…" : "Salvar resultado"}</button>
-                <button className={s.secondary} disabled={busy} onClick={() => setOutcomeTarget(null)} type="button">Fechar</button>
-              </div>
+        <Dialog
+          descriptionId="meeting-outcome-description"
+          onClose={() => {
+            if (!busy) setOutcomeTarget(null);
+          }}
+          titleId="meeting-outcome-title"
+        >
+          {error ? <Failure error={error} /> : null}
+          <h2 id="meeting-outcome-title">Registrar resultado</h2>
+          <p id="meeting-outcome-description">Atualize o histórico de “{outcomeTarget.title}”.</p>
+          <div className={s.form}>
+            <label>Resultado<select value={outcome} onChange={(event) => setOutcome(event.target.value as typeof outcome)}>
+              <option value="completed">Realizado</option><option value="postponed">Adiado</option><option value="cancelled">Cancelado</option>
+            </select></label>
+            {outcome === "postponed" ? <>
+              <label>Novo início<input type="datetime-local" value={newStartsAt} onChange={(event) => setNewStartsAt(event.target.value)} /></label>
+              <label>Novo fim<input type="datetime-local" value={newEndsAt} onChange={(event) => setNewEndsAt(event.target.value)} /></label>
+            </> : null}
+            {outcome === "completed" && isMeetingOpen(outcomeTarget) ? <p className={s.meta}>O resultado “Realizado” fica disponível após o horário de término.</p> : null}
+            <div className={s.actions}>
+              <button className={s.primary} disabled={busy || (outcome === "completed" && isMeetingOpen(outcomeTarget))} onClick={() => void submitOutcome()} type="button">{busy ? "Salvando…" : "Salvar resultado"}</button>
+              <button className={s.secondary} disabled={busy} onClick={() => setOutcomeTarget(null)} type="button">Fechar</button>
             </div>
-          </section>
-        </div>
+          </div>
+        </Dialog>
       ) : null}
     </section>
   );
