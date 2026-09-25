@@ -149,6 +149,7 @@ for (const width of [1440, 390]) {
       else if (path.endsWith("/groups/study-group/channels") && request.method() === "GET") body = [];
       else if (path.endsWith("/groups/study-group/topics") && request.method() === "GET") body = [];
       else if (path.includes("/groups/study-group/occurrences") && request.method() === "GET") body = [];
+      else if (path.endsWith("/groups/study-group/planning-corrections") && request.method() === "GET") body = [];
       else if (
         path.endsWith("/groups/study-group/meetings") &&
         request.method() === "GET"

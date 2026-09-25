@@ -23,6 +23,10 @@ from app.modules.community.schemas import (
     MembershipResponse,
     ParticipantResponse,
     ParticipationResponse,
+    PlanningCorrectionCreate,
+    PlanningCorrectionDecision,
+    PlanningCorrectionResponse,
+    PlanningCorrectionStatus,
     ScheduledLessonCreate,
     ScheduledLessonResponse,
     ScheduledLessonUpdate,
@@ -212,6 +216,42 @@ def replace_plan(group_id: UUID, plan_id: UUID, user_id: UserId, payload: Teachi
              openapi_extra=MUTATION_SECURITY)
 def publish_plan(group_id: UUID, plan_id: UUID, user_id: UserId, service: Service):
     return service.publish_plan(group_id, plan_id, user_id)
+
+
+# --- TASK US20: Sugestões e decisões de correção do cronograma ---
+
+
+@router.post("/{group_id}/planning-corrections",
+             response_model=PlanningCorrectionResponse,
+             status_code=status.HTTP_201_CREATED,
+             summary="Sugerir correção de aula ou ocorrência",
+             openapi_extra=MUTATION_SECURITY)
+def create_planning_correction(
+    group_id: UUID, user_id: UserId, payload: PlanningCorrectionCreate,
+    service: Service,
+) -> PlanningCorrectionResponse:
+    return service.create_planning_correction(group_id, user_id, payload)
+
+
+@router.get("/{group_id}/planning-corrections",
+            response_model=list[PlanningCorrectionResponse],
+            summary="Listar sugestões de correção do grupo")
+def list_planning_corrections(
+    group_id: UUID, user_id: UserId, service: Service,
+    correction_status: PlanningCorrectionStatus | None = Query(default=None, alias="status"),
+) -> list[PlanningCorrectionResponse]:
+    return service.list_planning_corrections(group_id, user_id, correction_status)
+
+
+@router.post("/{group_id}/planning-corrections/{correction_id}/decision",
+             response_model=PlanningCorrectionResponse,
+             summary="Aprovar ou rejeitar sugestão de correção",
+             openapi_extra=MUTATION_SECURITY)
+def decide_planning_correction(
+    group_id: UUID, correction_id: UUID, user_id: UserId,
+    payload: PlanningCorrectionDecision, service: Service,
+) -> PlanningCorrectionResponse:
+    return service.decide_planning_correction(group_id, correction_id, user_id, payload)
 
 
 # --- TASK #114: Ocorrências de Aula, Frequência e Progresso ---

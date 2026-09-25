@@ -1,6 +1,9 @@
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
+
+from pydantic import ValidationError
 
 from app.modules.community.errors import CommunityError
 from app.modules.community.models import (
@@ -14,6 +17,8 @@ from app.modules.community.models import (
     MeetingStatus as ModelMeetingStatus,
     MembershipRole,
     MembershipStatus,
+    PlanningCorrection,
+    PlanningCorrectionStatus as ModelPlanningCorrectionStatus,
     ScheduledLesson,
     StudentAttendanceAdjustment,
     StudentLessonAttendance,
@@ -40,6 +45,10 @@ from app.modules.community.schemas import (
     MeetingParticipantStatus,
     MeetingResponse,
     MeetingUpdate,
+    PlanningCorrectionCreate,
+    PlanningCorrectionDecision,
+    PlanningCorrectionResponse,
+    PlanningCorrectionStatus,
     GroupVisibility,
     JoinPolicy,
     LessonOccurrenceCreate,
@@ -612,6 +621,216 @@ class CommunityService:
             response = self._to_teaching_plan_response(uow, plan)
             uow.commit()
             return response
+
+    def create_planning_correction(
+        self, group_id: UUID, user_id: UUID, data: PlanningCorrectionCreate
+    ) -> PlanningCorrectionResponse:
+        if data.group_id != group_id:
+            raise CommunityError("O grupo da sugestão não corresponde à URL.", 422)
+        with self._uow_factory() as uow:
+            group = uow.community.find_by_id(group_id)
+            if group is None:
+                raise CommunityError("Grupo não encontrado.", 404)
+            if not uow.community.is_active_member(group_id, user_id):
+                raise CommunityError("Apenas membros ativos podem sugerir correções.", 403)
+            snapshot = uow.community.planning_correction_target_snapshot(
+                group_id, data.scheduled_lesson_id, data.lesson_occurrence_id, lock=True
+            )
+            if snapshot is None:
+                raise CommunityError("O alvo informado não pertence a este grupo ou não existe.", 422)
+            if data.lesson_occurrence_id and uow.community.has_occurrence_successor(data.lesson_occurrence_id):
+                raise CommunityError("A ocorrência informada já foi retificada.", 409)
+            self._validate_correction_patch(data, snapshot)
+            correction = uow.community.create_planning_correction(user_id, data, snapshot)
+            uow.commit()
+            return PlanningCorrectionResponse.model_validate(correction)
+
+    def list_planning_corrections(
+        self, group_id: UUID, user_id: UUID,
+        status: PlanningCorrectionStatus | None = None,
+    ) -> list[PlanningCorrectionResponse]:
+        with self._uow_factory() as uow:
+            group = uow.community.find_by_id(group_id)
+            if group is None:
+                raise CommunityError("Grupo não encontrado.", 404)
+            if not uow.community.is_active_member(group_id, user_id):
+                raise CommunityError("Apenas membros ativos podem consultar sugestões.", 403)
+            organizer = uow.community.is_active_organizer(group_id, user_id)
+            corrections = uow.community.list_planning_corrections(
+                group_id,
+                status.value if status is not None else None,
+                None if organizer else user_id,
+            )
+            return [PlanningCorrectionResponse.model_validate(item) for item in corrections]
+
+    def decide_planning_correction(
+        self, group_id: UUID, correction_id: UUID, user_id: UUID,
+        data: PlanningCorrectionDecision,
+    ) -> PlanningCorrectionResponse:
+        with self._uow_factory() as uow:
+            correction = uow.community.find_planning_correction(correction_id, lock=True)
+            if correction is None or correction.group_id != group_id:
+                raise CommunityError("Sugestão de correção não encontrada.", 404)
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores ativos podem decidir correções.", 403)
+            if correction.status != ModelPlanningCorrectionStatus.PENDING:
+                raise CommunityError("Esta sugestão já foi decidida.", 409)
+
+            if data.status == "approved":
+                current_snapshot = uow.community.planning_correction_target_snapshot(
+                    group_id, correction.scheduled_lesson_id,
+                    correction.lesson_occurrence_id, lock=True,
+                )
+                if current_snapshot is None or current_snapshot != correction.original_snapshot:
+                    raise CommunityError(
+                        "O recurso foi alterado desde a criação da sugestão. Atualize e envie uma nova correção.",
+                        409,
+                    )
+                if correction.lesson_occurrence_id and uow.community.has_occurrence_successor(
+                    correction.lesson_occurrence_id
+                ):
+                    raise CommunityError("A ocorrência já foi retificada por outra decisão.", 409)
+                self._apply_planning_correction(uow, group_id, user_id, correction)
+
+            correction.status = ModelPlanningCorrectionStatus(data.status)
+            correction.decided_by = user_id
+            correction.decided_at = datetime.now(UTC)
+            correction.decision_note = data.decision_note
+            uow.commit()
+            return PlanningCorrectionResponse.model_validate(correction)
+
+    @staticmethod
+    def _normalize_correction_patch(patch: dict[str, Any], allowed: dict[str, str]) -> dict[str, Any]:
+        normalized: dict[str, Any] = {}
+        for field, value in patch.items():
+            canonical = allowed.get(field)
+            if canonical is None:
+                raise CommunityError(f"Campo '{field}' não pode ser corrigido.", 422)
+            if canonical in normalized:
+                raise CommunityError(f"Campo '{canonical}' foi informado mais de uma vez.", 422)
+            normalized[canonical] = value
+        if not normalized:
+            raise CommunityError("Informe ao menos uma alteração proposta.", 422)
+        return normalized
+
+    @classmethod
+    def _validate_correction_patch(
+        cls, data: PlanningCorrectionCreate, snapshot: dict[str, Any]
+    ) -> None:
+        if data.scheduled_lesson_id is not None:
+            allowed = {
+                "title": "title", "description": "description",
+                "scheduledAt": "scheduled_at", "scheduled_at": "scheduled_at",
+                "topicIds": "topic_ids", "topic_ids": "topic_ids",
+            }
+            normalized = cls._normalize_correction_patch(data.proposed_patch, allowed)
+            try:
+                ScheduledLessonUpdate.model_validate(normalized)
+            except ValidationError as exc:
+                raise CommunityError("Patch proposto inválido para a aula prevista.", 422) from exc
+        else:
+            allowed = {
+                "status": "status", "actualStartedAt": "actual_started_at",
+                "actual_started_at": "actual_started_at", "actualEndedAt": "actual_ended_at",
+                "actual_ended_at": "actual_ended_at", "rescheduledTo": "rescheduled_to",
+                "rescheduled_to": "rescheduled_to", "notes": "notes",
+                "topicIds": "topic_ids", "topic_ids": "topic_ids",
+            }
+            normalized = cls._normalize_correction_patch(data.proposed_patch, allowed)
+            current = {
+                "status": snapshot["status"],
+                "actual_started_at": snapshot["actualStartedAt"],
+                "actual_ended_at": snapshot["actualEndedAt"],
+                "rescheduled_to": snapshot["rescheduledTo"],
+                "notes": snapshot["notes"],
+                "topic_ids": snapshot["topicIds"],
+                "scheduled_lesson_id": snapshot["scheduledLessonId"],
+            }
+            current.update(normalized)
+            if current["status"] == "held":
+                current["rescheduled_to"] = None
+            elif current["status"] == "cancelled":
+                current["actual_started_at"] = None
+                current["actual_ended_at"] = None
+                current["rescheduled_to"] = None
+            elif current["status"] == "postponed":
+                current["actual_started_at"] = None
+                current["actual_ended_at"] = None
+            current["supersedes_occurrence_id"] = UUID(int=0)
+            try:
+                LessonOccurrenceCreate.model_validate(current)
+            except ValidationError as exc:
+                raise CommunityError("Patch proposto inválido para a ocorrência.", 422) from exc
+
+    @classmethod
+    def _apply_planning_correction(
+        cls, uow: CommunityUnitOfWork, group_id: UUID, decider_id: UUID,
+        correction: PlanningCorrection,
+    ) -> None:
+        if correction.scheduled_lesson_id is not None:
+            lesson = uow.community.find_scheduled_lesson_by_id(
+                correction.scheduled_lesson_id, lock=True
+            )
+            if lesson is None or lesson.group_id != group_id:
+                raise CommunityError("Aula do cronograma não encontrada.", 409)
+            allowed = {
+                "title": "title", "description": "description",
+                "scheduledAt": "scheduled_at", "scheduled_at": "scheduled_at",
+                "topicIds": "topic_ids", "topic_ids": "topic_ids",
+            }
+            patch = cls._normalize_correction_patch(correction.proposed_patch, allowed)
+            try:
+                update = ScheduledLessonUpdate.model_validate(patch)
+            except ValidationError as exc:
+                raise CommunityError("Patch armazenado inválido para a aula prevista.", 422) from exc
+            uow.community.update_scheduled_lesson(lesson, update, allow_published=True)
+            return
+
+        occurrence_id = correction.lesson_occurrence_id
+        if occurrence_id is None:
+            raise CommunityError("Sugestão sem alvo válido.", 409)
+        result = uow.community.find_lesson_occurrence_by_id(occurrence_id)
+        if result is None or result[0].group_id != group_id:
+            raise CommunityError("Ocorrência não encontrada.", 409)
+        occurrence, topic_ids = result
+        snapshot = correction.original_snapshot
+        allowed = {
+            "status": "status", "actualStartedAt": "actual_started_at",
+            "actual_started_at": "actual_started_at", "actualEndedAt": "actual_ended_at",
+            "actual_ended_at": "actual_ended_at", "rescheduledTo": "rescheduled_to",
+            "rescheduled_to": "rescheduled_to", "notes": "notes",
+            "topicIds": "topic_ids", "topic_ids": "topic_ids",
+        }
+        patch = cls._normalize_correction_patch(correction.proposed_patch, allowed)
+        values: dict[str, Any] = {
+            "status": snapshot["status"],
+            "actual_started_at": snapshot["actualStartedAt"],
+            "actual_ended_at": snapshot["actualEndedAt"],
+            "rescheduled_to": snapshot["rescheduledTo"],
+            "notes": snapshot["notes"],
+            "topic_ids": [str(topic_id) for topic_id in topic_ids],
+        }
+        values.update(patch)
+        if values["status"] == "held":
+            values["rescheduled_to"] = None
+        elif values["status"] == "cancelled":
+            values["actual_started_at"] = None
+            values["actual_ended_at"] = None
+            values["rescheduled_to"] = None
+        elif values["status"] == "postponed":
+            values["actual_started_at"] = None
+            values["actual_ended_at"] = None
+        else:
+            raise CommunityError("Status de ocorrência inválido no patch.", 422)
+        values.update({
+            "scheduled_lesson_id": occurrence.scheduled_lesson_id,
+            "supersedes_occurrence_id": occurrence.id,
+        })
+        try:
+            occurrence_data = LessonOccurrenceCreate.model_validate(values)
+        except ValidationError as exc:
+            raise CommunityError("Patch armazenado inválido para a ocorrência.", 422) from exc
+        uow.community.create_lesson_occurrence(group_id, decider_id, occurrence_data)
 
     def user_calendar(self, user_id: UUID, start: datetime | None, end: datetime | None,
                       period: str | None, offset: int, limit: int):

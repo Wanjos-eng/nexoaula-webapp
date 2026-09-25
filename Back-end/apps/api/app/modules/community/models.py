@@ -16,6 +16,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -101,6 +102,20 @@ class MeetingParticipantStatus(str, Enum):
     ATTENDED = "attended"
 
 
+class PlanningCorrectionKind(str, Enum):
+    SCHEDULE = "schedule"
+    TOPICS = "topics"
+    STATUS = "status"
+    DETAILS = "details"
+    OTHER = "other"
+
+
+class PlanningCorrectionStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 GROUP_VISIBILITY = SqlEnum(
     GroupVisibility,
     name="group_visibility",
@@ -154,6 +169,8 @@ TOPIC_PROGRESS_STATUS = SqlEnum(
 MEETING_MODALITY = SqlEnum(MeetingModality, name="meeting_modality", values_callable=lambda enum: [item.value for item in enum])
 MEETING_STATUS = SqlEnum(MeetingStatus, name="meeting_status", values_callable=lambda enum: [item.value for item in enum])
 MEETING_PARTICIPANT_STATUS = SqlEnum(MeetingParticipantStatus, name="meeting_participant_status", values_callable=lambda enum: [item.value for item in enum])
+PLANNING_CORRECTION_KIND = SqlEnum(PlanningCorrectionKind, name="planning_correction_kind", values_callable=lambda enum: [item.value for item in enum])
+CORRECTION_STATUS = SqlEnum(PlanningCorrectionStatus, name="correction_status", values_callable=lambda enum: [item.value for item in enum])
 
 
 
@@ -673,4 +690,80 @@ class MeetingTopic(Base):
     )
     meeting_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
     subject_topic_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True)
+
+
+class PlanningCorrection(Base):
+    __tablename__ = "planning_corrections"
+    __table_args__ = (
+        ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(
+            ["group_id", "suggested_by"],
+            ["group_members.group_id", "group_members.user_id"],
+            name="fk_planning_corrections_author_membership",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["scheduled_lesson_id", "group_id"],
+            ["scheduled_lessons.id", "scheduled_lessons.group_id"],
+            name="fk_planning_corrections_scheduled_lesson_group",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["lesson_occurrence_id", "group_id"],
+            ["lesson_occurrences.id", "lesson_occurrences.group_id"],
+            name="fk_planning_corrections_occurrence_group",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(["decided_by"], ["users.id"], ondelete="RESTRICT"),
+        CheckConstraint(
+            "(scheduled_lesson_id IS NOT NULL AND lesson_occurrence_id IS NULL) OR "
+            "(scheduled_lesson_id IS NULL AND lesson_occurrence_id IS NOT NULL)",
+            name="chk_planning_corrections_single_target",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(original_snapshot) = 'object'",
+            name="chk_planning_corrections_snapshot_object",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(proposed_patch) = 'object'",
+            name="chk_planning_corrections_patch_object",
+        ),
+        CheckConstraint(
+            "(status = 'pending' AND decided_by IS NULL AND decided_at IS NULL) OR "
+            "(status IN ('approved', 'rejected') AND decided_by IS NOT NULL AND decided_at IS NOT NULL)",
+            name="chk_planning_corrections_decision",
+        ),
+        Index("ix_planning_corrections_status_created_at", "status", "created_at"),
+        Index("ix_planning_corrections_suggested_by", "suggested_by"),
+        Index("ix_planning_corrections_group_id", "group_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    suggested_by: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    scheduled_lesson_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    lesson_occurrence_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    kind: Mapped[PlanningCorrectionKind] = mapped_column(PLANNING_CORRECTION_KIND, nullable=False)
+    original_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    proposed_patch: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[PlanningCorrectionStatus] = mapped_column(
+        CORRECTION_STATUS, nullable=False, server_default=text("'pending'::correction_status")
+    )
+    decided_by: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    @property
+    def diff(self) -> dict[str, dict[str, object]]:
+        return {
+            field: {"before": self.original_snapshot.get(field), "after": value}
+            for field, value in self.proposed_patch.items()
+            if self.original_snapshot.get(field) != value
+        }
 

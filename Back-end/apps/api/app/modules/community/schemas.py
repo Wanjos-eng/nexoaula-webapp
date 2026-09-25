@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, HttpUrl, TypeAdapter, field_validator, model_validator
@@ -24,6 +24,64 @@ class MeetingParticipantStatus(str, Enum):
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
     ATTENDED = "attended"
+
+
+class PlanningCorrectionKind(str, Enum):
+    SCHEDULE = "schedule"
+    TOPICS = "topics"
+    STATUS = "status"
+    DETAILS = "details"
+    OTHER = "other"
+
+
+class PlanningCorrectionStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class PlanningCorrectionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    group_id: UUID = Field(alias="groupId")
+    scheduled_lesson_id: UUID | None = Field(default=None, alias="scheduledLessonId")
+    lesson_occurrence_id: UUID | None = Field(default=None, alias="lessonOccurrenceId")
+    kind: PlanningCorrectionKind
+    proposed_patch: dict[str, Any] = Field(alias="proposedPatch")
+    reason: str | None = None
+
+    @model_validator(mode="after")
+    def validate_single_target(self):
+        if (self.scheduled_lesson_id is None) == (self.lesson_occurrence_id is None):
+            raise ValueError("Informe exatamente uma aula prevista ou ocorrência como alvo.")
+        return self
+
+
+class PlanningCorrectionDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    status: Literal["approved", "rejected"]
+    decision_note: str | None = Field(default=None, alias="decisionNote")
+
+
+class PlanningCorrectionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, serialize_by_alias=True)
+
+    id: UUID
+    group_id: UUID = Field(serialization_alias="groupId")
+    suggested_by: UUID = Field(serialization_alias="suggestedBy")
+    scheduled_lesson_id: UUID | None = Field(default=None, serialization_alias="scheduledLessonId")
+    lesson_occurrence_id: UUID | None = Field(default=None, serialization_alias="lessonOccurrenceId")
+    kind: PlanningCorrectionKind
+    original_snapshot: dict[str, Any] = Field(serialization_alias="originalSnapshot")
+    proposed_patch: dict[str, Any] = Field(serialization_alias="proposedPatch")
+    diff: dict[str, dict[str, Any]]
+    reason: str | None
+    status: PlanningCorrectionStatus
+    decided_by: UUID | None = Field(default=None, serialization_alias="decidedBy")
+    decided_at: AwareDatetime | None = Field(default=None, serialization_alias="decidedAt")
+    decision_note: str | None = Field(default=None, serialization_alias="decisionNote")
+    created_at: AwareDatetime = Field(serialization_alias="createdAt")
 
 
 class MeetingFields(BaseModel):

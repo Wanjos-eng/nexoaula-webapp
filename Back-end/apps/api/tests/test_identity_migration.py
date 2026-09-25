@@ -59,6 +59,7 @@ def test_only_released_tables_exist(database_engine):
         "meetings",
         "meeting_participants",
         "meeting_topics",
+        "planning_corrections",
     }
 
 
