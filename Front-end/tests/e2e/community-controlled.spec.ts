@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 // Browser integration evidence with controlled HTTP responses; not a substitute for PostgreSQL E2E.
-for (const width of [1440, 390]) {
+for (const width of [1440, 1024, 768, 390]) {
   test(`perfil, criação, descoberta e participação em ${width}px`, async ({
     page,
   }, testInfo) => {
