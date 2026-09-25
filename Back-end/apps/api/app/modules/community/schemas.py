@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, HttpUrl, TypeAdapter, field_validator, model_validator
 
 
 class MeetingModality(str, Enum):
@@ -26,7 +26,28 @@ class MeetingParticipantStatus(str, Enum):
     ATTENDED = "attended"
 
 
-class MeetingCreate(BaseModel):
+class MeetingFields(BaseModel):
+    @field_validator("title", "location", "external_url", mode="before", check_fields=False)
+    @classmethod
+    def strip_meeting_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("external_url", check_fields=False)
+    @classmethod
+    def validate_external_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return str(TypeAdapter(HttpUrl).validate_python(value))
+
+    @field_validator("channel_id", check_fields=False)
+    @classmethod
+    def defer_channel_link(cls, value: UUID | None) -> None:
+        if value is not None:
+            raise ValueError("O vínculo com canais ainda não está disponível; omita channelId.")
+        return None
+
+
+class MeetingCreate(MeetingFields):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     group_id: UUID = Field(alias="groupId")
@@ -53,7 +74,7 @@ class MeetingCreate(BaseModel):
         return self
 
 
-class MeetingUpdate(BaseModel):
+class MeetingUpdate(MeetingFields):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     channel_id: UUID | None = Field(default=None, alias="channelId")

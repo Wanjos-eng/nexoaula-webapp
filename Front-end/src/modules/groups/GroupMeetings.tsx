@@ -54,8 +54,9 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
     setFeedback("");
     try {
       if (meeting) {
-        const { groupId: _groupId, ...updates } = input;
-        await updateMeeting(meeting.id, updates);
+        const { groupId: _groupId, ...payload } = input;
+        void _groupId;
+        await updateMeeting(meeting.id, payload);
         setFeedback("Encontro atualizado.");
       } else {
         await createMeeting(input);
@@ -90,13 +91,13 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
   }
 
   async function changeParticipation(meeting: Meeting, status: MeetingParticipantStatus) {
-    if (lock.current || !isMeetingOpen(meeting)) return;
+    if (lock.current || (status === "attended" ? !canRecordPresence(meeting) : !isMeetingOpen(meeting))) return;
     lock.current = true;
     setParticipatingId(meeting.id);
     setError(undefined);
     try {
       await putMeetingParticipation(meeting.id, status);
-      setFeedback(status === "confirmed" ? "Presença confirmada." : status === "interested" ? "Interesse registrado." : "Participação desmarcada.");
+      setFeedback(status === "attended" ? "Presença registrada." : status === "confirmed" ? "Presença confirmada." : status === "interested" ? "Interesse registrado." : "Participação desmarcada.");
       remote.reload();
     } catch (cause) {
       setError(cause);
@@ -146,7 +147,7 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
         {canManage ? <button className={s.primary} onClick={() => setEditor({ kind: "create" })} type="button">Agendar encontro</button> : null}
       </header>
       {feedback ? <p className={s.feedback} role="status">{feedback}</p> : null}
-      {error ? <Failure error={error} /> : null}
+      {error && !editor && !cancelTarget && !outcomeTarget ? <Failure error={error} /> : null}
       {remote.loading ? <Loading /> : remote.error ? <Failure error={remote.error} retry={remote.reload} /> : !remote.data?.meetings.length ? (
         <p className={s.empty}>Nenhum encontro registrado para este grupo.</p>
       ) : (
@@ -174,7 +175,11 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
                 {meeting.description ? <p className={s.description}>{meeting.description}</p> : null}
                 {meeting.location ? <p className={s.meta}>Local: {meeting.location}</p> : null}
                 {meeting.externalUrl ? <a className={s.external} href={meeting.externalUrl} target="_blank" rel="noreferrer">Abrir link do encontro</a> : null}
-                {disabled ? <p className={s.disabledHint}>Este encontro não aceita novas alterações de participação.</p> : (
+                <p className={s.meta}>Sua participação: {currentStatus === "attended" ? "Presença registrada" : currentStatus === "confirmed" ? "Confirmada" : currentStatus === "interested" ? "Interesse registrado" : currentStatus === "cancelled" ? "Desistência registrada" : "Não informada"}</p>
+                {canRecordPresence(meeting) && currentStatus !== "attended" ? (
+                  <button className={s.secondary} disabled={participatingId === meeting.id} onClick={() => void changeParticipation(meeting, "attended")} type="button">Registrar minha presença</button>
+                ) : null}
+                {disabled ? <p className={s.disabledHint}>Inscrições encerradas. A presença pode ser registrada após o início, exceto em encontros cancelados.</p> : (
                   <div className={s.actions}>
                     <button className={currentStatus === "interested" ? s.selected : s.secondary} disabled={participatingId === meeting.id} onClick={() => void changeParticipation(meeting, "interested")} type="button">Tenho interesse</button>
                     <button className={currentStatus === "confirmed" ? s.selected : s.secondary} disabled={participatingId === meeting.id} onClick={() => void changeParticipation(meeting, "confirmed")} type="button">Confirmar</button>
@@ -183,13 +188,10 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
                 )}
                 {canManage && (meeting.status === "scheduled" || meeting.status === "postponed") ? (
                   <div className={s.organizerActions}>
-                    <button className={s.textButton} onClick={() => setEditor({ kind: "edit", meeting })} type="button">Editar</button>
+                    <button className={s.textButton} disabled={!isMeetingOpen(meeting)} onClick={() => { setError(undefined); setEditor({ kind: "edit", meeting }); }} type="button">Editar</button>
                     <button className={s.dangerText} onClick={() => setCancelTarget(meeting)} type="button">Cancelar encontro</button>
                     {meeting.organizerId === user.id ? <button className={s.textButton} onClick={() => { setOutcomeTarget(meeting); setOutcome("completed"); setError(undefined); }} type="button">Registrar resultado</button> : null}
                   </div>
-                ) : null}
-                {!canManage && meeting.organizerId === user.id && (meeting.status === "scheduled" || meeting.status === "postponed") ? (
-                  <div className={s.organizerActions}><button className={s.textButton} onClick={() => { setOutcomeTarget(meeting); setOutcome("completed"); setError(undefined); }} type="button">Registrar resultado</button></div>
                 ) : null}
               </article>
             );
@@ -197,16 +199,18 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
         </div>
       )}
       {editor ? (
-        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditor(null); }}>
+        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setEditor(null); }}>
           <section className={s.modal} role="dialog" aria-modal="true" aria-labelledby="meeting-editor-title">
+            {error ? <Failure error={error} /> : null}
             <h2 id="meeting-editor-title">{editor.kind === "edit" ? "Editar encontro" : "Agendar encontro"}</h2>
             <MeetingForm groupId={groupId} topics={remote.data?.topics ?? []} initial={editor.kind === "edit" ? editor.meeting : undefined} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => submitMeeting(input, editor.kind === "edit" ? editor.meeting : undefined)} />
           </section>
         </div>
       ) : null}
       {cancelTarget ? (
-        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCancelTarget(null); }}>
+        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setCancelTarget(null); }}>
           <section className={s.modal} role="dialog" aria-modal="true" aria-labelledby="cancel-meeting-title">
+            {error ? <Failure error={error} /> : null}
             <h2 id="cancel-meeting-title">Cancelar encontro?</h2>
             <p>“{cancelTarget.title}” ficará no histórico com status cancelado. As pessoas não poderão mais alterar a participação.</p>
             <div className={s.actions}>
@@ -217,8 +221,9 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
         </div>
       ) : null}
       {outcomeTarget ? (
-        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOutcomeTarget(null); }}>
+        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setOutcomeTarget(null); }}>
           <section className={s.modal} role="dialog" aria-modal="true" aria-labelledby="meeting-outcome-title">
+            {error ? <Failure error={error} /> : null}
             <h2 id="meeting-outcome-title">Registrar resultado</h2>
             <p>Atualize o histórico de “{outcomeTarget.title}”.</p>
             <div className={s.form}>
@@ -320,6 +325,10 @@ function MeetingForm({
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function canRecordPresence(meeting: Meeting): boolean {
+  return meeting.status !== "cancelled" && Date.now() >= new Date(meeting.startsAt).getTime();
 }
 
 function isMeetingOpen(meeting: Meeting): boolean {
