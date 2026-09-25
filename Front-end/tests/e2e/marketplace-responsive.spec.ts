@@ -116,7 +116,7 @@ for (const width of [1440, 1024, 768, 390]) {
     }
 
     await page.goto("/sessoes");
-    await expect(page.getByRole("heading", { name: "Tutorias" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Encontre a tutoria certa para você" })).toBeVisible();
     await assertResponsive("tutorias");
 
     await page.goto("/sessoes/session-qa");
@@ -133,7 +133,7 @@ for (const width of [1440, 1024, 768, 390]) {
 
     await page.goto("/tutor");
     await expect(
-      page.getByRole("heading", { name: "Área do Tutor" }),
+      page.getByRole("heading", { name: "Painel do Tutor" }),
     ).toBeVisible();
     await assertResponsive("area-tutor");
 
