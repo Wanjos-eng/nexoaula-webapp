@@ -253,6 +253,8 @@ class MembershipResultStatus(str, Enum):
     PENDING = "pending"
     REJECTED = "rejected"
     REMOVED = "removed"
+    CANCELLED = "cancelled"
+    LEFT = "left"
 
 
 class GroupCreate(BaseModel):
@@ -371,6 +373,40 @@ class MembershipResponse(BaseModel):
     requested_at: datetime | None = Field(default=None, serialization_alias="requestedAt")
     joined_at: datetime | None = Field(default=None, serialization_alias="joinedAt")
     resolved_at: datetime | None = Field(default=None, serialization_alias="resolvedAt")
+
+
+class GroupInvitationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=3, max_length=320)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if "@" not in normalized:
+            raise ValueError("Informe o e-mail de uma conta NexoAula válida.")
+        return normalized
+
+
+class GroupInvitationResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+
+    id: UUID
+    group_id: UUID = Field(serialization_alias="groupId")
+    group_name: str = Field(serialization_alias="groupName")
+    invited_user_id: UUID = Field(serialization_alias="invitedUserId")
+    invited_email: str = Field(serialization_alias="invitedEmail")
+    invited_display_name: str = Field(serialization_alias="invitedDisplayName")
+    status: Literal["pending", "accepted", "cancelled", "expired"]
+    expires_at: AwareDatetime = Field(serialization_alias="expiresAt")
+    created_at: AwareDatetime = Field(serialization_alias="createdAt")
+    accepted_at: AwareDatetime | None = Field(default=None, serialization_alias="acceptedAt")
+    cancelled_at: AwareDatetime | None = Field(default=None, serialization_alias="cancelledAt")
+
+
+class GroupInvitationCreatedResponse(GroupInvitationResponse):
+    token: str
 
 
 class ParticipationResponse(BaseModel):

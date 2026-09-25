@@ -1,5 +1,7 @@
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from hashlib import sha256
+from secrets import token_urlsafe
 from typing import Any
 from uuid import UUID
 
@@ -8,6 +10,7 @@ from pydantic import ValidationError
 from app.modules.community.errors import CommunityError
 from app.modules.community.models import (
     ChannelStatus as ModelChannelStatus,
+    GroupInvitation,
     GroupJoinPolicy,
     GroupMember,
     GroupStatus as ModelGroupStatus,
@@ -31,6 +34,7 @@ from app.modules.community.repository import (
     ChannelMessageRecord,
     CommunityUnitOfWork,
     GroupDiscoveryRecord,
+    GroupInvitationRecord,
 )
 from app.modules.community.schemas import (
     AttendanceAdjustmentResponse,
@@ -43,6 +47,9 @@ from app.modules.community.schemas import (
     ChannelResponse,
     GroupCreate,
     GroupDiscoveryResponse,
+    GroupInvitationCreate,
+    GroupInvitationCreatedResponse,
+    GroupInvitationResponse,
     GroupResponse,
     GroupStatus,
     GroupTopicCreate,
@@ -394,6 +401,196 @@ class CommunityService:
             return MembershipResponse(group_id=group_id, user_id=user_id,
                                       status=MembershipResultStatus.PENDING,
                                       requested_at=request.requested_at)
+
+    def leave_group(self, group_id: UUID, user_id: UUID) -> MembershipResponse:
+        with self._uow_factory() as uow:
+            group = uow.community.find_by_id(group_id)
+            if group is None:
+                raise CommunityError("Grupo não encontrado.", 404)
+            member = uow.community.find_member(group_id, user_id)
+            if member is None or self._value(member.status) != MembershipStatus.ACTIVE.value:
+                raise CommunityError("Você não participa ativamente deste grupo.", 409)
+            if self._value(member.role) == MembershipRole.OWNER.value:
+                raise CommunityError(
+                    "Transfira a propriedade antes de sair da comunidade.", 409
+                )
+            member = uow.community.leave_member(member)
+            uow.commit()
+            return self._member_response(member, MembershipResultStatus.LEFT)
+
+    def cancel_join_request(
+        self, group_id: UUID, user_id: UUID
+    ) -> MembershipResponse:
+        with self._uow_factory() as uow:
+            group = uow.community.find_by_id(group_id)
+            if group is None:
+                raise CommunityError("Grupo não encontrado.", 404)
+            request = uow.community.find_pending_request(group_id, user_id)
+            if request is None:
+                raise CommunityError("Solicitação pendente não encontrada.", 409)
+            request = uow.community.resolve_join_request(
+                request,
+                JoinRequestStatus.CANCELLED,
+                user_id,
+                "Cancelada pelo solicitante.",
+            )
+            uow.commit()
+            return MembershipResponse(
+                group_id=group_id,
+                user_id=user_id,
+                status=MembershipResultStatus.CANCELLED,
+                requested_at=request.requested_at,
+                resolved_at=request.resolved_at,
+            )
+
+    @staticmethod
+    def _invitation_hash(token: str) -> str:
+        return sha256(token.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _invitation_response(
+        record: GroupInvitationRecord,
+    ) -> GroupInvitationResponse:
+        invitation = record.invitation
+        return GroupInvitationResponse(
+            id=invitation.id,
+            group_id=invitation.group_id,
+            group_name=record.group_name,
+            invited_user_id=invitation.invited_user_id,
+            invited_email=record.invited_email,
+            invited_display_name=record.invited_display_name,
+            status=invitation.status,
+            expires_at=invitation.expires_at,
+            created_at=invitation.created_at,
+            accepted_at=invitation.accepted_at,
+            cancelled_at=invitation.cancelled_at,
+        )
+
+    def create_invitation(
+        self, group_id: UUID, organizer_id: UUID, data: GroupInvitationCreate
+    ) -> GroupInvitationCreatedResponse:
+        with self._uow_factory() as uow:
+            group = uow.community.find_by_id(group_id)
+            if group is None:
+                raise CommunityError("Grupo não encontrado.", 404)
+            if self._value(group.status) != ModelGroupStatus.ACTIVE.value:
+                raise CommunityError("A comunidade não aceita novos convites.", 409)
+            if not uow.community.is_active_organizer(group_id, organizer_id):
+                raise CommunityError("Apenas organizadores podem criar convites.", 403)
+
+            invited = uow.community.find_user_by_email(data.email)
+            if invited is None:
+                raise CommunityError(
+                    "Nenhuma conta NexoAula ativa foi encontrada com este e-mail.", 404
+                )
+            if invited.id == organizer_id:
+                raise CommunityError("Você já participa desta comunidade.", 409)
+            if uow.community.is_active_member(group_id, invited.id):
+                raise CommunityError("Esta pessoa já participa da comunidade.", 409)
+            if uow.community.find_pending_request(group_id, invited.id) is not None:
+                raise CommunityError(
+                    "Esta pessoa já solicitou entrada. Aprove a solicitação existente.", 409
+                )
+
+            uow.community.expire_invitations(group_id, invited.id)
+            token = token_urlsafe(32)
+            invitation = uow.community.create_group_invitation(
+                group_id,
+                invited.id,
+                organizer_id,
+                self._invitation_hash(token),
+                datetime.now(UTC) + timedelta(days=7),
+            )
+            record = uow.community.invitation_record(invitation)
+            uow.commit()
+            response = self._invitation_response(record)
+            return GroupInvitationCreatedResponse(
+                **response.model_dump(),
+                token=token,
+            )
+
+    def list_invitations(
+        self, group_id: UUID, organizer_id: UUID
+    ) -> list[GroupInvitationResponse]:
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, organizer_id):
+                raise CommunityError("Apenas organizadores podem ver convites.", 403)
+            uow.community.expire_invitations(group_id)
+            records = uow.community.list_group_invitations(group_id)
+            uow.commit()
+            return [self._invitation_response(record) for record in records]
+
+    def get_invitation(
+        self, token: str, user_id: UUID
+    ) -> GroupInvitationResponse:
+        with self._uow_factory() as uow:
+            invitation = uow.community.find_invitation_by_token_hash(
+                self._invitation_hash(token)
+            )
+            if invitation is None or invitation.invited_user_id != user_id:
+                raise CommunityError("Convite não encontrado.", 404)
+            if invitation.status == "pending" and invitation.expires_at <= datetime.now(UTC):
+                invitation.status = "expired"
+                uow.commit()
+            return self._invitation_response(
+                uow.community.invitation_record(invitation)
+            )
+
+    def accept_invitation(
+        self, token: str, user_id: UUID
+    ) -> MembershipResponse:
+        with self._uow_factory() as uow:
+            invitation = uow.community.find_invitation_by_token_hash(
+                self._invitation_hash(token), lock=True
+            )
+            if invitation is None or invitation.invited_user_id != user_id:
+                raise CommunityError("Convite não encontrado.", 404)
+            if invitation.status != "pending":
+                raise CommunityError("Este convite não está mais disponível.", 409)
+            if invitation.expires_at <= datetime.now(UTC):
+                invitation.status = "expired"
+                uow.commit()
+                raise CommunityError("Este convite expirou.", 410)
+
+            group = uow.community.find_by_id(invitation.group_id)
+            if group is None or self._value(group.status) != ModelGroupStatus.ACTIVE.value:
+                raise CommunityError("Esta comunidade não aceita novos participantes.", 409)
+            if uow.community.is_active_member(group.id, user_id):
+                raise CommunityError("Você já participa desta comunidade.", 409)
+
+            self._ensure_capacity(uow.community, group)
+            pending_request = uow.community.find_pending_request(group.id, user_id)
+            if pending_request is not None:
+                uow.community.resolve_join_request(
+                    pending_request,
+                    JoinRequestStatus.CANCELLED,
+                    user_id,
+                    "Entrada concluída por convite.",
+                )
+            member = uow.community.activate_member(group.id, user_id)
+            uow.community.accept_invitation(invitation)
+            uow.commit()
+            return self._member_response(member, MembershipResultStatus.ACTIVE)
+
+    def cancel_invitation(
+        self, group_id: UUID, invitation_id: UUID, organizer_id: UUID
+    ) -> GroupInvitationResponse:
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, organizer_id):
+                raise CommunityError("Apenas organizadores podem cancelar convites.", 403)
+            invitation = uow.community.find_invitation_by_id(invitation_id, lock=True)
+            if invitation is None or invitation.group_id != group_id:
+                raise CommunityError("Convite não encontrado.", 404)
+            if invitation.status != "pending":
+                raise CommunityError("Este convite não está mais pendente.", 409)
+            if invitation.expires_at <= datetime.now(UTC):
+                invitation.status = "expired"
+                uow.commit()
+                raise CommunityError("Este convite já expirou.", 409)
+            uow.community.cancel_invitation(invitation)
+            record = uow.community.invitation_record(invitation)
+            uow.commit()
+            return self._invitation_response(record)
 
     def manage_membership(self, group_id: UUID, organizer_id: UUID,
                           target_user_id: UUID,
