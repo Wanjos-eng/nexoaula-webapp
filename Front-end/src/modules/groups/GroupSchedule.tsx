@@ -38,6 +38,7 @@ import type {
 } from "../academic/types";
 import s from "./AcademicCommunity.module.css";
 import { GroupMeetings } from "./GroupMeetings";
+import { GroupPlanningCorrections } from "./GroupPlanningCorrections";
 
 type EditableLesson = { title: string; description: string; date: string; topicIds: string[] };
 
@@ -321,6 +322,14 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
       </div>
       {feedback && <p role="status" className={s.success}>{feedback}</p>}
       {error ? <Failure error={error} /> : null}
+      <GroupPlanningCorrections
+        groupId={groupId}
+        canManage={canManage}
+        lessons={published?.lessons ?? []}
+        occurrences={occurrences}
+        topics={topics}
+        onApplied={() => { remote.reload(); void loadExtraData(); }}
+      />
 
       {/* Adjustment Notices Banner */}
       {adjustments.length > 0 && (

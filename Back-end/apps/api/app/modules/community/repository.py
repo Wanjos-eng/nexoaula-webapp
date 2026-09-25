@@ -31,6 +31,9 @@ from app.modules.community.models import (
     MembershipRole,
     MembershipStatus,
     OccurrenceTopic,
+    PlanningCorrection,
+    PlanningCorrectionKind,
+    PlanningCorrectionStatus,
     ScheduledLesson,
     ScheduledLessonTopic,
     StudentAttendanceAdjustment,
@@ -51,6 +54,7 @@ from app.modules.community.schemas import (
     MeetingParticipantStatus,
     MeetingUpdate,
     LessonOccurrenceCreate,
+    PlanningCorrectionCreate,
     ParticipantResponse,
     ScheduledLessonCreate,
     ScheduledLessonUpdate,
@@ -102,6 +106,18 @@ class CommunityRepository(Protocol):
     def list_meeting_topic_ids(self, meeting_ids: list[UUID]) -> dict[UUID, list[UUID]]: ...
     def meeting_participant_summary(self, meeting_ids: list[UUID], user_id: UUID) -> dict[UUID, tuple[int, str | None]]: ...
 
+    def planning_correction_target_snapshot(self, group_id: UUID,
+                                            scheduled_lesson_id: UUID | None,
+                                            lesson_occurrence_id: UUID | None,
+                                            lock: bool = False) -> dict[str, Any] | None: ...
+    def create_planning_correction(self, suggested_by: UUID, data: PlanningCorrectionCreate,
+                                   snapshot: dict[str, Any]) -> PlanningCorrection: ...
+    def list_planning_corrections(self, group_id: UUID, status: str | None,
+                                  suggested_by: UUID | None) -> list[PlanningCorrection]: ...
+    def find_planning_correction(self, correction_id: UUID,
+                                 lock: bool = False) -> PlanningCorrection | None: ...
+    def has_occurrence_successor(self, occurrence_id: UUID) -> bool: ...
+
     # --- TASK #112: Tópicos, Plano de Aulas e Cronograma ---
     def create_group_topic(self, group_id: UUID, data: GroupTopicCreate) -> GroupTopic: ...
     def list_group_topics(self, group_id: UUID) -> list[tuple[GroupTopic, str | None]]: ...
@@ -110,8 +126,9 @@ class CommunityRepository(Protocol):
     def find_teaching_plan_by_id(self, plan_id: UUID) -> TeachingPlan | None: ...
     def create_scheduled_lesson(self, group_id: UUID, plan_id: UUID, data: ScheduledLessonCreate) -> ScheduledLesson: ...
     def list_scheduled_lessons(self, group_id: UUID, plan_id: UUID | None = None) -> list[tuple[ScheduledLesson, list[UUID]]]: ...
-    def find_scheduled_lesson_by_id(self, lesson_id: UUID) -> ScheduledLesson | None: ...
-    def update_scheduled_lesson(self, lesson: ScheduledLesson, data: ScheduledLessonUpdate) -> ScheduledLesson: ...
+    def find_scheduled_lesson_by_id(self, lesson_id: UUID, lock: bool = False) -> ScheduledLesson | None: ...
+    def update_scheduled_lesson(self, lesson: ScheduledLesson, data: ScheduledLessonUpdate,
+                                allow_published: bool = False) -> ScheduledLesson: ...
     def delete_scheduled_lesson(self, lesson: ScheduledLesson) -> None: ...
 
     def list_teaching_plans(self, group_id: UUID, offset: int, limit: int) -> list[TeachingPlan]: ...
@@ -189,6 +206,105 @@ class SqlAlchemyCommunityRepository:
         if data.topic_ids:
             self.set_meeting_topics(group_id, meeting.id, data.topic_ids)
         return meeting
+
+    def planning_correction_target_snapshot(
+        self,
+        group_id: UUID,
+        scheduled_lesson_id: UUID | None,
+        lesson_occurrence_id: UUID | None,
+        lock: bool = False,
+    ) -> dict[str, Any] | None:
+        if lock:
+            self._session.execute(
+                select(StudyGroup.id).where(StudyGroup.id == group_id).with_for_update()
+            )
+        if scheduled_lesson_id is not None:
+            stmt = select(ScheduledLesson).where(ScheduledLesson.id == scheduled_lesson_id)
+            if lock:
+                stmt = stmt.with_for_update()
+            lesson = self._session.scalar(stmt)
+            if lesson is None or lesson.group_id != group_id:
+                return None
+            topic_ids = list(self._session.scalars(
+                select(ScheduledLessonTopic.group_topic_id)
+                .where(ScheduledLessonTopic.lesson_id == lesson.id)
+                .order_by(ScheduledLessonTopic.group_topic_id)
+            ))
+            return {
+                "title": lesson.title,
+                "description": lesson.description,
+                "scheduledAt": lesson.scheduled_at.isoformat(),
+                "topicIds": [str(topic_id) for topic_id in topic_ids],
+            }
+
+        if lesson_occurrence_id is not None:
+            stmt = select(LessonOccurrence).where(LessonOccurrence.id == lesson_occurrence_id)
+            if lock:
+                stmt = stmt.with_for_update()
+            occurrence = self._session.scalar(stmt)
+            if occurrence is None or occurrence.group_id != group_id:
+                return None
+            topic_ids = list(self._session.scalars(
+                select(OccurrenceTopic.group_topic_id)
+                .where(OccurrenceTopic.lesson_occurrence_id == occurrence.id)
+                .order_by(OccurrenceTopic.group_topic_id)
+            ))
+            return {
+                "scheduledLessonId": str(occurrence.scheduled_lesson_id) if occurrence.scheduled_lesson_id else None,
+                "status": occurrence.status.value,
+                "actualStartedAt": occurrence.actual_started_at.isoformat() if occurrence.actual_started_at else None,
+                "actualEndedAt": occurrence.actual_ended_at.isoformat() if occurrence.actual_ended_at else None,
+                "rescheduledTo": occurrence.rescheduled_to.isoformat() if occurrence.rescheduled_to else None,
+                "notes": occurrence.notes,
+                "topicIds": [str(topic_id) for topic_id in topic_ids],
+            }
+        return None
+
+    def create_planning_correction(
+        self, suggested_by: UUID, data: PlanningCorrectionCreate,
+        snapshot: dict[str, Any],
+    ) -> PlanningCorrection:
+        correction = PlanningCorrection(
+            group_id=data.group_id,
+            suggested_by=suggested_by,
+            scheduled_lesson_id=data.scheduled_lesson_id,
+            lesson_occurrence_id=data.lesson_occurrence_id,
+            kind=PlanningCorrectionKind(data.kind.value),
+            original_snapshot=snapshot,
+            proposed_patch=data.proposed_patch,
+            reason=data.reason,
+        )
+        self._session.add(correction)
+        self._session.flush()
+        return correction
+
+    def list_planning_corrections(
+        self, group_id: UUID, status: str | None,
+        suggested_by: UUID | None,
+    ) -> list[PlanningCorrection]:
+        stmt = select(PlanningCorrection).where(PlanningCorrection.group_id == group_id)
+        if status is not None:
+            stmt = stmt.where(PlanningCorrection.status == PlanningCorrectionStatus(status))
+        if suggested_by is not None:
+            stmt = stmt.where(PlanningCorrection.suggested_by == suggested_by)
+        return list(self._session.scalars(
+            stmt.order_by(PlanningCorrection.created_at.desc(), PlanningCorrection.id)
+        ))
+
+    def find_planning_correction(
+        self, correction_id: UUID, lock: bool = False
+    ) -> PlanningCorrection | None:
+        stmt = select(PlanningCorrection).where(PlanningCorrection.id == correction_id)
+        if lock:
+            stmt = stmt.with_for_update()
+        return self._session.scalar(stmt)
+
+    def has_occurrence_successor(self, occurrence_id: UUID) -> bool:
+        return self._session.scalar(
+            select(LessonOccurrence.id)
+            .where(LessonOccurrence.supersedes_occurrence_id == occurrence_id)
+            .limit(1)
+        ) is not None
 
     def list_group_meetings(self, group_id: UUID, start: datetime | None, end: datetime | None) -> list[Meeting]:
         stmt = select(Meeting).where(Meeting.group_id == group_id)
@@ -568,11 +684,23 @@ class SqlAlchemyCommunityRepository:
 
         return result
 
-    def find_scheduled_lesson_by_id(self, lesson_id: UUID) -> ScheduledLesson | None:
-        return self._session.get(ScheduledLesson, lesson_id)
+    def find_scheduled_lesson_by_id(self, lesson_id: UUID, lock: bool = False) -> ScheduledLesson | None:
+        stmt = select(ScheduledLesson).where(ScheduledLesson.id == lesson_id)
+        if lock:
+            stmt = stmt.with_for_update()
+        return self._session.scalar(stmt)
 
-    def update_scheduled_lesson(self, lesson: ScheduledLesson, data: ScheduledLessonUpdate) -> ScheduledLesson:
-        self._ensure_draft(lesson.group_id, lesson.plan_id)
+    def update_scheduled_lesson(
+        self, lesson: ScheduledLesson, data: ScheduledLessonUpdate,
+        allow_published: bool = False,
+    ) -> ScheduledLesson:
+        if allow_published:
+            self._session.execute(
+                select(StudyGroup.id).where(StudyGroup.id == lesson.group_id).with_for_update()
+            )
+            lesson = self.find_scheduled_lesson_by_id(lesson.id, lock=True) or lesson
+        else:
+            self._ensure_draft(lesson.group_id, lesson.plan_id)
         if data.topic_ids is not None:
             self._validate_topic_ids(lesson.group_id, data.topic_ids)
         if data.title is not None:
@@ -674,6 +802,9 @@ class SqlAlchemyCommunityRepository:
     def create_lesson_occurrence(
         self, group_id: UUID, recorded_by: UUID, data: LessonOccurrenceCreate
     ) -> tuple[LessonOccurrence, list[UUID]]:
+        self._session.execute(
+            select(StudyGroup.id).where(StudyGroup.id == group_id).with_for_update()
+        )
         if not self.is_active_organizer(group_id, recorded_by):
             raise CommunityError("Apenas organizadores podem registrar ocorrência de aula.", 403)
 
@@ -684,7 +815,11 @@ class SqlAlchemyCommunityRepository:
 
         prev: LessonOccurrence | None = None
         if data.supersedes_occurrence_id:
-            prev = self._session.get(LessonOccurrence, data.supersedes_occurrence_id)
+            prev = self._session.scalar(
+                select(LessonOccurrence)
+                .where(LessonOccurrence.id == data.supersedes_occurrence_id)
+                .with_for_update()
+            )
             if not prev or prev.group_id != group_id:
                 raise CommunityError("A ocorrência a ser corrigida não pertence a este grupo.", 422)
             already_superseded = self._session.scalar(

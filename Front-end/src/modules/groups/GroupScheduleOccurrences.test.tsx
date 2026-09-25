@@ -72,6 +72,7 @@ function setupServer(options?: {
       const method = init?.method || "GET";
 
       if (path.endsWith("/meetings")) return json([]);
+      if (path.includes("/planning-corrections")) return json([]);
       if (path.includes("/plans?")) return json([mockPlan]);
       if (path.includes("/topics")) return json([mockTopic]);
       if (path.includes("/occurrences")) {
