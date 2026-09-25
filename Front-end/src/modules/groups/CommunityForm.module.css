@@ -1,0 +1,345 @@
+.page {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.formCard {
+  padding: var(--space-6);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.formSection {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sectionIcon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border-radius: var(--radius-md);
+}
+
+.sectionHeading > div:last-child,
+.sectionCopy {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.sectionHeading h2,
+.sectionCopy h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-card-title);
+  line-height: 1.35;
+}
+
+.sectionHeading p,
+.sectionCopy p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+}
+
+.twoColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.field {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.field > span {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: 0;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.field input,
+.field select {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+}
+
+.field textarea {
+  min-height: 112px;
+  padding: var(--space-3);
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--color-amber);
+  box-shadow: var(--shadow-focus);
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  color: var(--color-text-muted);
+  background: var(--color-surface-subtle);
+}
+
+.field small,
+.topicFieldset small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.field > small {
+  text-align: right;
+}
+
+.topicFieldset {
+  display: grid;
+  gap: var(--space-3);
+  border: 0;
+}
+
+.topicGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.topicOption {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.topicOption:hover {
+  border-color: #c2cec8;
+  background: var(--color-surface-hover);
+}
+
+.topicOption input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--color-green);
+}
+
+.inlineState {
+  padding: var(--space-3);
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+}
+
+.validationError {
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.cancelLink {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+}
+
+.cancelLink:hover {
+  color: var(--color-text);
+}
+
+.helperCard {
+  position: sticky;
+  top: 88px;
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--color-surface-subtle);
+  box-shadow: none;
+}
+
+.helperCard h2 {
+  font-size: var(--font-size-card-title);
+  line-height: 1.35;
+}
+
+.helperCard p,
+.helperCard li {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.55;
+}
+
+.helperCard ul {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: 18px;
+}
+
+.helperCard a {
+  color: var(--color-green);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+}
+
+.successCard {
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: var(--space-8);
+  color: var(--color-success);
+  text-align: center;
+  animation: community-form-in var(--motion-normal) var(--ease-standard);
+}
+
+.successCard > div {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+}
+
+.successCard h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-section-title);
+}
+
+.successCard p {
+  max-width: 520px;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.primaryLink {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-4);
+  color: white;
+  background: var(--color-green);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+}
+
+.primaryLink:hover {
+  color: white;
+  background: var(--color-green-hover);
+}
+
+.loading {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.errorCard {
+  padding: var(--space-5);
+}
+
+@keyframes community-form-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 880px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .helperCard {
+    position: static;
+  }
+}
+
+@media (max-width: 620px) {
+  .formCard,
+  .helperCard {
+    padding: var(--space-4);
+  }
+
+  .twoColumns,
+  .topicGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .actions > * {
+    width: 100%;
+  }
+}
