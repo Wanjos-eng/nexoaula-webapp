@@ -93,7 +93,11 @@ test("publicação, inscrição e histórico persistidos entre tutor e alunos re
     expect(records.every((r: { simulated: boolean; transaction: { amount_cents: number; commission_cents: number } }) => r.simulated && r.transaction.amount_cents === 2500 && r.transaction.commission_cents === 375)).toBe(true);
     expect(await student.evaluate(() => Object.keys({ ...sessionStorage, ...localStorage }).filter((key) => /demo-bookings|demo-sessions/.test(key)))).toEqual([]);
     await student.screenshot({ path: info.outputPath("marketplace-persisted.png"), fullPage: true });
-    await tutor.goto("/tutor"); await tutor.getByRole("button", { name: "Cancelar", exact: true }).click(); await tutor.getByRole("button", { name: "Cancelar tutoria", exact: true }).click();
+    await tutor.goto("/tutor");
+    await tutor.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await tutor.getByRole("button", { name: "Cancelar tutoria", exact: true }).click();
+    await expect(tutor.getByText("Tutoria cancelada.")).toBeVisible();
+    await tutor.getByRole("tab", { name: /Histórico/ }).click();
     await expect(tutor.getByText("Cancelada", { exact: true })).toBeVisible();
     await student.reload(); await expect(student.getByText("Confirmada", { exact: true })).toHaveCount(0);
   } finally { await tutorContext.close(); await studentContext.close(); await otherContext.close(); }
