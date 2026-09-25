@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { GroupDetail } from "./GroupDetail";
 import { ChannelManager } from "./ChannelManager";
@@ -36,12 +36,12 @@ it("moderador cria, renomeia e arquiva; lista acompanha cada alteração", async
     return Promise.resolve(json([]));
   }));
   render(<GroupDetail groupId="g1" />);
-  const manager = (await screen.findByRole("heading", {name:"Gerenciar canais"})).closest("section")!;
-  fireEvent.click(within(manager).getByRole("button",{name:"Novo canal"}));
-  fireEvent.change(within(manager).getByLabelText(/Nome do canal/),{target:{value:"Dúvidas"}});
-  await within(manager).findByRole("option",{name:"Álgebra"});
-  fireEvent.change(within(manager).getByLabelText(/Assunto da comunidade/),{target:{value:"topic-1"}});
-  fireEvent.click(within(manager).getByRole("button",{name:"Salvar"}));
+  await screen.findByRole("heading", {name:"Gerenciar canais"});
+  fireEvent.click(screen.getByRole("button",{name:"Novo canal"}));
+  fireEvent.change(screen.getByLabelText(/Nome do canal/),{target:{value:"Dúvidas"}});
+  await screen.findByRole("option",{name:"Álgebra"});
+  fireEvent.change(screen.getByLabelText(/Assunto da comunidade/),{target:{value:"topic-1"}});
+  fireEvent.click(screen.getByRole("button",{name:"Salvar"}));
   await screen.findByText("Canal criado com sucesso.");
   await screen.findByRole("heading",{name:"Conversas da comunidade"});
   await screen.findByRole("button",{name:/Dúvidas.*Álgebra/});
