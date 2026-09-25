@@ -195,7 +195,7 @@ function ProfileForm({
     <div className={styles.columns}>
       <Card className={styles.panel}>
         <div className={styles.panelHeader}>
-          <div className={styles.avatarRow}>
+          <div className={styles.avatarRow} style={{ flexWrap: "wrap" }}>
             <div className={styles.avatarContainer} data-testid="avatar-container">
               {draft.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -209,7 +209,7 @@ function ProfileForm({
               )}
             </div>
 
-            <div className={styles.avatarActions}>
+            <div className={styles.avatarActions} style={{ flexWrap: "wrap" }}>
               <input
                 ref={fileInputRef}
                 accept="image/jpeg,image/png"
@@ -246,8 +246,8 @@ function ProfileForm({
             </div>
           </div>
 
-          <h2>{draft.displayName}</h2>
-          <p>{email}</p>
+          <h2 style={{ overflowWrap: "anywhere" }}>{draft.displayName}</h2>
+          <p style={{ overflowWrap: "anywhere" }}>{email}</p>
           <small className={styles.hint}>JPEG ou PNG até 5 MB.</small>
           {avatarError ? (
             <p className={styles.errorText} role="alert">
