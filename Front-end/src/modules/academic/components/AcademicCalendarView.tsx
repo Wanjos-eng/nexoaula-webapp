@@ -65,6 +65,13 @@ function category(event: AcademicCalendarEvent) {
 
 function categoryLabel(event: AcademicCalendarEvent) {
   if (event.type === "Mentoria/Tutoria") return "Tutoria";
+
+  if (event.type === "Encontro") {
+    if (event.eventStatus === "cancelled") return "Encontro (Cancelado)";
+    if (event.eventStatus === "postponed") return "Encontro (Adiado)";
+    if (event.eventStatus === "completed") return "Encontro (Realizado)";
+  }
+
   return event.type;
 }
 
@@ -484,11 +491,13 @@ export function AcademicCalendarView() {
                         <div className={styles.eventCopy}>
                           <Badge
                             variant={
-                              eventCategory === "meeting"
-                                ? "warning"
-                                : eventCategory === "tutoring"
-                                  ? "info"
-                                  : "success"
+                              event.eventStatus === "cancelled"
+                                ? "danger"
+                                : eventCategory === "meeting"
+                                  ? "warning"
+                                  : eventCategory === "tutoring"
+                                    ? "info"
+                                    : "success"
                             }
                           >
                             {categoryLabel(event)}
