@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState, type FormEvent } from "react";
+import { Dialog } from "@/components/ui/Dialog";
 import { useAuthSession } from "@/modules/auth";
 import { useRemote } from "./useRemote";
 import { Failure, Loading } from "./AsyncState";
