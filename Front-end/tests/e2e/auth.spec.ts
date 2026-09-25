@@ -31,7 +31,7 @@ test.describe("autenticação real", () => {
     await page.waitForURL(/\/login$/);
 
     await register(page, user);
-    await expect(page.getByRole("alert")).toContainText("já está em uso");
+    await expect(page.getByRole("main").getByRole("alert")).toContainText("já está em uso");
 
     await page.goto("/login");
     await page.getByLabel("E-mail").fill(user.email);
@@ -65,7 +65,7 @@ test.describe("autenticação real", () => {
       await page.getByLabel("E-mail").fill(credentials.email);
       await page.getByLabel("Senha", { exact: true }).fill(credentials.password);
       await page.getByRole("button", { name: "Entrar" }).click();
-      await expect(page.getByRole("alert")).toHaveText("E-mail ou senha incorretos.");
+      await expect(page.getByRole("main").getByRole("alert")).toHaveText("E-mail ou senha incorretos.");
       await expect(page).toHaveURL(/\/login$/);
     }
   });

@@ -196,8 +196,15 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await member.goto("/calendario");
       await expect(member.getByRole("link", { name: "Detalhar aula na comunidade" })).toHaveCount(2);
       await member.goto("/disciplinas");
-      await expect(member.locator(`a[href="/grupos/${groupId}#cronograma"]`)).toBeVisible();
-      await expect(member.locator(`a[href="/grupos/${second.id}#cronograma"]`)).toBeVisible();
+      const personalDiscipline = member.getByRole("link", { name: "Abrir disciplina", exact: true });
+      await expect(personalDiscipline).toHaveCount(2);
+      const firstDiscipline = member.locator(`a[href="/disciplinas/${academic.sectionId}?group=${groupId}"]`);
+      await expect(firstDiscipline).toBeVisible();
+      await expect(member.locator(`a[href="/disciplinas/${academic.sectionId}?group=${second.id}"]`)).toBeVisible();
+      await firstDiscipline.click();
+      await expect(member.getByRole("heading", { name: "Minhas aulas e registros" })).toBeVisible();
+      await expect(member.getByRole("heading", { name: "Aula publicada E2E" })).toBeVisible();
+      await expect(member.getByRole("heading", { name: "Aula do segundo grupo" })).toHaveCount(0);
       const members = await owner.request.get(`/api/v1/groups/${groupId}/members?pending=false`);
       const participant = (await members.json() as { userId: string; displayName: string }[])
         .find((entry) => entry.displayName === memberUser.fullName)!;
