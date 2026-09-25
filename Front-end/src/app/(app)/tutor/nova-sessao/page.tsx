@@ -412,7 +412,7 @@ export default function NewTutorSessionPage() {
                 loading={busy}
                 type="submit"
               >
-                {editSessionId ? "Revisar alterações" : "Revisar tutoria"}
+                {editSessionId ? "Salvar e revisar" : "Revisar tutoria"}
               </Button>
             </div>
           </form>
