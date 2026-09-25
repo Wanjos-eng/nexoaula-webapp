@@ -256,43 +256,6 @@
   text-align: center;
 }
 
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  display: grid;
-  place-items: center;
-  padding: var(--space-4);
-  background: rgb(23 29 24 / 52%);
-  backdrop-filter: blur(4px);
-  animation: meeting-backdrop-in var(--motion-normal) var(--ease-standard);
-}
-
-.modal {
-  width: min(100%, 560px);
-  max-height: min(88vh, 850px);
-  overflow: auto;
-  padding: var(--space-6);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-floating);
-  animation: meeting-modal-in var(--motion-normal) var(--ease-standard);
-}
-
-.modal h2 {
-  margin-bottom: var(--space-4);
-  color: var(--color-text);
-  font-size: var(--font-size-section-title);
-}
-
-.modal > p {
-  margin-bottom: var(--space-5);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-small);
-  line-height: 1.55;
-}
-
 .form {
   display: grid;
   gap: var(--space-3);
@@ -354,22 +317,6 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes meeting-backdrop-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes meeting-modal-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.99);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
