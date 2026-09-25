@@ -19,6 +19,7 @@ import styles from "./AuthSessionProvider.module.css";
 type AuthSession = {
   user: PublicUser;
   reload: () => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthSessionContext = createContext<AuthSession | null>(null);
@@ -56,6 +57,13 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
     setStatus("loading");
     await restoreSession();
   }, [restoreSession]);
+
+  const logout = useCallback(async () => {
+    abortRef.current?.abort();
+    await authService.logout();
+    setUser(null);
+    replace("/login");
+  }, [replace]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -99,7 +107,7 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthSessionContext.Provider value={{ reload, user }}>
+    <AuthSessionContext.Provider value={{ logout, reload, user }}>
       {children}
     </AuthSessionContext.Provider>
   );
