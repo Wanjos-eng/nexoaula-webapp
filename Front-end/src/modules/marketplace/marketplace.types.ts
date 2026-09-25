@@ -66,6 +66,7 @@ export type SessionBooking = {
   status: BookingStatus;
   booked_at: string;
   cancelled_at: string | null;
+  transaction: EnrollmentReceipt["transaction"] | null;
 };
 
 /** Formata centavos em reais: 2500 → "R$ 25,00" */

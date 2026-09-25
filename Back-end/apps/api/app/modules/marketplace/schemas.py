@@ -117,3 +117,33 @@ class SessionResponse(Output):
     status: Literal["draft", "scheduled", "completed", "cancelled"]
     created_at: datetime
     updated_at: datetime
+    tutor_name: str = "Tutor nexoAula"
+    subject_name: str = ""
+    enrolled_count: int = 0
+
+
+class TransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    amount_cents: int
+    commission_cents: int
+    currency: Literal["BRL"]
+    status: Literal["completed"]
+    simulated: Literal[True]
+
+
+class EnrollmentReceipt(Output):
+    booking_id: UUID
+    session_id: UUID
+    status: Literal["confirmed"]
+    transaction: TransactionResponse
+
+
+class BookingResponse(Output):
+    id: UUID
+    session: SessionResponse
+    status: Literal["confirmed", "cancelled"]
+    booked_at: datetime
+    cancelled_at: datetime | None
+    transaction: TransactionResponse | None = None

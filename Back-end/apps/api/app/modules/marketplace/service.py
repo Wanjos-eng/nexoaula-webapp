@@ -5,10 +5,12 @@ from uuid import UUID, uuid4
 from pydantic import ValidationError
 
 from app.modules.marketplace.errors import MarketplaceError
-from app.modules.marketplace.models import TutorSession
+from app.modules.marketplace.models import SessionBooking, SimulatedTransaction, TutorSession
 from app.modules.marketplace.repository import MarketplaceUnitOfWork
 from app.modules.marketplace.schemas import (
     SessionCreate,
+    BookingResponse,
+    EnrollmentReceipt,
     SessionResponse,
     SessionUpdate,
     TutorActivation,
@@ -117,9 +119,119 @@ class MarketplaceService:
     def list_mine(self, user_id: UUID, limit: int, offset: int):
         with self._factory() as uow:
             return [
-                SessionResponse.model_validate(row)
+                self._response(uow, row)
                 for row in uow.marketplace.list_mine(user_id, limit, offset)
             ]
+
+    @staticmethod
+    def _response(uow, row):
+        view = uow.marketplace.public_session(row.id)
+        if view is None:
+            return SessionResponse.model_validate(row)
+        session, tutor_name, subject_name, enrolled_count = view
+        return SessionResponse.model_validate({
+            **{field: getattr(session, field) for field in SessionResponse.model_fields if hasattr(session, field)},
+            "tutor_name": tutor_name,
+            "subject_name": subject_name,
+            "enrolled_count": enrolled_count,
+        })
+
+    def list_public(self, subject_id, starts_after, limit, offset):
+        with self._factory() as uow:
+            return [
+                SessionResponse.model_validate({
+                    **{field: getattr(row, field) for field in SessionResponse.model_fields if hasattr(row, field)},
+                    "tutor_name": tutor_name,
+                    "subject_name": subject_name,
+                    "enrolled_count": enrolled_count,
+                })
+                for row, tutor_name, subject_name, enrolled_count in uow.marketplace.public_sessions(
+                    subject_id, starts_after or self._clock(), limit, offset
+                )
+            ]
+
+    def get_public(self, session_id):
+        with self._factory() as uow:
+            view = uow.marketplace.public_session(session_id)
+            if view is None or view[0].status != "scheduled":
+                raise MarketplaceError("Sessão não encontrada.", 404)
+            row, tutor_name, subject_name, enrolled_count = view
+            return SessionResponse.model_validate({
+                **{field: getattr(row, field) for field in SessionResponse.model_fields if hasattr(row, field)},
+                "tutor_name": tutor_name,
+                "subject_name": subject_name,
+                "enrolled_count": enrolled_count,
+            })
+
+    def enroll(self, user_id, session_id):
+        with self._factory() as uow:
+            row = uow.marketplace.session(session_id, lock=True)
+            if row is None or row.status != "scheduled":
+                raise MarketplaceError("Sessão indisponível para inscrição.", 409)
+            if row.starts_at <= self._clock():
+                raise MarketplaceError("O início da sessão já passou.", 409)
+            if uow.marketplace.booking(session_id, user_id, lock=True):
+                raise MarketplaceError("Você já possui inscrição ativa nesta sessão.", 409)
+            if uow.marketplace.count_confirmed(session_id) >= row.capacity:
+                raise MarketplaceError("A sessão está lotada.", 409)
+            now = self._clock()
+            booking = SessionBooking(
+                session_id=session_id, user_id=user_id, status="confirmed", booked_at=now
+            )
+            uow.marketplace.add_booking(booking)
+            transaction = SimulatedTransaction(
+                buyer_id=user_id,
+                session_booking_id=booking.id,
+                amount_cents=row.price_cents,
+                commission_cents=round(row.price_cents * 0.15),
+                currency=row.currency,
+                status="completed",
+                simulated=True,
+            )
+            uow.marketplace.add_transaction(transaction)
+            uow.commit()
+            return EnrollmentReceipt.model_validate({
+                "booking_id": booking.id,
+                "session_id": session_id,
+                "status": booking.status,
+                "transaction": transaction,
+            })
+
+    def cancel_enrollment(self, user_id, session_id):
+        with self._factory() as uow:
+            row = uow.marketplace.session(session_id, lock=True)
+            booking = uow.marketplace.booking(session_id, user_id, lock=True)
+            if row is None or booking is None:
+                raise MarketplaceError("Inscrição ativa não encontrada.", 404)
+            if row.starts_at <= self._clock():
+                raise MarketplaceError("O cancelamento só é permitido antes do início.", 409)
+            booking.status = "cancelled"
+            booking.cancelled_at = self._clock()
+            uow.commit()
+
+    def list_bookings(self, user_id):
+        with self._factory() as uow:
+            result = []
+            for booking, transaction in uow.marketplace.list_bookings(user_id):
+                view = uow.marketplace.public_session(booking.session_id)
+                if view is None:
+                    continue
+                row, tutor_name, subject_name, enrolled_count = view
+                session = SessionResponse.model_validate({
+                    **{field: getattr(row, field) for field in SessionResponse.model_fields if hasattr(row, field)},
+                    "tutor_name": tutor_name,
+                    "subject_name": subject_name,
+                    "enrolled_count": enrolled_count,
+                })
+                result.append(BookingResponse.model_validate({
+                    "id": booking.id,
+                    "session": session,
+                    "status": booking.status,
+                    "booked_at": booking.booked_at,
+                    "cancelled_at": booking.cancelled_at,
+                    "transaction": transaction,
+                }))
+            return result
 
     def edit(self, user_id: UUID, session_id: UUID, data: SessionUpdate):
         with self._factory() as uow:

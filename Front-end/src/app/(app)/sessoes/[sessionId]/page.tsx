@@ -11,13 +11,12 @@ import {
   XCircle,
 } from "@phosphor-icons/react";
 import Link from "next/link";
-import { notFound, useParams } from "next/navigation";
-import { useState } from "react";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
-import { useAuthSession } from "@/modules/auth";
-import { cancelDemoBooking, enrollDemoSession, readDemoBookings, useDemoSessions } from "@/modules/marketplace/marketplace.demo";
+import { apiErrorMessage, cancelEnrollment, enrollSession, getSession } from "@/modules/marketplace/marketplace.api";
+import type { EnrollmentReceipt, TutorSession } from "@/modules/marketplace/marketplace.types";
 import {
-  calcCommission,
   formatCents,
 } from "@/modules/marketplace/marketplace.types";
 import styles from "./page.module.css";
@@ -25,25 +24,27 @@ import styles from "./page.module.css";
 type EnrollState = "idle" | "confirming" | "done" | "cancelled" | "error";
 
 export default function SessionDetailPage() {
-  const { user } = useAuthSession();
   const { sessionId } = useParams<{ sessionId: string }>();
-  const { sessions, loaded } = useDemoSessions();
+  const [session, setSession] = useState<TutorSession | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [enrollState, setEnrollState] = useState<EnrollState>("idle");
-  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<EnrollmentReceipt | null>(null);
   const [failureMessage, setFailureMessage] = useState("");
   const [now] = useState(() => Date.now());
-  const session = sessions.find((s) => s.id === sessionId);
+  useEffect(() => {
+    getSession(sessionId).then(setSession).catch((error: unknown) => {
+      setFailureMessage(apiErrorMessage(error));
+      setEnrollState("error");
+    }).finally(() => setLoaded(true));
+  }, [sessionId]);
 
   if (!session) {
     if (!loaded) return <main>Carregando sessão simulada…</main>;
-    notFound();
+    return <main role="alert">{failureMessage || "Sessão não encontrada."}</main>;
   }
 
   const isFull = session.enrolled_count >= session.capacity;
   const isUnavailable = isFull || session.status !== "scheduled" || new Date(session.starts_at).getTime() <= now;
-  const commission = calcCommission(session.price_cents);
-  const netTutor = session.price_cents - commission;
-
   const starts = new Date(session.starts_at);
   const ends = new Date(session.ends_at);
 
@@ -51,19 +52,14 @@ export default function SessionDetailPage() {
     setEnrollState("confirming");
   }
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!session) return;
-    if (readDemoBookings(user.id).some((booking) => booking.session.id === session.id && booking.status === "confirmed")) {
-      setFailureMessage("Você já possui inscrição ativa nesta sessão simulada.");
-      setEnrollState("error");
-      return;
-    }
     try {
-      const booking = enrollDemoSession(user.id, session);
-      setBookingId(booking.id);
+      const receipt = await enrollSession(session.id);
+      setReceipt(receipt);
       setEnrollState("done");
-    } catch {
-      setFailureMessage("Não foi possível salvar a inscrição simulada neste navegador.");
+    } catch (error: unknown) {
+      setFailureMessage(apiErrorMessage(error));
       setEnrollState("error");
     }
   }
@@ -72,19 +68,15 @@ export default function SessionDetailPage() {
     setEnrollState("idle");
   }
 
-  function handleCancelEnrollment() {
+  async function handleCancelEnrollment() {
+    if (!session) return;
     try {
-      if (bookingId) cancelDemoBooking(user.id, bookingId);
+      await cancelEnrollment(session.id);
       setEnrollState("cancelled");
-    } catch {
-      setFailureMessage("Não foi possível cancelar. O cancelamento é permitido somente antes do início.");
+    } catch (error: unknown) {
+      setFailureMessage(apiErrorMessage(error));
       setEnrollState("error");
     }
-  }
-
-  function handleFailure() {
-    setFailureMessage("Não foi possível concluir a inscrição simulada. Sua sessão pode ter expirado ou a operação pode estar duplicada.");
-    setEnrollState("error");
   }
 
   return (
@@ -176,14 +168,7 @@ export default function SessionDetailPage() {
             <p className={styles.priceValue}>
               {formatCents(session.price_cents, session.currency)}
             </p>
-            <p className={styles.priceNote}>
-              Comissão da plataforma (15%):{" "}
-              <strong>{formatCents(commission, session.currency)}</strong>
-            </p>
-            <p className={styles.priceNote}>
-              Repasse líquido simulado ao tutor:{" "}
-              <strong>{formatCents(netTutor, session.currency)}</strong>
-            </p>
+            <p className={styles.priceNote}>O recibo e a comissão são gerados pelo servidor após a inscrição.</p>
             <hr className={styles.divider} />
 
             {enrollState === "idle" && (
@@ -224,13 +209,6 @@ export default function SessionDetailPage() {
                     Confirmar
                   </button>
                 </div>
-                <button
-                  className={styles.failureButton}
-                  onClick={handleFailure}
-                  type="button"
-                >
-                  Simular falha da operação
-                </button>
               </div>
             )}
 
@@ -255,11 +233,11 @@ export default function SessionDetailPage() {
                   </div>
                   <div>
                     <dt>Comissão nexoAula (15%)</dt>
-                    <dd>{formatCents(commission, session.currency)}</dd>
+                    <dd>{formatCents(receipt?.transaction.commission_cents ?? 0, session.currency)}</dd>
                   </div>
                   <div>
                     <dt>Repasse simulado ao tutor</dt>
-                    <dd>{formatCents(netTutor, session.currency)}</dd>
+                    <dd>{formatCents((receipt?.transaction.amount_cents ?? 0) - (receipt?.transaction.commission_cents ?? 0), session.currency)}</dd>
                   </div>
                 </dl>
                 <p className={styles.receiptNotice}>

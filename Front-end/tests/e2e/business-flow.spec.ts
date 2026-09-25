@@ -13,6 +13,10 @@ function fmtBrl(cents: number): string {
 
 const priceCents = PRICE_BRL * 100;
 const commissionCents = Math.round(priceCents * COMMISSION_RATE); // 375 → R$ 3,75
+const csrfHeaders = {
+  "X-NexoAula-CSRF": "1",
+  Origin: "http://localhost:3000",
+};
 
 function uniqueUser() {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -40,10 +44,32 @@ async function registerAndLogin(page: Page) {
   return user;
 }
 
+async function prepareSubject(page: Page): Promise<string> {
+  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const institutionResponse = await page.request.post("/api/v1/academic/institutions", {
+    data: { name: `Universidade Marketplace ${suffix}`, shortName: `M${suffix.slice(-5)}` },
+    headers: csrfHeaders,
+  });
+  expect(institutionResponse.ok()).toBe(true);
+  const institution = await institutionResponse.json() as { id: string };
+  const subjectResponse = await page.request.post("/api/v1/academic/subjects", {
+    data: {
+      institutionId: institution.id,
+      name: `Disciplina Marketplace ${suffix}`,
+      code: `MKT-${suffix.slice(-6)}`,
+    },
+    headers: csrfHeaders,
+  });
+  expect(subjectResponse.ok()).toBe(true);
+  const subject = await subjectResponse.json() as { id: string };
+  return subject.id;
+}
+
 test.describe("incremento de negócio simulado", () => {
   test("publica, encontra, inscreve, duplica, cancela e verifica lotação", async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     await registerAndLogin(page);
+    const subjectId = await prepareSubject(page);
 
     await page.goto("/tutor");
     await page.getByRole("button", { name: "Ativar perfil profissional" }).click();
@@ -53,7 +79,7 @@ test.describe("incremento de negócio simulado", () => {
 
     const title = `Sessão E2E ${Date.now()}`;
     await page.getByLabel("Título da sessão").fill(title);
-    await page.getByLabel("Disciplina").fill("Estruturas E2E");
+    await page.getByLabel("Disciplina").selectOption(subjectId);
     await page.getByLabel("Data e horário").fill("2099-09-20T18:00");
     await page.getByLabel("Término").fill("2099-09-20T19:00");
     await page.getByLabel("Link demonstrativo (online ou híbrida)").fill("https://example.com/e2e");
@@ -72,7 +98,6 @@ test.describe("incremento de negócio simulado", () => {
 
     await page.getByRole("link", { name: "Ver vitrine de sessões" }).click();
     await page.getByRole("searchbox").fill(title);
-    const sessionUrl = await page.getByRole("link", { name: "Ver detalhes" }).getAttribute("href");
     await page.getByRole("link", { name: "Ver detalhes" }).click();
 
     await page.getByRole("button", { name: "Simular Inscrição" }).click();
@@ -100,6 +125,7 @@ test.describe("incremento de negócio simulado", () => {
 
   test("recusa uma segunda inscrição ativa na mesma sessão", async ({ page }) => {
     await registerAndLogin(page);
+    const subjectId = await prepareSubject(page);
     await page.goto("/tutor");
     await page.getByRole("button", { name: "Ativar perfil profissional" }).click();
     await page.getByLabel("Título profissional").fill("Tutor E2E de Duplicidade");
@@ -108,7 +134,7 @@ test.describe("incremento de negócio simulado", () => {
 
     const title = `Duplicidade E2E ${Date.now()}`;
     await page.getByLabel("Título da sessão").fill(title);
-    await page.getByLabel("Disciplina").fill("Estruturas E2E");
+    await page.getByLabel("Disciplina").selectOption(subjectId);
     await page.getByLabel("Data e horário").fill("2099-09-20T18:00");
     await page.getByLabel("Término").fill("2099-09-20T19:00");
     await page.getByLabel("Link demonstrativo (online ou híbrida)").fill("https://example.com/duplicidade");

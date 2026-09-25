@@ -11,13 +11,13 @@ import {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { useDemoSessions } from "@/modules/marketplace/marketplace.demo";
+import { useSessions } from "@/modules/marketplace/marketplace.api";
 import { formatCents } from "@/modules/marketplace/marketplace.types";
 import styles from "./page.module.css";
 
 export default function SessoesPage() {
   const [query, setQuery] = useState("");
-  const { sessions: allSessions } = useDemoSessions();
+  const { data: allSessions, loaded, error } = useSessions();
 
   const sessions = useMemo(() => {
     if (!query.trim()) return allSessions;
@@ -73,7 +73,11 @@ export default function SessoesPage() {
         </label>
       </div>
 
-      {scheduled.length === 0 ? (
+      {error ? <p role="alert">{error}</p> : null}
+
+      {!loaded ? (
+        <div className={styles.empty}><p>Carregando sessões…</p></div>
+      ) : scheduled.length === 0 ? (
         <div className={styles.empty}>
           <Storefront aria-hidden size={40} />
           <p>Nenhuma sessão encontrada para sua busca.</p>

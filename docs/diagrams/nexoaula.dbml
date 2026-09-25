@@ -1004,6 +1004,7 @@ Table tutor_sessions {
   capacity integer [not null]
   price_cents integer [not null]
   currency char(3) [not null, default: 'BRL']
+  simulated boolean [not null, default: true]
   status tutor_session_status [not null, default: 'draft']
   created_at timestamptz [not null, default: `now()`]
   updated_at timestamptz [not null, default: `now()`]
@@ -1070,6 +1071,7 @@ Table transactions {
   amount_cents integer [not null]
   commission_cents integer [not null, default: 0]
   currency char(3) [not null, default: 'BRL']
+  simulated boolean [not null, default: true]
   status transaction_status [not null, default: 'pending']
   created_at timestamptz [not null, default: `now()`]
   completed_at timestamptz

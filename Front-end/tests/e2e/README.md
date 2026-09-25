@@ -65,7 +65,7 @@ npm, Docker e Playwright e o resultado de:
 npm run test:e2e -- tests/e2e/business-flow.spec.ts
 ```
 
-### Dependência conhecida
+### Execução integrada
 
-A integração persistida das rotas de marketplace está em revisão. A execução
-final deve ser repetida contra PostgreSQL após essa integração estar disponível.
+Os cenários de marketplace usam as rotas persistidas da API. A execução final
+deve ocorrer com PostgreSQL disponível e as migrações aplicadas.

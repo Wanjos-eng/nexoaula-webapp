@@ -11,35 +11,34 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 
-import { useAuthSession } from "@/modules/auth";
-import { activateDemoTutorProfile, useDemoBookings, useDemoTutorProfile } from "@/modules/marketplace/marketplace.demo";
+import { activateTutorProfile, apiErrorMessage, useMyBookings, useMySessions, useTutorProfile } from "@/modules/marketplace/marketplace.api";
 import { formatCents } from "@/modules/marketplace/marketplace.types";
 import styles from "./page.module.css";
 
 type TutorActivationState = "inactive" | "activating" | "active";
 
 export default function TutorPage() {
-  const { user } = useAuthSession();
   const [activation, setActivation] =
     useState<TutorActivationState>("inactive");
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
   const [activationError, setActivationError] = useState("");
-  const savedProfile = useDemoTutorProfile(user.id);
+  const { data: savedProfile } = useTutorProfile();
 
-  const myBookings = useDemoBookings(user.id);
+  const { data: myBookings } = useMyBookings();
+  const { data: mySessions } = useMySessions();
 
-  function handleActivate() {
+  async function handleActivate() {
     try {
-      activateDemoTutorProfile(user.id, { headline, bio });
+      await activateTutorProfile(headline, bio);
       setActivationError("");
       setActivation("active");
-    } catch {
-      setActivationError("Não foi possível ativar o perfil simulado neste navegador.");
+    } catch (error: unknown) {
+      setActivationError(apiErrorMessage(error));
     }
   }
 
-  const isActive = activation === "active" || savedProfile !== null;
+  const isActive = activation === "active" || savedProfile?.status === "active";
 
   return (
     <main className={styles.page}>
@@ -161,9 +160,9 @@ export default function TutorPage() {
               Nova sessão
             </Link>
           </div>
-          <p className={styles.emptyNote}>
-            Nenhuma sessão criada ainda. Crie a sua primeira sessão de tutoria.
-          </p>
+          {mySessions.length === 0 ? <p className={styles.emptyNote}>Nenhuma sessão criada ainda. Crie a sua primeira sessão de tutoria.</p> : (
+            <ul className={styles.bookingList}>{mySessions.map((session) => <li className={styles.bookingCard} key={session.id}><div><p className={styles.bookingTitle}>{session.title}</p><p className={styles.bookingMeta}>{session.status}</p></div></li>)}</ul>
+          )}
         </section>
       )}
 

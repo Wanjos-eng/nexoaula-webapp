@@ -2,19 +2,19 @@
 
 import { ArrowLeft, CheckCircle, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
-import { useAuthSession } from "@/modules/auth";
-import { publishDemoSession } from "@/modules/marketplace/marketplace.demo";
-import type { TutorSession } from "@/modules/marketplace/marketplace.types";
+import { catalog, type CatalogItem } from "@/modules/groups/api";
+import { apiErrorMessage, createSession, publishSession } from "@/modules/marketplace/marketplace.api";
 import { calcCommission, formatCents } from "@/modules/marketplace/marketplace.types";
 import styles from "./page.module.css";
 
 type PublicationState = "editing" | "draft" | "published";
 
 type SessionDraft = {
+  subjectId: string;
   title: string;
-  subject: string;
+  subjectName: string;
   startsAt: string;
   endsAt: string;
   location: string;
@@ -25,10 +25,14 @@ type SessionDraft = {
 };
 
 export default function NewTutorSessionPage() {
-  const { user } = useAuthSession();
   const [state, setState] = useState<PublicationState>("editing");
   const [draft, setDraft] = useState<SessionDraft | null>(null);
   const [error, setError] = useState("");
+  const [subjects, setSubjects] = useState<CatalogItem[]>([]);
+
+  useEffect(() => {
+    catalog("subjects").then(setSubjects).catch((cause: unknown) => setError(apiErrorMessage(cause)));
+  }, []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,12 +43,13 @@ export default function NewTutorSessionPage() {
     const location = String(formData.get("location") ?? "").trim();
     const externalUrl = String(formData.get("externalUrl") ?? "").trim();
     const title = String(formData.get("title") ?? "").trim();
-    const subject = String(formData.get("subject") ?? "").trim();
+    const subjectId = String(formData.get("subjectId") ?? "");
+    const subjectName = subjects.find((subject) => subject.id === subjectId)?.name ?? "";
     const startTime = new Date(startsAt).getTime();
     const endTime = new Date(endsAt).getTime();
     const capacity = Number(formData.get("capacity"));
     const priceCents = Math.round(Number(formData.get("price")) * 100);
-    if (!title || !subject || !Number.isFinite(startTime) || !Number.isFinite(endTime) || startTime <= Date.now() || endTime <= startTime || !Number.isSafeInteger(capacity) || capacity < 1 || !Number.isSafeInteger(priceCents) || priceCents < 0) {
+    if (!title || !subjectId || !subjectName || !Number.isFinite(startTime) || !Number.isFinite(endTime) || startTime <= Date.now() || endTime <= startTime || !Number.isSafeInteger(capacity) || capacity < 1 || !Number.isSafeInteger(priceCents) || priceCents < 0) {
       setError("Informe uma data futura, capacidade positiva e valor demonstrativo válido.");
       return;
     }
@@ -54,8 +59,9 @@ export default function NewTutorSessionPage() {
     }
     setError("");
     setDraft({
+      subjectId,
       title,
-      subject,
+      subjectName,
       startsAt,
       endsAt,
       location,
@@ -69,34 +75,25 @@ export default function NewTutorSessionPage() {
 
   const commission = draft ? calcCommission(draft.priceCents) : 0;
 
-  function handlePublish() {
+  async function handlePublish() {
     if (!draft) return;
-    const startsAt = new Date(draft.startsAt);
-    const session: TutorSession = {
-      id: crypto.randomUUID(),
-      tutor_user_id: user.id,
-      tutor_name: user.fullName ?? "Tutor nexoAula",
-      subject_id: draft.subject.toLowerCase().replaceAll(/\s+/g, "-"),
-      subject_name: draft.subject,
-      title: draft.title,
-      description: null,
-      modality: draft.modality,
-      location: draft.modality === "online" ? null : draft.location,
-      external_url: draft.modality === "in_person" ? null : draft.externalUrl,
-      starts_at: startsAt.toISOString(),
-      ends_at: new Date(draft.endsAt).toISOString(),
-      capacity: draft.capacity,
-      enrolled_count: 0,
-      price_cents: draft.priceCents,
-      currency: "BRL",
-      status: "scheduled",
-    };
     try {
-      publishDemoSession(session);
+      const session = await createSession({
+        subject_id: draft.subjectId,
+        title: draft.title,
+        modality: draft.modality,
+        location: draft.modality === "online" ? null : draft.location,
+        external_url: draft.modality === "in_person" ? null : draft.externalUrl,
+        starts_at: new Date(draft.startsAt).toISOString(),
+        ends_at: new Date(draft.endsAt).toISOString(),
+        capacity: draft.capacity,
+        price_cents: draft.priceCents,
+      });
+      await publishSession(session.id);
       setError("");
       setState("published");
-    } catch {
-      setError("Não foi possível salvar a publicação simulada neste navegador. Tente novamente.");
+    } catch (cause: unknown) {
+      setError(apiErrorMessage(cause));
     }
   }
 
@@ -123,7 +120,10 @@ export default function NewTutorSessionPage() {
           </label>
           <label>
             <span>Disciplina</span>
-            <input name="subject" defaultValue={draft?.subject} placeholder="Cálculo II" required />
+            <select name="subjectId" defaultValue={draft?.subjectId ?? ""} required>
+              <option value="" disabled>Selecione uma disciplina</option>
+              {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+            </select>
           </label>
           <div className={styles.row}>
             <label>
@@ -174,7 +174,7 @@ export default function NewTutorSessionPage() {
           <h2 id="offer-summary">Resumo da oferta</h2>
           <dl>
             <div><dt>Título</dt><dd>{draft.title}</dd></div>
-            <div><dt>Disciplina</dt><dd>{draft.subject}</dd></div>
+            <div><dt>Disciplina</dt><dd>{draft.subjectName}</dd></div>
             <div><dt>Início</dt><dd>{new Date(draft.startsAt).toLocaleString("pt-BR")}</dd></div>
             <div><dt>Término</dt><dd>{new Date(draft.endsAt).toLocaleString("pt-BR")}</dd></div>
             <div><dt>Capacidade</dt><dd>{draft.capacity} estudantes</dd></div>

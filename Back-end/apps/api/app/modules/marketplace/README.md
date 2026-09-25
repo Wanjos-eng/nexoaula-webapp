@@ -1,4 +1,4 @@
-# Tutoria simulada — perfil e ofertas (#39)
+# Tutoria simulada — perfil, ofertas e inscrições (#39/#40)
 
 Implementa US21/US23 sobre a migration #38 e a ADR-0004. O núcleo acadêmico
 continua gratuito. Nenhuma cobrança, credenciamento real ou coleta financeira.
@@ -20,6 +20,11 @@ OpenAPI em `/openapi.json` e documentação interativa em `/docs`.
 | PATCH `/sessions/{id}` | Edita apenas rascunho próprio e revalida o conjunto |
 | POST `/sessions/{id}/publish` | draft → scheduled, somente antes do início |
 | DELETE `/sessions/{id}` | scheduled → cancelled, somente antes do início |
+| GET `/sessions?subject_id=&starts_after=&limit=20&offset=0` | Busca ofertas publicadas e futuras |
+| GET `/sessions/{id}` | Detalhe público de uma oferta publicada |
+| POST `/sessions/{id}/enroll` | Cria inscrição e recibo demonstrativos; retorna 201 |
+| DELETE `/sessions/{id}/enroll` | Cancela a inscrição ativa antes do início; retorna 204 |
+| GET `/bookings/mine` | Histórico persistido de inscrições e recibos |
 
 Mutações exigem `Content-Type: application/json`, `X-NexoAula-CSRF: 1` e `Origin`
 autorizada (Referer aceito como fallback), **inclusive DELETE sem body**.
@@ -64,13 +69,13 @@ uma data futura; a turma é opcional):
   Academic fornece uma interface pública de contexto na mesma transação.
   A oferta registra a declaração tutor/disciplina atomicamente.
 - Bloqueios seguem a ordem perfil → oferta para serializar pausa/publicação e
-  mudanças concorrentes de estado. As inscrições da #40 devem seguir a mesma ordem.
+  mudanças concorrentes de estado. Inscrições bloqueiam a oferta antes de contar
+  vagas e preservam recibos ao cancelar.
 - Erros: 401 sem sessão/conta ativa; 403 autorização/CSRF/perfil; 404 oferta ausente;
   409 estado/conflito; 422 payload/contexto/agenda; 503 indisponibilidade de banco.
 
-Busca, inscrição, lotação concorrente e recibos de inscrição são a #40. Conclusão
-manual/moderação, presença, avaliações, materiais e tópicos estruturados continuam
-fora deste recorte. Não há alteração do schema nesta issue.
+Conclusão manual/moderação, presença, avaliações, materiais e tópicos estruturados
+continuam fora deste recorte. Não há alteração do schema nesta issue.
 
 ## Validação
 
