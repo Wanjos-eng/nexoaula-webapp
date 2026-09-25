@@ -42,19 +42,18 @@ it("moderador cria, renomeia e arquiva; lista acompanha cada alteração", async
   fireEvent.change(within(manager).getByLabelText(/Assunto da comunidade/),{target:{value:"topic-1"}});
   fireEvent.click(within(manager).getByRole("button",{name:"Salvar"}));
   await screen.findByText("Canal criado com sucesso.");
-  const list = (await screen.findByRole("heading",{name:"Canais por assunto"})).closest("section")!;
-  await within(list).findByText("Assunto: Álgebra");
+  await screen.findByRole("heading",{name:"Conversas da comunidade"});
+  await screen.findByRole("button",{name:/Dúvidas.*Álgebra/});
   fireEvent.click(screen.getByRole("button",{name:"Renomear"}));
   fireEvent.change(screen.getByLabelText(/Nome do canal/),{target:{value:"Revisão"}});
   fireEvent.click(screen.getByRole("button",{name:"Salvar"}));
   await screen.findByText("Canal atualizado com sucesso.");
-  const updated = (await screen.findByRole("heading",{name:"Canais por assunto"})).closest("section")!;
-  await within(updated).findByRole("heading",{name:/Revisão/});
+  await screen.findByRole("button",{name:/Revisão.*Álgebra/});
   fireEvent.click(screen.getByRole("button",{name:"Arquivar"}));
   fireEvent.click(screen.getByRole("button",{name:"Arquivar canal"}));
   await screen.findByText("Canal arquivado.");
-  const archived = (await screen.findByRole("heading",{name:"Canais por assunto"})).closest("section")!;
-  expect(within(archived).getByText("Arquivado")).toBeTruthy();
+  await screen.findByText("Somente leitura");
+  expect(screen.getAllByText("Arquivado").length).toBeGreaterThan(0);
   expect(screen.queryByRole("button",{name:"Renomear"})).toBeNull();
 });
 
