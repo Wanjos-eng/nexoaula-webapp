@@ -165,7 +165,7 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await expect(owner.getByText("Nenhuma solicitação pendente.")).toBeVisible();
 
       await member.reload();
-      await expect(member.getByText("Membro", { exact: true })).toBeVisible();
+      await expect(member.getByRole("heading", { name: "Membro", exact: true })).toBeVisible();
       await expect(member.getByRole("heading", { name: "Aula publicada E2E" })).toBeVisible();
       await expect(member.getByRole("button", { name: "Criar nova versão" })).toHaveCount(0);
       const denied = await member.request.post(`/api/v1/groups/${groupId}/plans`, {
