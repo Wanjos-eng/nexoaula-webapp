@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Info, WarningCircle } from "@phosphor-icons/react";
+import { CheckCircle, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
@@ -14,9 +14,8 @@ import { authService } from "../services/auth.service";
 
 import styles from "./AuthForm.module.css";
 
-
 type BannerState = {
-  type: "success" | "error" | "info";
+  type: "success" | "error";
   message: string;
 } | null;
 
@@ -45,14 +44,11 @@ export function RegisterForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submissionRef.current) return;
+    if (submissionRef.current || isLoading) return;
+
     setBanner(null);
-
-    if (isLoading) return;
-
     const form = event.currentTarget;
     const data = new FormData(form);
-
     const validation = validateRegisterForm(data);
     setErrors(validation.errors);
 
@@ -81,24 +77,20 @@ export function RegisterForm() {
       setIsLoading(false);
       setBanner({
         type: "success",
-        message: "Conta criada com sucesso! Redirecionando para login...",
+        message: "Conta criada com sucesso. Você já pode entrar.",
       });
 
-      // Atrasa a navegação para que o banner de sucesso seja perceptível
       navTimeoutRef.current = setTimeout(() => {
         router.push("/login");
-      }, 1500);
+      }, 650);
     } catch (error) {
       if (!isMountedRef.current || error instanceof RequestAbortedError) return;
       setIsLoading(false);
 
       if (error instanceof ApiError) {
         if (error.status === 409) {
-          setBanner({
-            type: "error",
-            message: "Este e-mail já está em uso.",
-          });
-          setErrors((prev) => ({ ...prev, email: "Este e-mail já está em uso." }));
+          setBanner({ type: "error", message: "Este e-mail já está em uso." });
+          setErrors((previous) => ({ ...previous, email: "Este e-mail já está em uso." }));
           form.querySelector<HTMLElement>('[name="email"]')?.focus();
           return;
         }
@@ -110,6 +102,7 @@ export function RegisterForm() {
           });
           return;
         }
+
         if (error.status === 503) {
           setBanner({
             type: "error",
@@ -141,23 +134,22 @@ export function RegisterForm() {
     <div>
       <div className={styles.header}>
         <h2>Crie sua conta</h2>
-        <p>Preencha seus dados para começar a usar o nexoAula.</p>
+        <p>Comece a organizar sua rotina acadêmica em poucos passos.</p>
       </div>
 
       {banner ? (
         <div
           aria-live="polite"
-          className={`${styles.banner} ${banner.type === "success"
-            ? styles.bannerSuccess
-            : banner.type === "error"
-              ? styles.bannerError
-              : styles.bannerInfo
-            }`}
+          className={`${styles.banner} ${
+            banner.type === "success" ? styles.bannerSuccess : styles.bannerError
+          }`}
           role="status"
         >
-          {banner.type === "success" && <CheckCircle aria-hidden size={20} />}
-          {banner.type === "error" && <WarningCircle aria-hidden size={20} />}
-          {banner.type === "info" && <Info aria-hidden size={20} />}
+          {banner.type === "success" ? (
+            <CheckCircle aria-hidden size={20} />
+          ) : (
+            <WarningCircle aria-hidden size={20} />
+          )}
           <span>{banner.message}</span>
         </div>
       ) : null}
@@ -225,8 +217,7 @@ export function RegisterForm() {
               type="checkbox"
             />
             <span>
-              Li e concordo com os <a href="#termos">Termos de Uso</a> e a{" "}
-              <a href="#termos">Política de Privacidade</a>.
+              Li e concordo com os termos de uso e a política de privacidade do ambiente.
             </span>
           </label>
           {errors.terms ? (
@@ -236,8 +227,8 @@ export function RegisterForm() {
           ) : null}
         </div>
 
-        <Button disabled={isLoading} fullWidth type="submit">
-          {isLoading ? "Criando conta..." : "Criar conta"}
+        <Button fullWidth loading={isLoading} type="submit">
+          Criar conta
         </Button>
       </form>
 
