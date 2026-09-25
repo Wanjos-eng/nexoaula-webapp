@@ -19,7 +19,7 @@ const benefits = [
   },
   {
     icon: UsersThree,
-    text: "Grupos e encontros de estudo.",
+    text: "Comunidades e encontros de estudo.",
   },
 ];
 
@@ -27,7 +27,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       benefits={benefits}
-      description="Acompanhe suas disciplinas, aulas, registros e grupos de estudo em um só lugar."
+      description="Acompanhe suas disciplinas, aulas, registros, comunidades e tutorias em um só lugar."
       title="Organize sua vida acadêmica"
     >
       <LoginForm />

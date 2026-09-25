@@ -85,6 +85,7 @@ describe("ciclo de vida da submissão demonstrativa", () => {
       });
       
       expect(push).not.toHaveBeenCalled();
+      expect(replace).not.toHaveBeenCalled();
     },
   );
 
@@ -102,38 +103,25 @@ describe("ciclo de vida da submissão demonstrativa", () => {
         vi.advanceTimersByTime(2100);
       });
       
-      const navigation = kind === "login" ? replace : push;
+      const navigation = replace;
       expect(navigation).toHaveBeenCalledTimes(1);
       expect(kind === "login" ? loginSpy : registerSpy).toHaveBeenCalledTimes(1);
       expect(screen.queryByText("Informe um e-mail válido.")).toBeNull();
     },
   );
 
-  it("limpa o aviso de recuperação ao submeter login inválido", () => {
-    render(<LoginForm />);
-    fireEvent.click(screen.getByRole("button", { name: "Esqueci minha senha" }));
-    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
-    expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.getByText("Informe um e-mail válido.")).toBeDefined();
-  });
-
-  it("não mantém sucesso antigo quando o cadastro passa a ser inválido", async () => {
+  it("repete somente o login quando a conta foi criada mas a sessão falhou", async () => {
+    loginSpy.mockRejectedValueOnce(new Error("Offline"));
     const { form } = renderValidForm("register");
     fireEvent.submit(form);
-    
-    await act(async () => {
-      await Promise.resolve();
-    });
-    act(() => {
-      vi.advanceTimersByTime(600);
-    });
-    
-    fireEvent.change(screen.getByLabelText("Nome completo"), {
-      target: { value: "" },
-    });
-    fireEvent.submit(form);
-    expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.getByText(/Informe seu nome completo/)).toBeDefined();
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.getByRole("alert").textContent).toContain("Sua conta foi criada");
+    fireEvent.click(screen.getByRole("button", { name: "Tentar entrar novamente" }));
+    await act(async () => { await Promise.resolve(); });
+    expect(registerSpy).toHaveBeenCalledTimes(1);
+    expect(loginSpy).toHaveBeenCalledTimes(2);
+    expect(loginSpy.mock.calls[1][0]).toEqual({ email: "estudante@example.com", password: "senha-demonstrativa" });
+    expect(replace).toHaveBeenCalledWith("/inicio");
   });
 
   it("cancela a requisição de cadastro ao sair da tela", () => {

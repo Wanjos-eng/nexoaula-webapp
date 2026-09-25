@@ -1,194 +1,262 @@
 "use client";
 
-import {
-  ArrowRight,
-  CheckCircle,
-  Info,
-  NotePencil,
-  TrendUp,
-} from "@phosphor-icons/react/dist/ssr";
+import { Info, TrendUp } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { academicProgressSummaries } from "@/mocks/academic/academicCatalog";
-import { fetchMyAttendance, fetchMyProgress, updateMyProgress } from "../attendance";
-import { academicGroups, type AcademicGroup } from "@/modules/groups/schedule";
-import type { PersonalAttendanceRecord, StudentTopicProgressRecord } from "../types";
-import { AcademicPreviewState, type AcademicViewState } from "./AcademicPreviewState";
-import styles from "@/components/academic/AcademicPage.module.css";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-export function AcademicProgressView({ state = "ready" }: { state?: AcademicViewState }) {
-  const [reviewedTopics, setReviewedTopics] = useState<Record<string, boolean>>({});
-  const [feedback, setFeedback] = useState("");
-  const [realGroups, setRealGroups] = useState<AcademicGroup[] | null>(null);
-  const [attendances, setAttendances] = useState<PersonalAttendanceRecord[]>([]);
-  const [progressRecords, setProgressRecords] = useState<StudentTopicProgressRecord[]>([]);
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
+import {
+  fetchMyAttendance,
+  fetchMyProgress,
+  updateMyProgress,
+} from "../attendance";
+import type {
+  PersonalAttendanceRecord,
+  StudentTopicProgressRecord,
+  TopicProgressStatus,
+} from "../types";
+import {
+  academicGroups,
+  listGroupTopics,
+  type AcademicGroup,
+  type GroupTopic,
+} from "@/modules/groups/schedule";
+import { useRemote } from "@/modules/groups/useRemote";
+import styles from "./AcademicWorkspace.module.css";
+
+type ProgressData = {
+  groups: AcademicGroup[];
+  attendance: PersonalAttendanceRecord[];
+  progress: StudentTopicProgressRecord[];
+  topicsByGroup: Record<string, GroupTopic[]>;
+};
+
+const STATUS_LABEL: Record<TopicProgressStatus, string> = {
+  pending: "Pendente",
+  reviewing: "Em revisão",
+  mastered: "Dominado",
+};
+
+export function AcademicProgressView() {
+  const fetcher = useCallback(async (signal: AbortSignal): Promise<ProgressData> => {
+    const [groups, attendance, progress] = await Promise.all([
+      academicGroups(signal),
+      fetchMyAttendance(undefined, signal),
+      fetchMyProgress(undefined, signal),
+    ]);
+
+    const topicEntries = await Promise.all(
+      groups.map(async (group) => [
+        group.id,
+        await listGroupTopics(group.id, signal),
+      ] as const),
+    );
+
+    return {
+      groups,
+      attendance,
+      progress,
+      topicsByGroup: Object.fromEntries(topicEntries),
+    };
+  }, []);
+
+  const remote = useRemote("academic-progress", fetcher, true);
+  const [records, setRecords] = useState<StudentTopicProgressRecord[]>([]);
+  const [busyTopic, setBusyTopic] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
-    if (state !== "ready") return;
-    let active = true;
-    Promise.all([
-      academicGroups().catch(() => []),
-      fetchMyAttendance().catch(() => []),
-      fetchMyProgress().catch(() => []),
-    ]).then(([groups, atts, progs]) => {
-      if (!active) return;
-      if (groups && groups.length > 0) {
-        setRealGroups(groups);
-      }
-      setAttendances(atts || []);
-      setProgressRecords(progs || []);
+    if (remote.data) setRecords(remote.data.progress);
+  }, [remote.data]);
+
+  const summaries = useMemo(() => {
+    if (!remote.data) return [];
+
+    return remote.data.groups.map((group) => {
+      const topics = remote.data?.topicsByGroup[group.id] ?? [];
+      const groupRecords = records.filter((record) => record.groupId === group.id);
+      const recordByTopic = new Map(
+        groupRecords.map((record) => [record.groupTopicId, record]),
+      );
+      const mastered = topics.filter(
+        (topic) => recordByTopic.get(topic.id)?.status === "mastered",
+      ).length;
+      const reviewing = topics.filter(
+        (topic) => recordByTopic.get(topic.id)?.status === "reviewing",
+      ).length;
+      const attendance = remote.data?.attendance.filter(
+        (record) => record.groupId === group.id,
+      ) ?? [];
+      const present = attendance.filter((record) => record.status === "present").length;
+      const absent = attendance.filter((record) => record.status === "absent").length;
+
+      return {
+        group,
+        topics,
+        recordByTopic,
+        mastered,
+        reviewing,
+        pending: Math.max(0, topics.length - mastered - reviewing),
+        percentage: topics.length ? Math.round((mastered / topics.length) * 100) : 0,
+        present,
+        absent,
+      };
     });
-    return () => {
-      active = false;
-    };
-  }, [state]);
+  }, [remote.data, records]);
 
-  async function toggleReview(groupId: string, topicId?: string) {
-    const next = !reviewedTopics[groupId];
-    setReviewedTopics((prev) => ({ ...prev, [groupId]: next }));
+  async function changeStatus(
+    groupId: string,
+    topicId: string,
+    status: TopicProgressStatus,
+  ) {
+    if (busyTopic) return;
+    setBusyTopic(topicId);
 
-    if (topicId) {
-      try {
-        const nextStatus = next ? "mastered" : "pending";
-        const updated = await updateMyProgress(topicId, nextStatus);
-        setProgressRecords((prev) => [
-          ...prev.filter((p) => p.groupTopicId !== topicId),
-          updated,
-        ]);
-        setFeedback(next ? "Tópico marcado como dominado no seu progresso pessoal." : "Marcação de progresso removida.");
-        return;
-      } catch {
-        // fallback
-      }
+    try {
+      const updated = await updateMyProgress(topicId, status);
+      setRecords((current) => [
+        ...current.filter((record) => record.groupTopicId !== topicId),
+        updated,
+      ]);
+      showToast({
+        message: `Progresso atualizado para ${STATUS_LABEL[status].toLowerCase()}.`,
+        variant: "success",
+      });
+    } catch {
+      showToast({
+        message: "Não foi possível atualizar este tópico.",
+        variant: "error",
+      });
+    } finally {
+      setBusyTopic(null);
     }
-
-    setFeedback(next ? "Revisão simulada no seu progresso pessoal, sem persistência." : "Marcação simulada removida.");
   }
-
-  if (state === "loading" || state === "error") return <AcademicPreviewState state={state} />;
-  if (state === "empty") {
-    return (
-      <div className={styles.page}>
-        <header className={styles.header}>
-          <div>
-            <p className={styles.eyebrow}>Acompanhamento</p>
-            <h2>Meu progresso</h2>
-            <p>Acompanhe sua rotina pessoal de estudos e identifique o próximo conteúdo para revisar.</p>
-          </div>
-        </header>
-        <p>Sem registros pessoais nos seus grupos.</p>
-      </div>
-    );
-  }
-
-  // Calculate summaries: prefer real data if loaded, otherwise fallback to academicProgressSummaries
-  const summaries = realGroups && realGroups.length > 0
-    ? realGroups.map((g) => {
-        const groupAtts = attendances.filter((a) => a.groupId === g.id);
-        const groupProgs = progressRecords.filter((p) => p.groupId === g.id);
-        const heldCount = groupAtts.filter((a) => a.status === "present").length;
-        const masteredCount = groupProgs.filter((p) => p.status === "mastered").length;
-        const pendingCount = groupProgs.filter((p) => p.status !== "mastered").length;
-        const totalTopics = groupProgs.length;
-        const progressPercentage = totalTopics > 0 ? Math.round((masteredCount / totalTopics) * 100) : 0;
-        const nextFocus = groupProgs.find((p) => p.status === "pending")?.notes || "Revisão dos conceitos fundamentais";
-
-        return {
-          groupId: g.id,
-          groupName: g.name,
-          disciplineId: g.disciplineId,
-          disciplineName: g.subject,
-          classGroup: g.section,
-          period: g.term,
-          progressPercentage,
-          heldLessonsCount: heldCount,
-          pendingTopicsCount: pendingCount,
-          nextFocusTopic: nextFocus,
-        };
-      })
-    : academicProgressSummaries;
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>Acompanhamento</p>
-          <h2>Meu progresso</h2>
-          <p>Acompanhe sua rotina pessoal de estudos e identifique o próximo conteúdo para revisar.</p>
-        </div>
-      </header>
+      <PageHeader
+        description="Acompanhe seus registros privados de frequência e evolução nos tópicos das comunidades em que você participa."
+        eyebrow="Acompanhamento pessoal"
+        title="Meu Progresso"
+      />
 
-      {/* Non-official Disclaimer */}
-      <div className={styles.disclaimerBox} role="status">
-        <Info aria-hidden size={18} />
-        <div>
-          <strong>Registro Pessoal e Não Oficial:</strong> As estatísticas e marcações exibidas aqui pertencem ao seu acompanhamento privado. Elas não modificam a ata oficial da instituição nem o plano de ensino compartilhado do grupo.
-        </div>
+      <div className={styles.disclaimer} role="note">
+        <Info aria-hidden size={19} />
+        <span>
+          Este acompanhamento é pessoal e não altera frequência oficial, notas ou plano de ensino da instituição.
+        </span>
       </div>
 
-      {feedback ? (
-        <p aria-live="polite" className={styles.noticeText}>
-          {feedback}
-        </p>
-      ) : null}
-
-      <div className={styles.progressGrid}>
-        {summaries.map((summary) => {
-          const isReviewed = reviewedTopics[summary.groupId];
-
-          return (
-            <section className={styles.progressCard} key={summary.groupId}>
-              <div className={styles.cardTitle}>
+      {remote.loading ? (
+        <div className={styles.progressGrid} role="status" aria-label="Carregando progresso">
+          <span className="sr-only">Carregando progresso...</span>
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} variant="card" />
+          ))}
+        </div>
+      ) : remote.error ? (
+        <Card className={styles.stateCard}>
+          <TrendUp aria-hidden size={36} />
+          <div>
+            <h2>Não foi possível carregar seu progresso</h2>
+            <p>Os dados não foram substituídos por conteúdo fictício.</p>
+          </div>
+          <Button onClick={remote.reload} size="sm" type="button" variant="secondary">
+            Tentar novamente
+          </Button>
+        </Card>
+      ) : summaries.length === 0 ? (
+        <Card className={styles.stateCard}>
+          <TrendUp aria-hidden size={36} />
+          <div>
+            <h2>Sem registros de progresso ainda</h2>
+            <p>Entre em uma comunidade para começar a acompanhar tópicos e frequência pessoal.</p>
+          </div>
+          <Link href="/grupos?view=discover">Descobrir comunidades</Link>
+        </Card>
+      ) : (
+        <div className={styles.progressGrid}>
+          {summaries.map((summary) => (
+            <Card className={styles.progressCard} key={summary.group.id}>
+              <div className={styles.progressHeading}>
                 <div>
-                  <p className={styles.label}>Disciplina</p>
-                  <h3>{summary.disciplineName}</h3>
-                  <p>{summary.groupName}</p>
+                  <h2>{summary.group.subject}</h2>
                   <p>
-                    {summary.classGroup} · {summary.period}
+                    {summary.group.name} · {summary.group.section} · {summary.group.term}
                   </p>
                 </div>
-                <strong>{summary.progressPercentage}%</strong>
+                <strong className={styles.progressValue}>
+                  {summary.percentage}%
+                </strong>
               </div>
 
-              <div className={styles.track}>
-                <span style={{ width: `${summary.progressPercentage}%` }} />
-              </div>
-
-              <ul>
-                <li>
-                  <CheckCircle aria-hidden size={19} /> {summary.heldLessonsCount} aulas realizadas
-                </li>
-                <li>
-                  <NotePencil aria-hidden size={19} /> {summary.pendingTopicsCount} conteúdo pendente
-                </li>
-                <li>
-                  <TrendUp aria-hidden size={19} /> Frequência pessoal em dia (privada)
-                </li>
-              </ul>
-
-              <div className={styles.nextCard}>
-                <p className={styles.label}>Próximo foco</p>
-                <h4>{summary.nextFocusTopic}</h4>
-                <p>Reserve um tempo para revisar este conteúdo antes da próxima aula.</p>
-                <button
-                  className={styles.outlineButton}
-                  onClick={() => toggleReview(summary.groupId)}
-                  type="button"
-                >
-                  {isReviewed ? "✓ Revisado (Pessoal)" : "Marcar como revisado"}
-                </button>
-              </div>
-
-              <Link
-                className={styles.linkAction}
-                href={`/disciplinas/${summary.disciplineId}?group=${summary.groupId}`}
+              <progress
+                aria-label={`Progresso em ${summary.group.subject}: ${summary.percentage}%`}
+                className={styles.track}
+                max={100}
+                value={summary.percentage}
               >
-                Abrir disciplina <ArrowRight aria-hidden size={16} />
-              </Link>
-            </section>
-          );
-        })}
-      </div>
+                {summary.percentage}%
+              </progress>
+
+              <div className={styles.metrics}>
+                <Badge variant="success">{summary.mastered} dominados</Badge>
+                <Badge variant="warning">{summary.reviewing} em revisão</Badge>
+                <Badge>{summary.pending} pendentes</Badge>
+                <Badge variant="info">
+                  {summary.present} presentes · {summary.absent} ausentes
+                </Badge>
+              </div>
+
+              <div className={styles.topicList}>
+                <h3>Tópicos</h3>
+                {summary.topics.length ? (
+                  summary.topics.slice(0, 6).map((topic) => {
+                    const status =
+                      summary.recordByTopic.get(topic.id)?.status ?? "pending";
+                    return (
+                      <label className={styles.topicRow} key={topic.id}>
+                        <strong>
+                          {topic.topicName ?? topic.customTitle ?? "Tópico"}
+                        </strong>
+                        <select
+                          aria-label={`Status de ${topic.topicName ?? topic.customTitle ?? "tópico"}`}
+                          disabled={busyTopic === topic.id}
+                          onChange={(event) =>
+                            void changeStatus(
+                              summary.group.id,
+                              topic.id,
+                              event.target.value as TopicProgressStatus,
+                            )
+                          }
+                          value={status}
+                        >
+                          <option value="pending">Pendente</option>
+                          <option value="reviewing">Em revisão</option>
+                          <option value="mastered">Dominado</option>
+                        </select>
+                      </label>
+                    );
+                  })
+                ) : (
+                  <p>Nenhum tópico cadastrado nesta comunidade.</p>
+                )}
+              </div>
+
+              <div className={styles.cardFooter}>
+                <Link href={`/grupos/${summary.group.id}#cronograma`}>
+                  Abrir comunidade
+                </Link>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

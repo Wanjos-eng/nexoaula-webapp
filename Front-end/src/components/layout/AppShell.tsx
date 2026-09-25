@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 import { Sidebar } from "./Sidebar";
 import styles from "./AppShell.module.css";
@@ -12,15 +13,13 @@ type AppShellProps = {
 };
 
 export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [sidebarMode, setSidebarMode] = useState<"expanded" | "compact" | "hidden">("expanded");
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!isMenuOpen) {
-      return;
-    }
+    if (!isMenuOpen) return;
 
     const previousOverflow = document.body.style.overflow;
     const menuButton = menuButtonRef.current;
@@ -30,6 +29,31 @@ export function AppShell({ children }: AppShellProps) {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsMenuOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const sidebar = document.getElementById("navegacao-principal");
+      if (!sidebar) return;
+
+      const focusable = Array.from(
+        sidebar.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => !element.hasAttribute("aria-hidden"));
+
+      if (!focusable.length) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     }
 
@@ -43,16 +67,14 @@ export function AppShell({ children }: AppShellProps) {
   }, [isMenuOpen]);
 
   return (
-    <div className={`${styles.shell} ${sidebarMode === "compact" ? styles.shellCompact : sidebarMode === "hidden" ? styles.shellHidden : ""}`}>
+    <div className={styles.shell}>
       <a className={styles.skipLink} href="#conteudo-principal">
         Pular para o conteúdo
       </a>
       <Sidebar
         closeButtonRef={closeButtonRef}
         isOpen={isMenuOpen}
-        mode={sidebarMode}
         onClose={() => setIsMenuOpen(false)}
-        onModeChange={setSidebarMode}
       />
       <div className={styles.workspace}>
         <Topbar
@@ -60,7 +82,9 @@ export function AppShell({ children }: AppShellProps) {
           onMenuOpen={() => setIsMenuOpen(true)}
         />
         <main className={styles.main} id="conteudo-principal" tabIndex={-1}>
-          {children}
+          <div className={styles.routeContent} key={pathname}>
+            {children}
+          </div>
         </main>
       </div>
     </div>

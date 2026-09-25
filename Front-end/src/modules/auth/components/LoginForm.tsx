@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Info, WarningCircle } from "@phosphor-icons/react";
+import { WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
@@ -14,9 +14,8 @@ import { validateLoginForm, type LoginFormErrors } from "../schemas/authSchemas"
 
 import styles from "./AuthForm.module.css";
 
-
 type BannerState = {
-  type: "success" | "error" | "info";
+  type: "error";
   message: string;
 } | null;
 
@@ -28,7 +27,7 @@ export function LoginForm() {
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
   const submissionRef = useRef(false);
-  const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -36,23 +35,16 @@ export function LoginForm() {
       isMountedRef.current = false;
       abortRef.current?.abort();
       abortRef.current = null;
-      if (navTimeoutRef.current) {
-        clearTimeout(navTimeoutRef.current);
-        navTimeoutRef.current = null;
-      }
     };
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submissionRef.current) return;
+    if (submissionRef.current || isLoading) return;
+
     setBanner(null);
-
-    if (isLoading) return;
-
     const form = event.currentTarget;
     const data = new FormData(form);
-
     const validation = validateLoginForm(data);
     setErrors(validation.errors);
 
@@ -73,23 +65,13 @@ export function LoginForm() {
       await authService.login({ email, password }, controller.signal);
       if (!isMountedRef.current) return;
 
-      setBanner({
-        type: "success",
-        message: "Autenticado com sucesso. Redirecionando para o painel acadêmico...",
-      });
-
-      navTimeoutRef.current = setTimeout(() => {
-        router.replace("/inicio");
-      }, 1500);
+      router.replace("/inicio");
     } catch (error) {
       if (!isMountedRef.current || error instanceof RequestAbortedError) return;
       setIsLoading(false);
 
       if (error instanceof ApiError && error.status === 401) {
-        setBanner({
-          type: "error",
-          message: "E-mail ou senha incorretos.",
-        });
+        setBanner({ type: "error", message: "E-mail ou senha incorretos." });
       } else if (error instanceof ApiError && error.status === 403) {
         setBanner({
           type: "error",
@@ -117,34 +99,20 @@ export function LoginForm() {
     }
   }
 
-  function handleForgotPassword() {
-    setBanner({
-      type: "info",
-      message: "Recuperação de senha: a funcionalidade será integrada ao backend em uma etapa futura.",
-    });
-  }
-
   return (
     <div>
       <div className={styles.header}>
         <h2>Acesse sua conta</h2>
-        <p>Entre para acompanhar suas disciplinas, aulas e grupos de estudo.</p>
+        <p>Entre para acompanhar sua rotina acadêmica e suas comunidades.</p>
       </div>
 
       {banner ? (
         <div
           aria-live="polite"
-          className={`${styles.banner} ${banner.type === "success"
-            ? styles.bannerSuccess
-            : banner.type === "error"
-              ? styles.bannerError
-              : styles.bannerInfo
-            }`}
-          role="status"
+          className={`${styles.banner} ${styles.bannerError}`}
+          role="alert"
         >
-          {banner.type === "success" && <CheckCircle aria-hidden size={20} />}
-          {banner.type === "error" && <WarningCircle aria-hidden size={20} />}
-          {banner.type === "info" && <Info aria-hidden size={20} />}
+          <WarningCircle aria-hidden size={20} />
           <span>{banner.message}</span>
         </div>
       ) : null}
@@ -175,19 +143,11 @@ export function LoginForm() {
         />
 
         <div className={styles.actionsRow}>
-          <span>Sessão segura de curta duração.</span>
-          <button
-            className={styles.textButton}
-            disabled={isLoading}
-            onClick={handleForgotPassword}
-            type="button"
-          >
-            Esqueci minha senha
-          </button>
+          <span>Sua sessão será iniciada com segurança.</span>
         </div>
 
-        <Button disabled={isLoading} fullWidth type="submit">
-          {isLoading ? "Entrando..." : "Entrar"}
+        <Button fullWidth loading={isLoading} type="submit">
+          {isLoading ? "Entrando…" : "Entrar"}
         </Button>
       </form>
 

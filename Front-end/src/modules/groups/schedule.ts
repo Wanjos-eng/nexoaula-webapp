@@ -110,9 +110,9 @@ export async function academicGroups(signal?: AbortSignal): Promise<AcademicGrou
     const section = sections.find((item) => item.id === group.offeringId);
     return {
       ...group,
-      subject: subjects.find((item) => item.id === group.disciplineId)?.name ?? "Disciplina indisponível",
-      section: section?.label ?? "Sem turma vinculada",
-      term: terms.find((item) => item.id === section?.academicTermId)?.label ?? "Sem período vinculado",
+      subject: subjects.find((item) => item.id === group.disciplineId)?.name || group.subjectName || "Disciplina sem nome",
+      section: section?.label || "Sem turma vinculada",
+      term: terms.find((item) => item.id === section?.academicTermId)?.label || group.period || "Sem período vinculado",
     };
   });
 }
