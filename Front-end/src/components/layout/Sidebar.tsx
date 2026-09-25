@@ -6,6 +6,7 @@ import {
   ChartLineUp,
   House,
   IdentificationCard,
+  SignOut,
   Storefront,
   UsersThree,
   X,
@@ -13,8 +14,9 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { RefObject } from "react";
+import { useState, type RefObject } from "react";
 
+import { useToast } from "@/components/ui/Toast";
 import { useAuthSession } from "@/modules/auth/components/AuthSessionProvider";
 import styles from "./AppShell.module.css";
 
@@ -44,8 +46,10 @@ function isRouteActive(pathname: string, href: string) {
 }
 
 export function Sidebar({ closeButtonRef, isOpen, onClose }: SidebarProps) {
-  const { user } = useAuthSession();
+  const { logout, user } = useAuthSession();
+  const { showToast } = useToast();
   const pathname = usePathname();
+  const [loggingOut, setLoggingOut] = useState(false);
   const name = user.fullName || "Meu perfil";
   const initials = name
     .split(" ")
@@ -135,6 +139,27 @@ export function Sidebar({ closeButtonRef, isOpen, onClose }: SidebarProps) {
               <small>Meu Perfil</small>
             </div>
           </Link>
+          <button
+            aria-label="Sair"
+            className={styles.logoutButton}
+            disabled={loggingOut}
+            onClick={async () => {
+              setLoggingOut(true);
+              try {
+                await logout();
+              } catch {
+                setLoggingOut(false);
+                showToast({
+                  message: "Não foi possível encerrar sua sessão. Tente novamente.",
+                  variant: "error",
+                });
+              }
+            }}
+            title="Sair"
+            type="button"
+          >
+            <SignOut aria-hidden size={19} />
+          </button>
         </div>
       </aside>
     </>
