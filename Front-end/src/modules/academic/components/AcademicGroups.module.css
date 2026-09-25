@@ -126,6 +126,35 @@
   font-size: var(--font-size-caption);
 }
 
+.cardMeta {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+}
+
+.cardMeta > div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.cardMeta dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+}
+
+.cardMeta dd {
+  min-width: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-caption);
+  line-height: 1.4;
+}
+
 .cardActions {
   display: flex;
   align-items: center;
