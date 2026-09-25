@@ -46,6 +46,12 @@ jobs:
           docker compose logs
           exit 1
 
+      - name: Run frontend lint and unit tests
+        working-directory: Front-end
+        run: |
+          npm run lint
+          npm test
+
       - name: Run authentication E2E tests
         working-directory: Front-end
         run: npm run test:e2e
