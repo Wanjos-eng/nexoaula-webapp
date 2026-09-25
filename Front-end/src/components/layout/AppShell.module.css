@@ -265,6 +265,22 @@
   padding: var(--space-6) var(--space-8) var(--space-10);
 }
 
+.routeContent {
+  animation: route-content-in var(--motion-slow) var(--ease-standard);
+}
+
+@keyframes route-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 1099px) and (min-width: 821px) {
   .sidebar {
     width: 232px;

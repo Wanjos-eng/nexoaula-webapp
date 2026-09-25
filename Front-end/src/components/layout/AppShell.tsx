@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 import { Sidebar } from "./Sidebar";
 import styles from "./AppShell.module.css";
@@ -12,6 +13,7 @@ type AppShellProps = {
 };
 
 export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -53,7 +55,9 @@ export function AppShell({ children }: AppShellProps) {
           onMenuOpen={() => setIsMenuOpen(true)}
         />
         <main className={styles.main} id="conteudo-principal" tabIndex={-1}>
-          {children}
+          <div className={styles.routeContent} key={pathname}>
+            {children}
+          </div>
         </main>
       </div>
     </div>
