@@ -167,14 +167,17 @@ describe("marketplace conectado à API", () => {
       await screen.findByRole("button", { name: "Reservar vaga" }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Confirmar reserva" }),
+      screen.getByRole("button", { name: "Confirmar simulação" }),
     );
 
     const receipt = await screen.findByRole("status", {
       name: "Reserva de tutoria confirmada",
     });
-    expect(receipt.textContent?.replaceAll(/\s/g, " ")).toContain("R$ 10,10");
-    expect(receipt.textContent).not.toContain("R$ 1,52");
+    const receiptText = receipt.textContent?.replaceAll(/\s/g, " ") ?? "";
+    expect(receiptText).toContain("R$ 10,10");
+    expect(receiptText).toContain("R$ 1,52");
+    expect(receiptText).toContain("R$ 8,58");
+    expect(receiptText).toContain("Simulada · concluída");
 
     fireEvent.click(
       screen.getByRole("button", { name: "Cancelar reserva" }),
@@ -199,7 +202,7 @@ describe("marketplace conectado à API", () => {
       await screen.findByRole("button", { name: "Reservar vaga" }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Confirmar reserva" }),
+      screen.getByRole("button", { name: "Confirmar simulação" }),
     );
     await screen.findByRole("status", {
       name: "Reserva de tutoria confirmada",
@@ -226,7 +229,7 @@ describe("marketplace conectado à API", () => {
       await screen.findByRole("button", { name: "Reservar vaga" }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Confirmar reserva" }),
+      screen.getByRole("button", { name: "Confirmar simulação" }),
     );
 
     expect((await screen.findByRole("alert")).textContent).toContain("lotada");

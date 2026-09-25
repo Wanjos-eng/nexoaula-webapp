@@ -60,7 +60,7 @@ test("publicação, inscrição e histórico persistidos entre tutor e alunos re
     await student.waitForURL(/\/sessoes\/[0-9a-f-]+$/);
     const detailUrl = student.url(), sessionId = new URL(detailUrl).pathname.split("/").pop();
     await student.getByRole("button", { name: "Reservar vaga" }).click();
-    await student.getByRole("button", { name: "Confirmar reserva", exact: true }).click();
+    await student.getByRole("button", { name: "Confirmar simulação", exact: true }).click();
     const receipt = student.getByRole("status", { name: "Reserva de tutoria confirmada" });
     await expect(receipt).toContainText("Nenhum pagamento foi processado");
     await student.reload(); await expect(receipt).toBeVisible();
@@ -76,7 +76,7 @@ test("publicação, inscrição e histórico persistidos entre tutor e alunos re
     await other.reload();
     await expect(other.getByRole("button", { name: "Reservar vaga" })).toBeEnabled();
     await student.getByRole("button", { name: "Reservar novamente" }).click();
-    await student.getByRole("button", { name: "Confirmar reserva", exact: true }).click();
+    await student.getByRole("button", { name: "Confirmar simulação", exact: true }).click();
     await expect(receipt).toBeVisible();
     await student.goto("/sessoes/minhas"); await student.reload();
     await student.getByRole("tab", { name: /Histórico/ }).click();
