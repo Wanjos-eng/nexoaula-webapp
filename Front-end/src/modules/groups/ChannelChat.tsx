@@ -73,8 +73,8 @@ export function ChannelChat({ groupId }: { groupId: string }) {
   const [unseenMessages, setUnseenMessages] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const initialScrollChannelRef = useRef<string>();
-  const previousLastMessageRef = useRef<string>();
+  const initialScrollChannelRef = useRef<string | undefined>(undefined);
+  const previousLastMessageRef = useRef<string | undefined>(undefined);
   const nearBottomRef = useRef(true);
 
   useEffect(() => {
