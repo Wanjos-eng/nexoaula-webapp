@@ -96,7 +96,7 @@
   gap: var(--space-2);
   color: var(--color-text-muted);
   font-size: var(--font-size-small);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .facts dd {
@@ -130,7 +130,7 @@
 
 .price strong {
   color: var(--color-text);
-  font-size: 1.75rem;
+  font-size: var(--font-size-metric);
   font-weight: 800;
   letter-spacing: -0.025em;
   line-height: 1.15;
@@ -247,7 +247,7 @@
 
 .secondaryLink:hover {
   background: var(--color-surface-hover);
-  border-color: #c2cec8;
+  border-color: var(--color-border-hover);
 }
 
 .textLink {

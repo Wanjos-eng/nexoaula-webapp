@@ -77,7 +77,7 @@
 .nextTop time {
   color: var(--color-text-muted);
   font-size: var(--font-size-small);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .nextCopy {
@@ -87,7 +87,7 @@
 
 .nextCopy h3 {
   color: var(--color-text);
-  font-size: 1.35rem;
+  font-size: var(--font-size-section-title);
   line-height: 1.3;
 }
 

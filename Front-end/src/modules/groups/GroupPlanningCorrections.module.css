@@ -191,7 +191,7 @@
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: var(--font-size-caption);
-  font-weight: 750;
+  font-weight: 700;
   cursor: pointer;
   transition:
     background-color var(--motion-fast) var(--ease-standard),
@@ -226,7 +226,7 @@
 }
 
 .danger:hover:not(:disabled) {
-  background: #922018;
+  background: var(--color-danger-hover);
 }
 
 .primary:active:not(:disabled),

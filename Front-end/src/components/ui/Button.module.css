@@ -71,7 +71,7 @@
 }
 
 .danger:hover:not(:disabled) {
-  background: #922018;
+  background: var(--color-danger-hover);
   box-shadow: 0 6px 18px rgb(180 35 24 / 16%);
 }
 

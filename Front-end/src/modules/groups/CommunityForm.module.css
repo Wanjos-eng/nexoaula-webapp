@@ -163,7 +163,7 @@
 }
 
 .topicOption:hover {
-  border-color: #c2cec8;
+  border-color: var(--color-border-hover);
   background: var(--color-surface-hover);
 }
 

@@ -113,7 +113,7 @@
   gap: var(--space-3);
   color: var(--color-text-muted);
   font-size: var(--font-size-caption);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .legend span {
@@ -163,7 +163,7 @@
 
 .communityLinks a:hover {
   background: var(--color-surface-hover);
-  border-color: #c4d0ca;
+  border-color: var(--color-border-hover);
 }
 
 .communityLinks span {
@@ -262,7 +262,7 @@
 .calendarShell :global(.rdp-weekday) {
   width: 14.2857%;
   color: var(--color-text-muted);
-  font-size: 0.625rem;
+  font-size: var(--font-size-micro);
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -354,7 +354,7 @@
   overflow: hidden;
   padding: 2px 4px;
   border-left: 3px solid;
-  font-size: 0.53rem;
+  font-size: var(--font-size-micro);
   font-weight: 700;
   line-height: 12px;
   text-overflow: ellipsis;
@@ -381,7 +381,7 @@
 
 .moreEvents {
   color: var(--color-text-muted);
-  font-size: 0.55rem;
+  font-size: var(--font-size-micro);
   font-weight: 700;
 }
 
@@ -477,7 +477,7 @@
   width: fit-content;
   color: var(--color-green);
   font-size: var(--font-size-caption);
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .eventCopy a:hover,

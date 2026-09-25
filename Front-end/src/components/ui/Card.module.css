@@ -22,6 +22,6 @@
 
 .interactive:hover {
   transform: translateY(-2px);
-  border-color: #c4d0ca;
+  border-color: var(--color-border-hover);
   box-shadow: var(--shadow-card-hover);
 }
