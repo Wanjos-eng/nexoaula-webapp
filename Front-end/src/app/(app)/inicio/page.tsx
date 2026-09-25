@@ -279,7 +279,7 @@ export default function InicioPage() {
             <section className={styles.section} aria-labelledby="groups-title">
               <div className={styles.sectionHeading}>
                 <div>
-                  <p className={styles.sectionEyebrow}>Estudo em grupo</p>
+                  <p className={styles.sectionEyebrow}>Comunidades</p>
                   <h2 id="groups-title">Minhas comunidades</h2>
                 </div>
                 <Link href="/grupos">Ver todas</Link>
@@ -303,7 +303,7 @@ export default function InicioPage() {
                   <UsersThree aria-hidden size={30} />
                   <div>
                     <h3>Nenhuma comunidade ainda</h3>
-                    <p>Encontre grupos relacionados às disciplinas que você estuda.</p>
+                    <p>Encontre comunidades relacionadas às disciplinas que você estuda.</p>
                   </div>
                   <Link className={styles.secondaryLink} href="/grupos?view=discover">
                     Descobrir comunidades

@@ -140,7 +140,7 @@ export function AcademicProgressView() {
   return (
     <div className={styles.page}>
       <PageHeader
-        description="Acompanhe seus registros privados de frequência e evolução nos tópicos dos grupos em que você participa."
+        description="Acompanhe seus registros privados de frequência e evolução nos tópicos das comunidades em que você participa."
         eyebrow="Acompanhamento pessoal"
         title="Meu Progresso"
       />
