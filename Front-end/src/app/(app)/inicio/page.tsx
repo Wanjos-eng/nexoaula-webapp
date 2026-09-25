@@ -1,219 +1,379 @@
+"use client";
+
 import {
   ArrowRight,
+  BookOpenText,
   CalendarBlank,
-  CheckCircle,
   Clock,
-  Hash,
-  NotePencil,
-  UserCheck,
+  GraduationCap,
+  Storefront,
   UsersThree,
-  Warning,
-} from "@phosphor-icons/react/dist/ssr";
-import type { Metadata } from "next";
+} from "@phosphor-icons/react";
 import Link from "next/link";
+import { useCallback, useMemo } from "react";
 
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { useAuthSession } from "@/modules/auth";
+import { listMyMeetings, type Meeting } from "@/modules/groups/meetings.api";
+import {
+  academicGroups,
+  readAll,
+  type AcademicGroup,
+  type Lesson,
+} from "@/modules/groups/schedule";
+import { useRemote } from "@/modules/groups/useRemote";
 import styles from "./page.module.css";
 
-export const metadata: Metadata = {
-  title: "Início",
+type TutorBooking = {
+  booking_id: string;
+  session_id: string;
+  status: "confirmed" | "cancelled";
+  session: {
+    title: string;
+    tutor_name: string;
+    subject_name: string;
+    starts_at: string;
+    ends_at: string;
+    status: "draft" | "scheduled" | "completed" | "cancelled";
+  };
 };
 
-const upcomingClasses = [
-  {
-    day: "31",
-    month: "Ago",
-    time: "14h–16h",
-    title: "Modelo Conceitual de Sistemas de Fila M/M/1 — continuação",
-  },
-  {
-    day: "02",
-    month: "Set",
-    time: "14h–16h",
-    title: "Modelo Conceitual de Sistemas de Fila M/M/1 e seus algoritmos",
-  },
-  {
-    day: "07",
-    month: "Set",
-    time: "14h–16h",
-    title: "Modelo Computacional de Fila M/M/1 — software SF.MM1.cpp",
-  },
-];
+type HomeEvent = {
+  id: string;
+  title: string;
+  context: string;
+  startsAt: string;
+  href: string;
+  type: "Aula" | "Encontro" | "Tutoria";
+};
+
+type HomeData = {
+  groups: AcademicGroup[];
+  events: HomeEvent[];
+  tutoring: TutorBooking[];
+};
 
 export default function InicioPage() {
+  const { user } = useAuthSession();
+
+  const fetcher = useCallback(async (signal: AbortSignal): Promise<HomeData> => {
+    const now = new Date();
+    const endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + 45);
+    const start = now.toISOString();
+    const end = endDate.toISOString();
+
+    const [groups, meetings, bookings] = await Promise.all([
+      academicGroups(signal),
+      listMyMeetings(start, end, signal),
+      readAll<TutorBooking>("marketplace/bookings/mine", signal),
+    ]);
+
+    const lessons = groups.length
+      ? await readAll<Lesson>(
+          `groups/me/lessons?${new URLSearchParams({ start, end })}`,
+          signal,
+        )
+      : [];
+
+    const groupsById = new Map(groups.map((group) => [group.id, group]));
+
+    const lessonEvents: HomeEvent[] = lessons.map((lesson) => {
+      const group = groupsById.get(lesson.groupId);
+      return {
+        id: `lesson-${lesson.id}`,
+        title: lesson.title,
+        context: group
+          ? `${group.subject} · ${group.name}`
+          : "Aula agendada",
+        startsAt: lesson.scheduledAt,
+        href: `/grupos/${lesson.groupId}#aula-${lesson.id}`,
+        type: "Aula",
+      };
+    });
+
+    const meetingEvents: HomeEvent[] = meetings
+      .filter((meeting) => meeting.status === "scheduled")
+      .map((meeting: Meeting) => {
+        const group = groupsById.get(meeting.groupId);
+        return {
+          id: `meeting-${meeting.id}`,
+          title: meeting.title,
+          context: group ? group.name : "Encontro de comunidade",
+          startsAt: meeting.startsAt,
+          href: `/grupos/${meeting.groupId}#encontros`,
+          type: "Encontro",
+        };
+      });
+
+    const upcomingTutoring = bookings.filter(
+      (booking) =>
+        booking.status === "confirmed" &&
+        booking.session.status === "scheduled" &&
+        new Date(booking.session.starts_at).getTime() >= now.getTime(),
+    );
+
+    const tutoringEvents: HomeEvent[] = upcomingTutoring
+      .filter(
+        (booking) =>
+          new Date(booking.session.starts_at).getTime() <= endDate.getTime(),
+      )
+      .map((booking) => ({
+        id: `tutoring-${booking.booking_id}`,
+        title: booking.session.title,
+        context: `${booking.session.subject_name} · ${booking.session.tutor_name}`,
+        startsAt: booking.session.starts_at,
+        href: `/sessoes/${booking.session_id}`,
+        type: "Tutoria",
+      }));
+
+    const events = [...lessonEvents, ...meetingEvents, ...tutoringEvents]
+      .filter((event) => new Date(event.startsAt).getTime() >= now.getTime())
+      .sort(
+        (left, right) =>
+          new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime(),
+      );
+
+    return {
+      groups,
+      events,
+      tutoring: upcomingTutoring.sort(
+        (left, right) =>
+          new Date(left.session.starts_at).getTime() -
+          new Date(right.session.starts_at).getTime(),
+      ),
+    };
+  }, []);
+
+  const remote = useRemote("home-dashboard", fetcher, true);
+  const data = remote.data;
+  const nextEvent = data?.events[0];
+  const agenda = useMemo(() => data?.events.slice(1, 5) ?? [], [data?.events]);
+  const firstName = user.fullName?.split(" ")[0] || "estudante";
+
   return (
-    <div className={styles.dashboard}>
-      <div className={styles.mainColumn}>
-        <section aria-labelledby="proxima-aula-title">
-          <h2 className={styles.sectionTitle} id="proxima-aula-title">
-            Próxima aula
-          </h2>
-          <article className={`${styles.card} ${styles.nextClassCard}`}>
-            <div className={styles.cardHeadingRow}>
-              <div>
-                <h3>Modelagem e Simulação Discreta</h3>
-                <p>Turma C8 • Professor: Brauliro Gonçalves Leal</p>
-              </div>
-              <span className={styles.statusBadge}>Programada</span>
-            </div>
+    <div className={styles.page}>
+      <PageHeader
+        description="Acompanhe seus próximos compromissos e acesse rapidamente o que importa na sua rotina acadêmica."
+        eyebrow="Visão geral"
+        title={`Olá, ${firstName}`}
+      />
 
-            <div className={styles.classSummary}>
-              <time className={styles.dateTile} dateTime="2026-08-31">
-                <span>Ago</span>
-                <strong>31</strong>
-              </time>
-              <div>
-                <p className={styles.timeLine}>
-                  <Clock aria-hidden size={17} />
-                  <strong>14h – 16h</strong>
-                </p>
-                <p>
-                  <strong>Conteúdo:</strong> Modelo Conceitual de Sistemas de Fila M/M/1
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.cardActions}>
-              <Link className={styles.secondaryAction} href="/disciplinas">
-                Abrir disciplina
-              </Link>
-              <Link className={styles.primaryAction} href="/calendario">
-                Detalhes da aula
-              </Link>
-            </div>
-          </article>
-        </section>
-
-        <section aria-labelledby="disciplinas-title" id="disciplinas">
-          <h2 className={styles.sectionTitle} id="disciplinas-title">
-            Minhas disciplinas
-          </h2>
-          <article className={styles.card} id="progresso">
-            <div className={styles.progressHeading}>
-              <div>
-                <h3>Modelagem e Simulação Discreta</h3>
-                <p>C8 • 2026.2 • Seg e Qua, 14h–16h</p>
-              </div>
-              <strong>45%</strong>
-            </div>
-            <div
-              aria-label="Progresso da disciplina: 45 por cento"
-              aria-valuemax={100}
-              aria-valuemin={0}
-              aria-valuenow={45}
-              className={styles.progressTrack}
-              role="progressbar"
-            >
-              <span style={{ width: "45%" }} />
-            </div>
-            <ul className={styles.progressDetails}>
-              <li>
-                <CheckCircle aria-hidden size={20} />
-                <span>2 aulas realizadas</span>
-              </li>
-              <li>
-                <NotePencil aria-hidden size={20} />
-                <span>1 conteúdo pendente</span>
-              </li>
-              <li>
-                <UserCheck aria-hidden size={20} />
-                <span>Nenhuma ausência</span>
-              </li>
-            </ul>
-          </article>
-        </section>
-
-        <section aria-labelledby="calendario-title" id="calendario">
-          <div className={styles.sectionHeadingRow}>
-            <h2 className={styles.sectionTitle} id="calendario-title">
-              Próximas aulas
-            </h2>
-            <Link href="/calendario">Abrir calendário</Link>
+      {remote.loading ? (
+        <div className={styles.dashboard} role="status" aria-label="Carregando início">
+          <span className="sr-only">Carregando seu painel...</span>
+          <div className={styles.mainColumn}>
+            <Skeleton variant="card" />
+            <Skeleton variant="card" />
           </div>
-          <div className={`${styles.card} ${styles.lessonList}`}>
-            {upcomingClasses.map((lesson) => (
-              <article className={styles.lessonRow} key={`${lesson.month}-${lesson.day}`}>
-                <time className={styles.compactDate} dateTime="2026-09-02">
-                  <span>{lesson.month}</span>
-                  <strong>{lesson.day}</strong>
-                  <small>{lesson.time}</small>
-                </time>
-                <div className={styles.lessonInfo}>
-                  <h3>{lesson.title}</h3>
-                  <span className={styles.statusBadge}>Programada</span>
+          <div className={styles.sideColumn}>
+            <Skeleton variant="card" />
+            <Skeleton variant="card" />
+          </div>
+        </div>
+      ) : remote.error ? (
+        <Card className={styles.stateCard}>
+          <CalendarBlank aria-hidden size={34} />
+          <div>
+            <h2>Não foi possível carregar seu resumo</h2>
+            <p>Atualize a página ou tente novamente em instantes.</p>
+          </div>
+          <button className={styles.retryButton} onClick={remote.reload} type="button">
+            Tentar novamente
+          </button>
+        </Card>
+      ) : (
+        <div className={styles.dashboard}>
+          <div className={styles.mainColumn}>
+            <section className={styles.section} aria-labelledby="next-event-title">
+              <div className={styles.sectionHeading}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Sua agenda</p>
+                  <h2 id="next-event-title">Próximo compromisso</h2>
                 </div>
-                <Link className={styles.secondaryAction} href="/calendario">
-                  Detalhes da aula
-                </Link>
-              </article>
-            ))}
-          </div>
-        </section>
-      </div>
+                <Link href="/calendario">Abrir calendário</Link>
+              </div>
 
-      <aside className={styles.sideColumn} aria-label="Resumo e alertas">
-        <section className={styles.attentionCard} id="alertas">
-          <div className={styles.attentionTitle}>
-            <Warning aria-hidden size={22} weight="fill" />
-            <h2>Requer atenção</h2>
-          </div>
-          <ul>
-            <li>
-              <strong>Aula de 27/08 adiada</strong>
-              <span>Nova data ainda não informada.</span>
-            </li>
-            <li>
-              <strong>Modelo Analítico de Sistemas de Fila M/M/1 está pendente</strong>
-            </li>
-          </ul>
-          <Link href="/calendario">
-            Detalhes da alteração <ArrowRight aria-hidden size={16} />
-          </Link>
-        </section>
+              {nextEvent ? (
+                <Card className={styles.nextCard}>
+                  <div className={styles.nextTop}>
+                    <Badge variant={nextEvent.type === "Tutoria" ? "info" : "success"}>
+                      {nextEvent.type}
+                    </Badge>
+                    <time dateTime={nextEvent.startsAt}>
+                      {formatLongDate(nextEvent.startsAt)}
+                    </time>
+                  </div>
+                  <div className={styles.nextCopy}>
+                    <h3>{nextEvent.title}</h3>
+                    <p>{nextEvent.context}</p>
+                    <span>
+                      <Clock aria-hidden size={17} />
+                      {formatTime(nextEvent.startsAt)}
+                    </span>
+                  </div>
+                  <Link className={styles.primaryLink} href={nextEvent.href}>
+                    Ver detalhes <ArrowRight aria-hidden size={16} />
+                  </Link>
+                </Card>
+              ) : (
+                <Card className={styles.emptyCard}>
+                  <CalendarBlank aria-hidden size={32} />
+                  <div>
+                    <h3>Sua agenda está livre</h3>
+                    <p>
+                      Quando houver aulas, encontros ou tutorias confirmadas, o próximo compromisso aparecerá aqui.
+                    </p>
+                  </div>
+                  <Link className={styles.secondaryLink} href="/calendario">
+                    Ver calendário
+                  </Link>
+                </Card>
+              )}
+            </section>
 
-        <section aria-labelledby="grupos-title" id="grupos">
-          <div className={styles.sectionHeadingRow}>
-            <h2 className={styles.sectionTitle} id="grupos-title">
-              Meus grupos de estudo
-            </h2>
-            <Link href="/grupos?view=discover">Descobrir grupos</Link>
+            <section className={styles.section} aria-labelledby="agenda-title">
+              <div className={styles.sectionHeading}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Próximos dias</p>
+                  <h2 id="agenda-title">Agenda</h2>
+                </div>
+              </div>
+
+              {agenda.length ? (
+                <Card className={styles.agendaCard}>
+                  {agenda.map((event) => (
+                    <Link className={styles.agendaRow} href={event.href} key={event.id}>
+                      <div className={styles.eventIcon}>
+                        {event.type === "Aula" ? (
+                          <BookOpenText aria-hidden size={19} />
+                        ) : event.type === "Encontro" ? (
+                          <UsersThree aria-hidden size={19} />
+                        ) : (
+                          <GraduationCap aria-hidden size={19} />
+                        )}
+                      </div>
+                      <div>
+                        <strong>{event.title}</strong>
+                        <span>{event.context}</span>
+                      </div>
+                      <time dateTime={event.startsAt}>
+                        {formatCompactDate(event.startsAt)}
+                        <small>{formatTime(event.startsAt)}</small>
+                      </time>
+                    </Link>
+                  ))}
+                </Card>
+              ) : (
+                <p className={styles.inlineEmpty}>
+                  Nenhum outro compromisso agendado nos próximos 45 dias.
+                </p>
+              )}
+            </section>
           </div>
-          <article className={`${styles.card} ${styles.groupCard}`}>
-            <div className={styles.groupHeading}>
-              <h3>Comunidade MSD — C8</h3>
-              <span>Organizador</span>
-            </div>
-            <p className={styles.groupStats}>
-              <span>
-                <UsersThree aria-hidden size={17} /> 12 membros
-              </span>
-              <span>
-                <Hash aria-hidden size={17} /> 4 canais
-              </span>
-            </p>
-            <div className={styles.meetingBox}>
-              <span>Próximo encontro</span>
-              <strong>Revisão de Filas M/M/1</strong>
-              <p>
-                <CalendarBlank aria-hidden size={16} /> 31/08/2026, 19h–20h • Online
-              </p>
-            </div>
-            <div className={styles.topics}>
-              <h4>Assuntos em discussão</h4>
-              <Link href="/grupos/comunidade-msd-c8"># geral</Link>
-              <Link href="/grupos/comunidade-msd-c8"># filas-mm1</Link>
-              <Link href="/grupos/comunidade-msd-c8"># modelo-analitico</Link>
-            </div>
-            <div className={styles.groupActions}>
-              <Link className={styles.primaryAction} href="/grupos/comunidade-msd-c8">
-                Abrir grupo
-              </Link>
-              <Link className={styles.secondaryAction} href="/grupos/comunidade-msd-c8#encontro">
-                Detalhes do encontro
-              </Link>
-            </div>
-          </article>
-        </section>
-      </aside>
+
+          <aside className={styles.sideColumn}>
+            <section className={styles.section} aria-labelledby="groups-title">
+              <div className={styles.sectionHeading}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Estudo em grupo</p>
+                  <h2 id="groups-title">Minhas comunidades</h2>
+                </div>
+                <Link href="/grupos">Ver todas</Link>
+              </div>
+
+              {data?.groups.length ? (
+                <div className={styles.compactList}>
+                  {data.groups.slice(0, 3).map((group) => (
+                    <Card className={styles.compactCard} key={group.id}>
+                      <div>
+                        <strong>{group.name}</strong>
+                        <span>{group.subject}</span>
+                        <small>{group.section} · {group.term}</small>
+                      </div>
+                      <Link href={`/grupos/${group.id}`}>Abrir</Link>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className={styles.emptyCard}>
+                  <UsersThree aria-hidden size={30} />
+                  <div>
+                    <h3>Nenhuma comunidade ainda</h3>
+                    <p>Encontre grupos relacionados às disciplinas que você estuda.</p>
+                  </div>
+                  <Link className={styles.secondaryLink} href="/grupos?view=discover">
+                    Descobrir comunidades
+                  </Link>
+                </Card>
+              )}
+            </section>
+
+            <section className={styles.section} aria-labelledby="tutoring-title">
+              <div className={styles.sectionHeading}>
+                <div>
+                  <p className={styles.sectionEyebrow}>Apoio acadêmico</p>
+                  <h2 id="tutoring-title">Próximas tutorias</h2>
+                </div>
+                <Link href="/sessoes">Explorar</Link>
+              </div>
+
+              {data?.tutoring.length ? (
+                <div className={styles.compactList}>
+                  {data.tutoring.slice(0, 2).map((booking) => (
+                    <Card className={styles.compactCard} key={booking.booking_id}>
+                      <div>
+                        <strong>{booking.session.title}</strong>
+                        <span>{booking.session.subject_name}</span>
+                        <small>
+                          {formatCompactDate(booking.session.starts_at)} · {formatTime(booking.session.starts_at)}
+                        </small>
+                      </div>
+                      <Link href={`/sessoes/${booking.session_id}`}>Abrir</Link>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className={styles.emptyCard}>
+                  <Storefront aria-hidden size={30} />
+                  <div>
+                    <h3>Nenhuma tutoria reservada</h3>
+                    <p>Explore o marketplace quando precisar de apoio em uma disciplina.</p>
+                  </div>
+                  <Link className={styles.secondaryLink} href="/sessoes">
+                    Explorar tutorias
+                  </Link>
+                </Card>
+              )}
+            </section>
+          </aside>
+        </div>
+      )}
     </div>
   );
+}
+
+function formatLongDate(iso: string) {
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "long",
+  });
+}
+
+function formatCompactDate(iso: string) {
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
