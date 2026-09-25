@@ -127,121 +127,6 @@ class CommunityRepository(Protocol):
     def invitation_record(self, invitation: GroupInvitation) -> GroupInvitationRecord: ...
     def accept_invitation(self, invitation: GroupInvitation) -> GroupInvitation: ...
     def cancel_invitation(self, invitation: GroupInvitation) -> GroupInvitation: ...
-    def leave_member(self, member: GroupMember) -> GroupMember:
-        member.status = MembershipStatus.LEFT.value
-        member.ended_at = datetime.now(UTC)
-        member.removed_by = None
-        self._session.flush()
-        return member
-
-    def find_user_by_email(self, email: str) -> User | None:
-        stmt = select(User).where(
-            func.lower(User.email) == email.strip().lower(),
-            User.is_active.is_(True),
-            User.deleted_at.is_(None),
-        )
-        return self._session.scalar(stmt)
-
-    def expire_invitations(
-        self, group_id: UUID, invited_user_id: UUID | None = None
-    ) -> None:
-        stmt = select(GroupInvitation).where(
-            GroupInvitation.group_id == group_id,
-            GroupInvitation.status == "pending",
-            GroupInvitation.expires_at <= datetime.now(UTC),
-        )
-        if invited_user_id is not None:
-            stmt = stmt.where(GroupInvitation.invited_user_id == invited_user_id)
-        for invitation in self._session.scalars(stmt.with_for_update()):
-            invitation.status = "expired"
-        self._session.flush()
-
-    def create_group_invitation(
-        self,
-        group_id: UUID,
-        invited_user_id: UUID,
-        created_by: UUID,
-        token_hash: str,
-        expires_at: datetime,
-    ) -> GroupInvitation:
-        invitation = GroupInvitation(
-            id=uuid4(),
-            group_id=group_id,
-            invited_user_id=invited_user_id,
-            created_by=created_by,
-            token_hash=token_hash,
-            status="pending",
-            expires_at=expires_at,
-            created_at=datetime.now(UTC),
-        )
-        self._session.add(invitation)
-        try:
-            self._session.flush()
-        except IntegrityError as exc:
-            constraint = getattr(getattr(exc.orig, "diag", None), "constraint_name", None)
-            if constraint == "uq_group_invitations_pending_user":
-                raise CommunityError(
-                    "Já existe um convite pendente para esta pessoa.", 409
-                ) from None
-            raise
-        return invitation
-
-    def invitation_record(self, invitation: GroupInvitation) -> GroupInvitationRecord:
-        row = self._session.execute(
-            select(StudyGroup.name, User.email, UserProfile.display_name)
-            .join(User, User.id == invitation.invited_user_id)
-            .outerjoin(UserProfile, UserProfile.user_id == User.id)
-            .where(StudyGroup.id == invitation.group_id)
-        ).one()
-        group_name, email, display_name = row
-        return GroupInvitationRecord(
-            invitation=invitation,
-            group_name=group_name,
-            invited_email=email,
-            invited_display_name=display_name or email.split("@", 1)[0],
-        )
-
-    def list_group_invitations(self, group_id: UUID) -> list[GroupInvitationRecord]:
-        invitations = list(
-            self._session.scalars(
-                select(GroupInvitation)
-                .where(GroupInvitation.group_id == group_id)
-                .order_by(GroupInvitation.created_at.desc(), GroupInvitation.id.desc())
-                .limit(100)
-            )
-        )
-        return [self.invitation_record(invitation) for invitation in invitations]
-
-    def find_invitation_by_id(
-        self, invitation_id: UUID, lock: bool = False
-    ) -> GroupInvitation | None:
-        stmt = select(GroupInvitation).where(GroupInvitation.id == invitation_id)
-        if lock:
-            stmt = stmt.with_for_update()
-        return self._session.scalar(stmt)
-
-    def find_invitation_by_token_hash(
-        self, token_hash: str, lock: bool = False
-    ) -> GroupInvitation | None:
-        stmt = select(GroupInvitation).where(GroupInvitation.token_hash == token_hash)
-        if lock:
-            stmt = stmt.with_for_update()
-        return self._session.scalar(stmt)
-
-    def accept_invitation(self, invitation: GroupInvitation) -> GroupInvitation:
-        invitation.status = "accepted"
-        invitation.accepted_at = datetime.now(UTC)
-        invitation.cancelled_at = None
-        self._session.flush()
-        return invitation
-
-    def cancel_invitation(self, invitation: GroupInvitation) -> GroupInvitation:
-        invitation.status = "cancelled"
-        invitation.cancelled_at = datetime.now(UTC)
-        invitation.accepted_at = None
-        self._session.flush()
-        return invitation
-
     def check_discipline_exists(self, discipline_id: UUID) -> bool: ...
     def check_offering_belongs_to_discipline(self, offering_id: UUID,
                                              discipline_id: UUID) -> bool: ...
@@ -817,6 +702,122 @@ class SqlAlchemyCommunityRepository:
         member.removed_by = remover_id
         self._session.flush()
         return member
+
+    def leave_member(self, member: GroupMember) -> GroupMember:
+        member.status = MembershipStatus.LEFT.value
+        member.ended_at = datetime.now(UTC)
+        member.removed_by = None
+        self._session.flush()
+        return member
+
+    def find_user_by_email(self, email: str) -> User | None:
+        stmt = select(User).where(
+            func.lower(User.email) == email.strip().lower(),
+            User.is_active.is_(True),
+            User.deleted_at.is_(None),
+        )
+        return self._session.scalar(stmt)
+
+    def expire_invitations(
+        self, group_id: UUID, invited_user_id: UUID | None = None
+    ) -> None:
+        stmt = select(GroupInvitation).where(
+            GroupInvitation.group_id == group_id,
+            GroupInvitation.status == "pending",
+            GroupInvitation.expires_at <= datetime.now(UTC),
+        )
+        if invited_user_id is not None:
+            stmt = stmt.where(GroupInvitation.invited_user_id == invited_user_id)
+        for invitation in self._session.scalars(stmt.with_for_update()):
+            invitation.status = "expired"
+        self._session.flush()
+
+    def create_group_invitation(
+        self,
+        group_id: UUID,
+        invited_user_id: UUID,
+        created_by: UUID,
+        token_hash: str,
+        expires_at: datetime,
+    ) -> GroupInvitation:
+        invitation = GroupInvitation(
+            id=uuid4(),
+            group_id=group_id,
+            invited_user_id=invited_user_id,
+            created_by=created_by,
+            token_hash=token_hash,
+            status="pending",
+            expires_at=expires_at,
+            created_at=datetime.now(UTC),
+        )
+        self._session.add(invitation)
+        try:
+            self._session.flush()
+        except IntegrityError as exc:
+            constraint = getattr(getattr(exc.orig, "diag", None), "constraint_name", None)
+            if constraint == "uq_group_invitations_pending_user":
+                raise CommunityError(
+                    "Já existe um convite pendente para esta pessoa.", 409
+                ) from None
+            raise
+        return invitation
+
+    def invitation_record(self, invitation: GroupInvitation) -> GroupInvitationRecord:
+        row = self._session.execute(
+            select(StudyGroup.name, User.email, UserProfile.display_name)
+            .select_from(StudyGroup)
+            .join(User, User.id == invitation.invited_user_id)
+            .outerjoin(UserProfile, UserProfile.user_id == User.id)
+            .where(StudyGroup.id == invitation.group_id)
+        ).one()
+        group_name, email, display_name = row
+        return GroupInvitationRecord(
+            invitation=invitation,
+            group_name=group_name,
+            invited_email=email,
+            invited_display_name=display_name or email.split("@", 1)[0],
+        )
+
+    def list_group_invitations(self, group_id: UUID) -> list[GroupInvitationRecord]:
+        invitations = list(
+            self._session.scalars(
+                select(GroupInvitation)
+                .where(GroupInvitation.group_id == group_id)
+                .order_by(GroupInvitation.created_at.desc(), GroupInvitation.id.desc())
+                .limit(100)
+            )
+        )
+        return [self.invitation_record(invitation) for invitation in invitations]
+
+    def find_invitation_by_id(
+        self, invitation_id: UUID, lock: bool = False
+    ) -> GroupInvitation | None:
+        stmt = select(GroupInvitation).where(GroupInvitation.id == invitation_id)
+        if lock:
+            stmt = stmt.with_for_update()
+        return self._session.scalar(stmt)
+
+    def find_invitation_by_token_hash(
+        self, token_hash: str, lock: bool = False
+    ) -> GroupInvitation | None:
+        stmt = select(GroupInvitation).where(GroupInvitation.token_hash == token_hash)
+        if lock:
+            stmt = stmt.with_for_update()
+        return self._session.scalar(stmt)
+
+    def accept_invitation(self, invitation: GroupInvitation) -> GroupInvitation:
+        invitation.status = "accepted"
+        invitation.accepted_at = datetime.now(UTC)
+        invitation.cancelled_at = None
+        self._session.flush()
+        return invitation
+
+    def cancel_invitation(self, invitation: GroupInvitation) -> GroupInvitation:
+        invitation.status = "cancelled"
+        invitation.cancelled_at = datetime.now(UTC)
+        invitation.accepted_at = None
+        self._session.flush()
+        return invitation
 
     def check_discipline_exists(self, discipline_id: UUID) -> bool:
         return self._session.get(Subject, discipline_id) is not None
