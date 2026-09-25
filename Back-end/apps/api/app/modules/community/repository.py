@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.modules.academic.models import AcademicTerm, ClassSection, Subject
+from app.modules.academic.models import AcademicTerm, ClassSection, Subject, Teacher, ClassSectionTeacher
 from app.modules.community.errors import CommunityError, CommunityPersistenceError
 from app.modules.community.models import (
     AttendanceAdjustmentOutcome,
@@ -79,8 +79,10 @@ class CommunityRepository(Protocol):
     def count_active_members(self, group_id: UUID) -> int: ...
     def search_public_groups(self, subject: str | None, period: str | None,
                              topic: str | None, offset: int,
-                             limit: int) -> list[GroupDiscoveryRecord]: ...
+                             limit: int, subject_id: UUID | None = None, class_section_id: UUID | None = None,
+                             teacher_id: UUID | None = None, subject_topic_id: UUID | None = None) -> list[GroupDiscoveryRecord]: ...
     def create_group(self, owner_id: UUID, data: GroupCreate) -> StudyGroup: ...
+    def set_group_subject_topics(self, group: StudyGroup, topic_ids: list[UUID]) -> None: ...
     def update_group(self, group: StudyGroup, updates: dict[str, Any]) -> StudyGroup: ...
     def activate_member(self, group_id: UUID, user_id: UUID) -> GroupMember: ...
     def create_join_request(self, group_id: UUID, user_id: UUID) -> GroupJoinRequest: ...
@@ -226,6 +228,7 @@ class SqlAlchemyCommunityRepository:
         return meeting
 
     def set_meeting_topics(self, group_id: UUID, meeting_id: UUID, topic_ids: list[UUID]) -> None:
+        self._session.execute(select(StudyGroup.id).where(StudyGroup.id == group_id).with_for_update())
         if len(topic_ids) != len(set(topic_ids)):
             raise CommunityError("Não repita tópicos no encontro.", 422)
         if topic_ids:
@@ -347,7 +350,8 @@ class SqlAlchemyCommunityRepository:
 
     def search_public_groups(self, subject: str | None, period: str | None,
                              topic: str | None, offset: int,
-                             limit: int) -> list[GroupDiscoveryRecord]:
+                             limit: int, subject_id: UUID | None = None, class_section_id: UUID | None = None,
+                             teacher_id: UUID | None = None, subject_topic_id: UUID | None = None) -> list[GroupDiscoveryRecord]:
         stmt = (
             select(StudyGroup, Subject.name, Subject.code, AcademicTerm.label)
             .join(Subject, Subject.id == StudyGroup.subject_id)
@@ -368,11 +372,91 @@ class SqlAlchemyCommunityRepository:
             stmt = stmt.where(AcademicTerm.label.ilike(self._pattern(period), escape="\\"))
         if topic and topic.strip():
             pattern = self._pattern(topic)
+            linked_topic = exists(select(GroupTopic.id)
+                .outerjoin(SubjectTopic, SubjectTopic.id == GroupTopic.subject_topic_id)
+                .outerjoin(Topic, Topic.id == SubjectTopic.topic_id)
+                .where(GroupTopic.group_id == StudyGroup.id, or_(
+                    GroupTopic.custom_title.ilike(pattern, escape="\\"),
+                    Topic.name.ilike(pattern, escape="\\"),
+                )))
             stmt = stmt.where(or_(StudyGroup.name.ilike(pattern, escape="\\"),
-                                  StudyGroup.description.ilike(pattern, escape="\\")))
+                                  StudyGroup.description.ilike(pattern, escape="\\"), linked_topic))
+        self._validate_discovery_filters(subject_id, class_section_id, teacher_id, subject_topic_id)
+        if subject_id is not None:
+            stmt = stmt.where(StudyGroup.subject_id == subject_id)
+        if class_section_id is not None:
+            stmt = stmt.where(StudyGroup.class_section_id == class_section_id)
+        if teacher_id is not None:
+            # Include historical assignments: discovery also supports past academic terms.
+            stmt = stmt.where(exists(select(ClassSectionTeacher.id).where(
+                ClassSectionTeacher.class_section_id == StudyGroup.class_section_id,
+                ClassSectionTeacher.teacher_id == teacher_id,
+            )))
+        if subject_topic_id is not None:
+            stmt = stmt.where(exists(select(GroupTopic.id).where(
+                GroupTopic.group_id == StudyGroup.id,
+                GroupTopic.subject_topic_id == subject_topic_id,
+            )))
         rows = self._session.execute(stmt.offset(offset).limit(limit)).all()
         return [GroupDiscoveryRecord(group, subject_name, subject_code, term_label)
                 for group, subject_name, subject_code, term_label in rows]
+
+    def _validate_discovery_filters(self, subject_id, section_id, teacher_id, subject_topic_id):
+        def required(model, item_id):
+            item = self._session.get(model, item_id) if item_id is not None else None
+            if item_id is not None and item is None:
+                raise CommunityError("Filtro acadêmico inexistente. Atualize as opções e tente novamente.", 422)
+            return item
+
+        required(Subject, subject_id)
+        section = required(ClassSection, section_id)
+        teacher = required(Teacher, teacher_id)
+        topic = required(SubjectTopic, subject_topic_id)
+        disciplines = {item for item in (subject_id, section.subject_id if section else None,
+                                        topic.subject_id if topic else None) if item is not None}
+        if len(disciplines) > 1:
+            raise CommunityError("Disciplina, turma e assunto devem pertencer à mesma disciplina.", 422)
+        if teacher is not None and (section is not None or disciplines):
+            assignment = select(ClassSectionTeacher.id).join(
+                ClassSection, ClassSection.id == ClassSectionTeacher.class_section_id
+            ).where(ClassSectionTeacher.teacher_id == teacher_id)
+            if section is not None:
+                assignment = assignment.where(ClassSection.id == section.id)
+            elif disciplines:
+                assignment = assignment.where(ClassSection.subject_id == next(iter(disciplines)))
+            if self._session.scalar(assignment.limit(1)) is None:
+                raise CommunityError("O professor não está vinculado à turma ou disciplina selecionada.", 422)
+
+    def set_group_subject_topics(self, group: StudyGroup, topic_ids: list[UUID]) -> None:
+        # Serialize changes with creation of group topics and preserve referenced history.
+        self._session.execute(select(StudyGroup.id).where(StudyGroup.id == group.id).with_for_update())
+        if len(topic_ids) != len(set(topic_ids)):
+            raise CommunityError("Não repita assuntos na seleção.", 422)
+        valid = set(self._session.scalars(select(SubjectTopic.id).where(
+            SubjectTopic.subject_id == group.subject_id, SubjectTopic.id.in_(topic_ids))))
+        if valid != set(topic_ids):
+            raise CommunityError("Selecione assuntos pertencentes à disciplina do grupo.", 422)
+        existing = list(self._session.scalars(select(GroupTopic).where(
+            GroupTopic.group_id == group.id, GroupTopic.subject_topic_id.is_not(None)).with_for_update()))
+        for item in existing:
+            if item.subject_topic_id in valid:
+                continue
+            referenced = any(self._session.scalar(select(model.group_topic_id).where(
+                model.group_topic_id == item.id).limit(1)) is not None
+                for model in (Channel, ScheduledLessonTopic, OccurrenceTopic, StudentTopicProgress))
+            meeting_reference = self._session.scalar(select(MeetingTopic.meeting_id).join(
+                Meeting, Meeting.id == MeetingTopic.meeting_id).where(
+                    Meeting.group_id == group.id, MeetingTopic.subject_topic_id == item.subject_topic_id).limit(1))
+            if referenced or meeting_reference is not None:
+                raise CommunityError("Um assunto selecionado já é usado em canais, aulas, encontros ou progresso e não pode ser removido.", 409)
+            self._session.delete(item)
+        existing_ids = {item.subject_topic_id for item in existing}
+        for topic_id in valid - existing_ids:
+            self._session.add(GroupTopic(group_id=group.id, subject_id=group.subject_id, subject_topic_id=topic_id))
+        try:
+            self._session.flush()
+        except IntegrityError:
+            raise CommunityError("Os assuntos estão em uso ou foram alterados. Atualize o grupo antes de tentar novamente.", 409) from None
 
     def create_group(self, owner_id: UUID, data: GroupCreate) -> StudyGroup:
         group_id = uuid4()

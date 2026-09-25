@@ -5,6 +5,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Enum,
     ForeignKeyConstraint,
     Index,
     String,
@@ -187,3 +188,41 @@ class Course(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class Teacher(Base):
+    __tablename__ = "teachers"
+    __table_args__ = (
+        ForeignKeyConstraint(["institution_id"], ["institutions.id"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="SET NULL"),
+        UniqueConstraint("id", "institution_id", name="uq_teachers_id_institution"),
+        UniqueConstraint("institution_id", "user_id", name="uq_teachers_institution_user"),
+        UniqueConstraint("institution_id", "external_code", name="uq_teachers_institution_code"),
+        Index("ix_teachers_lower_name", text("lower(full_name)")),
+    )
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    institution_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    user_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    full_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    external_code: Mapped[str | None] = mapped_column(String(50))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ClassSectionTeacher(Base):
+    __tablename__ = "class_section_teachers"
+    __table_args__ = (
+        ForeignKeyConstraint(["class_section_id", "institution_id"], ["class_sections.id", "class_sections.institution_id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["teacher_id", "institution_id"], ["teachers.id", "teachers.institution_id"], ondelete="RESTRICT"),
+        UniqueConstraint("class_section_id", "teacher_id", "starts_on", name="uq_section_teacher_start"),
+        CheckConstraint("ends_on IS NULL OR ends_on >= starts_on", name="chk_section_teachers_date_range"),
+        Index("ix_class_section_teachers_teacher_id", "teacher_id"),
+    )
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    class_section_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    teacher_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    institution_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    role: Mapped[str] = mapped_column(Enum("lead", "assistant", "substitute", name="section_teacher_role"), server_default="lead")
+    starts_on: Mapped[date] = mapped_column(Date, nullable=False)
+    ends_on: Mapped[date | None] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
