@@ -200,13 +200,30 @@ export function GroupMeetings({ groupId, canManage }: { groupId: string; canMana
         </div>
       )}
       {editor ? (
-        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setEditor(null); }}>
-          <section className={s.modal} role="dialog" aria-modal="true" aria-labelledby="meeting-editor-title">
-            {error ? <Failure error={error} /> : null}
-            <h2 id="meeting-editor-title">{editor.kind === "edit" ? "Editar encontro" : "Agendar encontro"}</h2>
-            <MeetingForm groupId={groupId} topics={remote.data?.topics ?? []} initial={editor.kind === "edit" ? editor.meeting : undefined} busy={busy} onCancel={() => setEditor(null)} onSubmit={(input) => submitMeeting(input, editor.kind === "edit" ? editor.meeting : undefined)} />
-          </section>
-        </div>
+        <Dialog
+          onClose={() => {
+            if (!busy) setEditor(null);
+          }}
+          titleId="meeting-editor-title"
+        >
+          {error ? <Failure error={error} /> : null}
+          <h2 id="meeting-editor-title">
+            {editor.kind === "edit" ? "Editar encontro" : "Agendar encontro"}
+          </h2>
+          <MeetingForm
+            groupId={groupId}
+            topics={remote.data?.topics ?? []}
+            initial={editor.kind === "edit" ? editor.meeting : undefined}
+            busy={busy}
+            onCancel={() => setEditor(null)}
+            onSubmit={(input) =>
+              submitMeeting(
+                input,
+                editor.kind === "edit" ? editor.meeting : undefined,
+              )
+            }
+          />
+        </Dialog>
       ) : null}
       {cancelTarget ? (
         <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setCancelTarget(null); }}>
