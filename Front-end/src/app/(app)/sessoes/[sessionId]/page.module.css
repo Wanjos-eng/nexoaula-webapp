@@ -287,10 +287,10 @@
   font-size: var(--font-size-section-title);
 }
 
-.stateActions {
-  display: flex !important;
+.stateCard > .stateActions {
+  display: flex;
   align-items: center;
-  gap: var(--space-3) !important;
+  gap: var(--space-3);
 }
 
 .stateActions a {
