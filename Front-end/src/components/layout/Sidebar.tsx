@@ -61,7 +61,7 @@ export function Sidebar({ closeButtonRef, isOpen, onClose }: SidebarProps) {
         aria-label="Fechar menu de navegação"
         className={`${styles.backdrop} ${isOpen ? styles.backdropVisible : ""}`}
         onClick={onClose}
-        tabIndex={isOpen ? 0 : -1}
+        tabIndex={-1}
         type="button"
       />
       <aside
