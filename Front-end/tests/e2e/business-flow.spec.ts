@@ -79,9 +79,9 @@ test("publicação, inscrição e histórico persistidos entre tutor e alunos re
     await student.getByRole("button", { name: "Confirmar reserva", exact: true }).click();
     await expect(receipt).toBeVisible();
     await student.goto("/sessoes/minhas"); await student.reload();
-    const history = student.getByRole("list", { name: "Histórico de inscrições" });
+    await student.getByRole("tab", { name: /Histórico/ }).click();\n    const history = student.getByRole("list", { name: "Histórico de tutorias" });
     await expect(history.getByRole("listitem")).toHaveCount(2);
-    await expect(history).toContainText("Cancelada"); await expect(history).toContainText("Confirmada");
+    await expect(history).toContainText("Cancelada"); await expect(history).toContainText("Concluída");
     const persisted = await student.request.get("/api/v1/marketplace/bookings/mine");
     const records = await persisted.json();
     expect(records).toHaveLength(2);
