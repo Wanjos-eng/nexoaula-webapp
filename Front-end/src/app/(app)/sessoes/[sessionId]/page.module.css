@@ -223,6 +223,12 @@
   font-size: var(--font-size-caption);
 }
 
+.receiptFootnote {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  line-height: 1.45;
+}
+
 .successLinks {
   display: grid;
   gap: var(--space-2);
@@ -355,6 +361,15 @@
   font-size: var(--font-size-small);
   font-weight: 700;
   text-align: right;
+}
+
+.summaryFinancial {
+  color: var(--color-text-muted);
+}
+
+.summaryFinancial dd {
+  color: var(--color-text-muted);
+  font-weight: 600;
 }
 
 .summaryTotal {

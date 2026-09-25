@@ -119,6 +119,12 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
   const isUnavailable =
     isFull || ownOffer || session.status !== "scheduled" || hasStarted;
   const amount = receipt?.transaction.amount_cents ?? session.price_cents;
+  const commission =
+    receipt?.transaction.commission_cents ?? session.commission_cents;
+  const tutorNet = Math.max(0, amount - commission);
+  const transactionRef = receipt?.transaction.id
+    ? receipt.transaction.id.slice(-8).toUpperCase()
+    : null;
   const starts = new Date(session.starts_at);
   const ends = new Date(session.ends_at);
 
@@ -261,7 +267,7 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
             <div className={styles.demoNotice}>
               <Storefront aria-hidden size={17} />
               <p>
-                Ambiente demonstrativo. Nenhuma cobrança real será realizada.
+                Simulação acadêmica. Nenhum pagamento real será processado.
               </p>
             </div>
 
@@ -285,19 +291,42 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
               >
                 <CheckCircle aria-hidden size={34} weight="fill" />
                 <div>
-                  <h2>Vaga reservada</h2>
-                  <p>Sua participação nesta tutoria está confirmada.</p>
+                  <h2>Inscrição confirmada</h2>
+                  <p>
+                    A reserva foi registrada e um recibo demonstrativo foi gerado.
+                  </p>
                 </div>
-                <dl className={styles.receipt}>
+                <dl
+                  aria-label="Recibo financeiro demonstrativo"
+                  className={styles.receipt}
+                >
                   <div>
-                    <dt>Valor</dt>
+                    <dt>Valor da sessão</dt>
                     <dd>{formatCents(amount, session.currency)}</dd>
                   </div>
                   <div>
-                    <dt>Status</dt>
-                    <dd>Confirmada</dd>
+                    <dt>Comissão NexoAula (15%)</dt>
+                    <dd>{formatCents(commission, session.currency)}</dd>
                   </div>
+                  <div>
+                    <dt>Líquido do tutor</dt>
+                    <dd>{formatCents(tutorNet, session.currency)}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>Simulada · concluída</dd>
+                  </div>
+                  {transactionRef ? (
+                    <div>
+                      <dt>Referência</dt>
+                      <dd>#{transactionRef}</dd>
+                    </div>
+                  ) : null}
                 </dl>
+                <p className={styles.receiptFootnote}>
+                  A comissão já está incluída no valor da sessão e não aumenta o
+                  total demonstrativo do estudante.
+                </p>
                 {receipt?.notice ? (
                   <p className={styles.receiptNotice}>{receipt.notice}</p>
                 ) : null}
@@ -374,12 +403,16 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
           <div className={styles.dialogContent}>
             <div>
               <p className={styles.dialogEyebrow}>Resumo da reserva</p>
-              <h2 id="reserve-dialog-title">Confirmar reserva</h2>
+              <h2 id="reserve-dialog-title">Revisar simulação</h2>
               <p id="reserve-dialog-description">
-                Revise os dados antes de confirmar sua vaga.
+                Confira a reserva e como o valor seria distribuído nesta
+                demonstração.
               </p>
             </div>
-            <dl className={styles.summary}>
+            <dl
+              aria-label="Resumo financeiro demonstrativo"
+              className={styles.summary}
+            >
               <div>
                 <dt>Tutoria</dt>
                 <dd>{session.title}</dd>
@@ -402,13 +435,34 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
                   })}
                 </dd>
               </div>
+              <div>
+                <dt>Valor da sessão</dt>
+                <dd>{formatCents(session.price_cents, session.currency)}</dd>
+              </div>
+              <div className={styles.summaryFinancial}>
+                <dt>Comissão NexoAula (15%)</dt>
+                <dd>{formatCents(session.commission_cents, session.currency)}</dd>
+              </div>
+              <div className={styles.summaryFinancial}>
+                <dt>Tutor receberia</dt>
+                <dd>
+                  {formatCents(
+                    Math.max(
+                      0,
+                      session.price_cents - session.commission_cents,
+                    ),
+                    session.currency,
+                  )}
+                </dd>
+              </div>
               <div className={styles.summaryTotal}>
-                <dt>Total</dt>
+                <dt>Total demonstrativo</dt>
                 <dd>{formatCents(session.price_cents, session.currency)}</dd>
               </div>
             </dl>
             <p className={styles.dialogNotice}>
-              Ambiente demonstrativo. Nenhuma cobrança real será realizada.
+              Esta é uma simulação acadêmica. Nenhum pagamento, cartão, Pix ou
+              dado bancário será solicitado ou processado.
             </p>
             <div className={styles.dialogActions}>
               <Button
@@ -424,7 +478,7 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
                 onClick={confirmReservation}
                 type="button"
               >
-                Confirmar reserva
+                Confirmar simulação
               </Button>
             </div>
           </div>
@@ -442,7 +496,9 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
               <p className={styles.dialogEyebrow}>Sua reserva</p>
               <h2 id="cancel-dialog-title">Cancelar reserva?</h2>
               <p id="cancel-dialog-description">
-                A vaga será liberada imediatamente para outra pessoa.
+                A vaga será liberada imediatamente. Como não houve cobrança
+                real, não existe reembolso; o recibo demonstrativo permanece no
+                histórico.
               </p>
             </div>
             <div className={styles.dialogActions}>
