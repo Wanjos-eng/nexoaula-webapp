@@ -23,6 +23,7 @@ type ToastInput = {
 
 type ToastItem = Required<Pick<ToastInput, "message" | "variant">> & {
   id: number;
+  closing: boolean;
 };
 
 type ToastContextValue = {
@@ -35,17 +36,30 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const nextId = useRef(1);
   const timers = useRef(new Map<number, number>());
+  const exitTimers = useRef(new Map<number, number>());
 
   const dismiss = useCallback((id: number) => {
     const timer = timers.current.get(id);
     if (timer) window.clearTimeout(timer);
     timers.current.delete(id);
-    setItems((current) => current.filter((item) => item.id !== id));
+
+    setItems((current) =>
+      current.map((item) =>
+        item.id === id ? { ...item, closing: true } : item,
+      ),
+    );
+
+    if (exitTimers.current.has(id)) return;
+    const exitTimer = window.setTimeout(() => {
+      setItems((current) => current.filter((item) => item.id !== id));
+      exitTimers.current.delete(id);
+    }, 140);
+    exitTimers.current.set(id, exitTimer);
   }, []);
 
   const showToast = useCallback(({ duration = 4000, message, variant = "info" }: ToastInput) => {
     const id = nextId.current++;
-    setItems((current) => [...current, { id, message, variant }]);
+    setItems((current) => [...current, { closing: false, id, message, variant }]);
     const timer = window.setTimeout(() => dismiss(id), duration);
     timers.current.set(id, timer);
     return id;
@@ -53,9 +67,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const activeTimers = timers.current;
+    const activeExitTimers = exitTimers.current;
     return () => {
       activeTimers.forEach((timer) => window.clearTimeout(timer));
       activeTimers.clear();
+      activeExitTimers.forEach((timer) => window.clearTimeout(timer));
+      activeExitTimers.clear();
     };
   }, []);
 
@@ -65,7 +82,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div aria-label="Notificações" className={styles.viewport}>
         {items.map((item) => (
           <div
-            className={[styles.toast, styles[item.variant]].join(" ")}
+            className={[
+              styles.toast,
+              styles[item.variant],
+              item.closing ? styles.leaving : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             key={item.id}
             role={item.variant === "error" ? "alert" : "status"}
           >
