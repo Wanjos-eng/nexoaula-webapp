@@ -74,7 +74,6 @@ class GroupDiscoveryRecord:
 
 
 @dataclass(frozen=True)
-@dataclass(frozen=True)
 class GroupInvitationRecord:
     invitation: GroupInvitation
     group_name: str
@@ -82,6 +81,7 @@ class GroupInvitationRecord:
     invited_display_name: str
 
 
+@dataclass(frozen=True)
 class ChannelMessageRecord:
     message: ChannelMessage
     author_name: str
