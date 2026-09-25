@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 // Browser integration evidence with controlled HTTP responses; not a substitute for PostgreSQL E2E.
-for (const width of [1440, 390]) {
+for (const width of [1440, 1024, 768, 390]) {
   test(`perfil, criação, descoberta e participação em ${width}px`, async ({
     page,
   }, testInfo) => {
@@ -135,6 +135,9 @@ for (const width of [1440, 390]) {
         body = { status: "active" };
       } else if (path.endsWith("/groups/mine"))
         body = participation.status === "active" ? [group] : [];
+      else if (path.endsWith("/groups/me/lessons")) body = [];
+      else if (path.endsWith("/me/meetings")) body = [];
+      else if (path.endsWith("/marketplace/bookings/mine")) body = [];
       else if (path.endsWith("/groups") && request.method() === "POST") {
         group = { ...group, ...request.postDataJSON(), ownerId: "ana" };
         participation = {
@@ -174,7 +177,19 @@ for (const width of [1440, 390]) {
         style: "nextjs-portal { display: none; }",
       });
     };
+    await page.goto("/inicio");
+    await expect(page.getByRole("heading", { name: "Olá, Ana" })).toBeVisible();
+    await capture("home");
+
     await page.goto("/perfil");
+
+    if (width <= 820) {
+      const openMenu = page.getByRole("button", { name: "Abrir menu de navegação" });
+      const closeMenu = page.getByRole("button", { name: "Fechar menu", exact: true });
+      await openMenu.click();
+      await expect(closeMenu).toBeFocused();
+      await page.keyboard.press("Escape");
+    }
     await expect(
       page.getByRole("heading", { name: "Ana Silva" }),
     ).toBeVisible();
@@ -190,14 +205,14 @@ for (const width of [1440, 390]) {
       "Quero aprofundar meus estudos em cálculo.",
     );
     await capture("profile");
-    await page.getByRole("link", { name: "Explorar grupos" }).click();
+    await page.getByRole("link", { name: "Explorar comunidades" }).click();
     await page
-      .getByRole("button", { name: "Descobrir grupos", exact: true })
+      .getByRole("button", { name: "Descobrir", exact: true })
       .first()
       .click();
     await expect(page.getByRole("heading", { name: group.name })).toBeVisible();
     await capture("discovery");
-    await page.getByRole("link", { name: "Conhecer grupo" }).click();
+    await page.getByRole("link", { name: "Ver comunidade" }).click();
     await page.getByRole("button", { name: "Solicitar entrada" }).click();
     await expect(
       page.getByText(
@@ -206,23 +221,23 @@ for (const width of [1440, 390]) {
     ).toBeVisible();
     await page.reload();
     await expect(
-      page.getByText("Solicitação pendente", { exact: true }),
+      page.getByRole("heading", { name: "Solicitação pendente", exact: true }),
     ).toBeVisible();
     await capture("pending");
     await page.goto("/grupos/novo");
-    await expect(page.getByLabel("Nome do grupo *")).toBeVisible();
-    await page.getByLabel("Nome do grupo *").fill("Cálculo em companhia");
+    await expect(page.getByLabel("Nome da comunidade *")).toBeVisible();
+    await page.getByLabel("Nome da comunidade *").fill("Cálculo em companhia");
     await page
       .getByLabel("Disciplina *", { exact: true })
       .selectOption("subject");
     await page.getByLabel("Turma (opcional)").selectOption("section");
     await page.getByLabel("Descrição").fill(group.description);
-    await page.getByLabel("Combinados do grupo").fill(group.rules);
+    await page.getByLabel("Combinados da comunidade").fill(group.rules);
     await capture("create");
     await page
-      .getByRole("button", { name: "Criar grupo", exact: true })
+      .getByRole("button", { name: "Criar comunidade", exact: true })
       .click();
-    await page.getByRole("link", { name: "Acessar grupo" }).click();
+    await page.getByRole("link", { name: "Acessar comunidade" }).click();
     await expect(
       page.getByRole("heading", { name: "Gerenciar participantes" }),
     ).toBeVisible();
@@ -235,5 +250,18 @@ for (const width of [1440, 390]) {
         "Nenhuma solicitação pendente. Os novos pedidos aparecerão aqui.",
       ),
     ).toBeVisible();
+
+    await page.goto("/disciplinas");
+    await expect(
+      page.getByRole("heading", { name: "Minhas Disciplinas" }),
+    ).toBeVisible();
+    await expect(page.getByText("Professora Ada")).toBeVisible();
+    await capture("disciplines");
+
+    await page.goto("/calendario");
+    await expect(
+      page.getByRole("heading", { name: "Calendário" }),
+    ).toBeVisible();
+    await capture("calendar");
   });
 }

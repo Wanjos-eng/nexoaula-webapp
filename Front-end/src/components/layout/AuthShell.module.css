@@ -1,8 +1,9 @@
 .shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(360px, 40%) 1fr;
-  background: var(--color-surface);
+  grid-template-columns: minmax(380px, 42%) 1fr;
+  overflow: hidden;
+  background: var(--color-background);
 }
 
 .brandPanel {
@@ -10,117 +11,181 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 64px 64px 40px;
+  padding: 56px 56px 36px;
   overflow: hidden;
   color: white;
   background:
-    radial-gradient(circle at 4% 96%, rgb(2 140 76 / 16%), transparent 34%),
-    var(--color-graphite);
+    radial-gradient(circle at 8% 88%, rgb(2 140 76 / 24%), transparent 34%),
+    radial-gradient(circle at 88% 10%, rgb(253 158 0 / 10%), transparent 30%),
+    linear-gradient(145deg, #1c2421 0%, var(--color-graphite) 52%, #17221c 100%);
+}
+
+.brandPanel::before,
+.brandPanel::after {
+  position: absolute;
+  content: "";
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.brandPanel::before {
+  width: 260px;
+  height: 260px;
+  right: -130px;
+  top: 22%;
+  border: 1px solid rgb(255 255 255 / 6%);
+}
+
+.brandPanel::after {
+  width: 440px;
+  height: 440px;
+  right: -280px;
+  top: 12%;
+  border: 1px solid rgb(255 255 255 / 4%);
 }
 
 .desktopLogo {
-  width: 208px;
+  z-index: 1;
+  width: 190px;
   height: auto;
   object-fit: contain;
+  animation: auth-fade-down var(--motion-slow) var(--ease-standard);
 }
 
 .pitch {
   z-index: 1;
-  width: min(100%, 440px);
+  width: min(100%, 470px);
   margin: auto 0;
+  animation: auth-copy-in 360ms var(--ease-standard);
 }
 
 .pitch h1 {
-  max-width: 430px;
-  margin-bottom: 20px;
+  max-width: 450px;
+  margin-bottom: var(--space-5);
   color: white;
   font-weight: 700;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.03em;
 }
 
 .pitch .titleMedium {
-  max-width: 360px;
-  font-size: 1.75rem;
-  line-height: 1.25;
+  max-width: 410px;
+  font-size: clamp(1.9rem, 3vw, 2.35rem);
+  line-height: 1.15;
 }
 
 .pitch .titleLarge {
-  font-size: 2.25rem;
-  line-height: 1.2;
+  font-size: clamp(2rem, 3.4vw, 2.65rem);
+  line-height: 1.12;
 }
 
 .pitchStart {
-  margin: 64px 0 auto;
-}
-
-.pitch:not(.pitchStart) {
-  transform: translateY(14px);
+  margin: 72px 0 auto;
 }
 
 .pitch > p {
-  max-width: 430px;
-  margin-bottom: 36px;
-  color: rgb(255 255 255 / 74%);
-  font-size: 1.0625rem;
-  line-height: 1.55;
+  max-width: 440px;
+  margin-bottom: var(--space-8);
+  color: rgb(255 255 255 / 72%);
+  font-size: var(--font-size-body);
+  line-height: 1.65;
 }
 
 .pitch ul {
   display: grid;
-  gap: 20px;
+  gap: var(--space-4);
   list-style: none;
 }
 
 .pitch li {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: var(--space-3);
   color: rgb(255 255 255 / 90%);
-  font-size: 0.9375rem;
+  font-size: var(--font-size-small);
+  font-weight: 560;
   line-height: 1.5;
 }
 
 .pitch li svg {
   flex: 0 0 auto;
   margin-top: 1px;
-  color: #00a55a;
+  color: #19b66e;
 }
 
 .decoration {
   position: absolute;
-  right: -62px;
-  bottom: 8px;
+  right: -70px;
+  bottom: -18px;
   width: 340px;
   height: 340px;
-  color: rgb(255 255 255 / 4%);
+  color: rgb(255 255 255 / 3.5%);
   pointer-events: none;
 }
 
 .copyright {
   z-index: 1;
   color: rgb(255 255 255 / 42%);
-  font-size: 0.75rem;
+  font-size: var(--font-size-caption);
 }
 
 .formPanel {
+  position: relative;
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 40px;
-  background: var(--color-surface);
+  padding: 48px;
+  background:
+    radial-gradient(circle at 86% 12%, rgb(2 122 66 / 6%), transparent 24%),
+    var(--color-background);
 }
 
 .formContainer {
-  width: min(100%, 440px);
+  width: min(100%, 468px);
+  padding: 32px;
+  background: var(--color-surface);
+  border: 1px solid rgb(216 224 220 / 88%);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 22px 60px rgb(31 38 48 / 8%);
+  animation: auth-form-in 320ms var(--ease-standard);
 }
 
 .mobileLogo {
   display: none;
 }
 
+@keyframes auth-form-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes auth-copy-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes auth-fade-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 980px) {
+  .shell {
+    grid-template-columns: minmax(330px, 38%) 1fr;
+  }
+
+  .brandPanel {
+    padding-inline: 36px;
+  }
+
+  .formPanel {
+    padding-inline: 32px;
+  }
+}
+
 @media (max-width: 860px) {
   .shell {
     display: block;
+    overflow: visible;
   }
 
   .brandPanel {
@@ -131,16 +196,16 @@
     min-height: 100vh;
     align-content: center;
     justify-items: stretch;
-    gap: 36px;
+    gap: var(--space-6);
     padding: 28px 20px 40px;
     background:
-      linear-gradient(180deg, var(--color-surface-soft) 0, transparent 190px),
-      var(--color-surface);
+      linear-gradient(180deg, var(--color-surface-soft) 0, transparent 220px),
+      var(--color-background);
   }
 
   .mobileLogo {
     display: block;
-    width: min(100%, 440px);
+    width: min(100%, 468px);
     margin: 0 auto;
   }
 
@@ -154,8 +219,14 @@
   }
 }
 
-@media (min-width: 1400px) {
-  .pitch .titleMedium {
-    max-width: 430px;
+@media (max-width: 520px) {
+  .formPanel {
+    padding-inline: 16px;
+  }
+
+  .formContainer {
+    padding: 24px 20px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
   }
 }

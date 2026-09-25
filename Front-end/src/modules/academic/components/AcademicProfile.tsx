@@ -1,18 +1,33 @@
 "use client";
-import { useCallback, useRef, useState, type FormEvent } from "react";
+
+import { UserCircle } from "@phosphor-icons/react";
 import Link from "next/link";
+import {
+  useCallback,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
+
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/Toast";
 import { apiClient } from "@/lib/api";
+import { useAuthSession } from "@/modules/auth";
 import {
   catalog,
   read,
-  type Profile,
   type CatalogItem,
+  type Profile,
 } from "@/modules/groups/api";
 import { useRemote } from "@/modules/groups/useRemote";
-import { Failure, Loading } from "@/modules/groups/AsyncState";
-import s from "@/modules/groups/AcademicCommunity.module.css";
+import styles from "./AcademicWorkspace.module.css";
 
 export function AcademicProfile() {
+  const { user } = useAuthSession();
   const fetcher = useCallback(async (signal: AbortSignal) => {
     const [profile, institutions, courses] = await Promise.all([
       read<Profile>("academic/profile", signal),
@@ -21,53 +36,68 @@ export function AcademicProfile() {
     ]);
     return { profile, institutions, courses };
   }, []);
-  const remote = useRemote("profile", fetcher);
+
+  const remote = useRemote("profile", fetcher, true);
+
   return (
-    <div className={s.page}>
-      <header className={s.header}>
-        <div>
-          <p className={s.eyebrow}>Seu espaço acadêmico</p>
-          <h1>Meu perfil</h1>
-          <p>
-            Conte onde você estuda e quais assuntos despertam seu interesse.
-          </p>
-        </div>
-        <Link className={s.secondary} href="/grupos">
-          Explorar grupos
-        </Link>
-      </header>
+    <div className={styles.page}>
+      <PageHeader
+        actions={<Link href="/grupos">Explorar comunidades</Link>}
+        description="Mantenha seu contexto acadêmico atualizado para melhorar a descoberta de disciplinas e comunidades."
+        eyebrow="Seu espaço acadêmico"
+        title="Meu Perfil"
+      />
+
       {remote.loading ? (
-        <Loading />
+        <div className={styles.columns} role="status" aria-label="Carregando perfil">
+          <Skeleton variant="card" />
+          <Skeleton variant="card" />
+        </div>
       ) : remote.error ? (
-        <Failure error={remote.error} retry={remote.reload} />
+        <Card className={styles.stateCard}>
+          <UserCircle aria-hidden size={36} />
+          <div>
+            <h2>Não foi possível carregar seu perfil</h2>
+            <p>Atualize os dados e tente novamente.</p>
+          </div>
+          <Button onClick={remote.reload} size="sm" type="button" variant="secondary">
+            Tentar novamente
+          </Button>
+        </Card>
       ) : remote.data ? (
-        <ProfileForm {...remote.data} />
+        <ProfileForm {...remote.data} email={user.email} />
       ) : null}
     </div>
   );
 }
+
 function ProfileForm({
   profile,
   institutions,
   courses,
+  email,
 }: {
   profile: Profile;
   institutions: CatalogItem[];
   courses: CatalogItem[];
+  email: string;
 }) {
   const [draft, setDraft] = useState(profile);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
-  const [error, setError] = useState<unknown>();
-  const [saved, setSaved] = useState(false);
+  const { showToast } = useToast();
+
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarAction, setAvatarAction] = useState<"upload" | "delete" | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarLock = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleAvatarUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
+    // Sempre limpa o input para permitir selecionar o mesmo arquivo de novo
     e.target.value = "";
+    if (!file || avatarLock.current) return;
 
     if (file.size > 5 * 1024 * 1024) {
       setAvatarError("O tamanho da foto excede o limite de 5 MB.");
@@ -78,7 +108,9 @@ function ProfileForm({
       return;
     }
 
+    avatarLock.current = true;
     setAvatarBusy(true);
+    setAvatarAction("upload");
     setAvatarError(null);
     try {
       const formData = new FormData();
@@ -92,15 +124,23 @@ function ProfileForm({
         avatarUrl: res.data.avatarUrl,
       }));
     } catch (err: unknown) {
-      const msg = (err as { data?: { detail?: string } })?.data?.detail || "Falha ao enviar a foto. Tente novamente.";
-      setAvatarError(typeof msg === "string" ? msg : "Falha ao enviar a foto.");
+      const detail = (err as { data?: { detail?: unknown } })?.data?.detail;
+      setAvatarError(
+        typeof detail === "string" ? detail : "Falha ao enviar a foto. Tente novamente.",
+      );
     } finally {
+      avatarLock.current = false;
       setAvatarBusy(false);
+      setAvatarAction(null);
     }
   }
 
   async function handleAvatarDelete() {
+    if (avatarLock.current) return;
+
+    avatarLock.current = true;
     setAvatarBusy(true);
+    setAvatarAction("delete");
     setAvatarError(null);
     try {
       await apiClient.del<Profile>("/v1/academic/profile/avatar");
@@ -110,20 +150,22 @@ function ProfileForm({
         avatarUrl: null,
       }));
     } catch (err: unknown) {
-      const msg = (err as { data?: { detail?: string } })?.data?.detail || "Falha ao remover a foto.";
-      setAvatarError(typeof msg === "string" ? msg : "Falha ao remover a foto.");
+      const detail = (err as { data?: { detail?: unknown } })?.data?.detail;
+      setAvatarError(typeof detail === "string" ? detail : "Falha ao remover a foto.");
     } finally {
+      avatarLock.current = false;
       setAvatarBusy(false);
+      setAvatarAction(null);
     }
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (lock.current) return;
+
     lock.current = true;
     setBusy(true);
-    setError(undefined);
-    setSaved(false);
+
     try {
       const result = await apiClient.patch<Profile>("/v1/academic/profile", {
         body: {
@@ -132,183 +174,158 @@ function ProfileForm({
           bio: draft.bio?.trim() || null,
         },
       });
-      setDraft(result.data);
-      setSaved(true);
-    } catch (e) {
-      setError(e);
+      setDraft((prev) => ({ ...prev, ...result.data }));
+      showToast({ message: "Perfil atualizado com sucesso.", variant: "success" });
+    } catch {
+      showToast({
+        message: "Não foi possível salvar o perfil. Tente novamente.",
+        variant: "error",
+      });
     } finally {
       lock.current = false;
       setBusy(false);
     }
   }
+
+  const availableCourses = courses.filter(
+    (course) => course.institutionId === draft.institutionId,
+  );
+
   return (
-    <div className={s.columns}>
-      <form
-        className={s.panel}
-        onSubmit={submit}
-        aria-label="Contexto acadêmico"
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <div
-            style={{
-              width: "72px",
-              height: "72px",
-              borderRadius: "50%",
-              overflow: "hidden",
-              backgroundColor: "var(--color-surface-hover, #23272f)",
-              border: "2px solid var(--color-border)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "24px",
-              fontWeight: "700",
-              color: "var(--color-text)",
-              flexShrink: 0,
-            }}
-            data-testid="avatar-container"
-          >
-            {draft.avatarUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={draft.avatarUrl}
-                alt={`Foto de ${draft.displayName}`}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              <span>{(draft.displayName || "U").charAt(0).toUpperCase()}</span>
-            )}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <h2 style={{ margin: 0 }}>{draft.displayName}</h2>
-            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+    <div className={styles.columns}>
+      <Card className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <div className={styles.avatarRow}>
+            <div className={styles.avatarContainer} data-testid="avatar-container">
+              {draft.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt={`Foto de ${draft.displayName}`}
+                  className={styles.avatarImage}
+                  src={draft.avatarUrl}
+                />
+              ) : (
+                <span>{(draft.displayName || "U").charAt(0).toUpperCase()}</span>
+              )}
+            </div>
+
+            <div className={styles.avatarActions}>
               <input
                 ref={fileInputRef}
-                type="file"
                 accept="image/jpeg,image/png"
-                style={{ display: "none" }}
-                onChange={handleAvatarUpload}
-                disabled={avatarBusy}
+                className={styles.hiddenInput}
                 data-testid="avatar-input"
-              />
-              <button
-                type="button"
-                className={s.secondary}
-                onClick={() => fileInputRef.current?.click()}
                 disabled={avatarBusy}
+                onChange={handleAvatarUpload}
+                type="file"
+              />
+              <Button
+                disabled={avatarBusy}
+                onClick={() => fileInputRef.current?.click()}
+                size="sm"
+                type="button"
+                variant="secondary"
               >
-                {avatarBusy ? "Enviando..." : draft.avatarFileId ? "Trocar foto" : "Adicionar foto"}
-              </button>
+                {avatarAction === "upload"
+                  ? "Enviando..."
+                  : draft.avatarFileId
+                    ? "Trocar foto"
+                    : "Adicionar foto"}
+              </Button>
               {draft.avatarFileId ? (
-                <button
-                  type="button"
-                  className={s.secondary}
-                  onClick={handleAvatarDelete}
+                <Button
                   disabled={avatarBusy}
-                  style={{ color: "var(--color-danger, #e53e3e)" }}
+                  onClick={handleAvatarDelete}
+                  size="sm"
+                  type="button"
+                  variant="danger"
                 >
-                  Remover foto
-                </button>
+                  {avatarAction === "delete" ? "Removendo..." : "Remover foto"}
+                </Button>
               ) : null}
             </div>
-            <small style={{ color: "var(--color-text-muted)" }}>
-              JPEG ou PNG até 5 MB.
-            </small>
-            {avatarError ? (
-              <p role="alert" style={{ color: "var(--color-danger, #e53e3e)", fontSize: "13px", margin: 0 }}>
-                {avatarError}
-              </p>
-            ) : null}
           </div>
+
+          <h2>{draft.displayName}</h2>
+          <p>{email}</p>
+          <small className={styles.hint}>JPEG ou PNG até 5 MB.</small>
+          {avatarError ? (
+            <p className={styles.errorText} role="alert">
+              {avatarError}
+            </p>
+          ) : null}
+          <p>Contexto acadêmico</p>
         </div>
-        <div>
-          <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "14px" }}>Contexto acadêmico</p>
-        </div>
-        <fieldset
-          disabled={busy}
-          style={{ border: 0, display: "grid", gap: 20 }}
-        >
-          <label className={s.field}>
+
+        <form className={styles.fields} onSubmit={submit}>
+          <label className={styles.field}>
             Instituição
             <select
-              value={draft.institutionId ?? ""}
-              onChange={(e) => {
-                setSaved(false);
+              disabled={busy}
+              onChange={(event) =>
                 setDraft({
                   ...draft,
-                  institutionId: e.target.value || null,
+                  institutionId: event.target.value || null,
                   courseId: null,
-                });
-              }}
+                })
+              }
+              value={draft.institutionId ?? ""}
             >
               <option value="">Não informada</option>
-              {institutions.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.name}
+              {institutions.map((institution) => (
+                <option key={institution.id} value={institution.id}>
+                  {institution.name}
                 </option>
               ))}
             </select>
           </label>
-          <label className={s.field}>
+
+          <label className={styles.field}>
             Curso
             <select
-              disabled={!draft.institutionId}
+              disabled={busy || !draft.institutionId}
+              onChange={(event) =>
+                setDraft({ ...draft, courseId: event.target.value || null })
+              }
               value={draft.courseId ?? ""}
-              onChange={(e) => {
-                setSaved(false);
-                setDraft({ ...draft, courseId: e.target.value || null });
-              }}
             >
               <option value="">Não informado</option>
-              {courses
-                .filter((c) => c.institutionId === draft.institutionId)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+              {availableCourses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.name}
+                </option>
+              ))}
             </select>
           </label>
-          <label className={s.field}>
+
+          <label className={styles.field}>
             Sobre mim e meus interesses
             <textarea
+              disabled={busy}
               maxLength={500}
+              onChange={(event) => setDraft({ ...draft, bio: event.target.value })}
+              placeholder="Conte brevemente o que você estuda e quais assuntos gostaria de aprofundar."
               value={draft.bio ?? ""}
-              placeholder="Quero estudar em grupo, trocar ideias e aprofundar…"
-              onChange={(e) => {
-                setSaved(false);
-                setDraft({ ...draft, bio: e.target.value });
-              }}
             />
             <small>{draft.bio?.length ?? 0}/500 caracteres</small>
           </label>
-        </fieldset>
-        {error ? <Failure error={error} /> : null}
-        {saved ? (
-          <div role="status" className={s.success}>
-            Perfil atualizado com sucesso.
+
+          <div className={styles.actions}>
+            <Button loading={busy} type="submit">
+              Salvar alterações
+            </Button>
           </div>
-        ) : null}
-        <div className={s.actions}>
-          <button className={s.primary} disabled={busy}>
-            {busy ? "Salvando…" : "Salvar alterações"}
-          </button>
-        </div>
-      </form>
-      <aside className={s.panel}>
-        <span className={s.badge}>Estudar em comunidade</span>
-        <h2>Seu próximo passo</h2>
+        </form>
+      </Card>
+
+      <Card className={styles.helperCard}>
+        <UserCircle aria-hidden size={30} />
+        <h2>Seu contexto melhora a experiência</h2>
         <p>
-          Encontre um grupo da sua disciplina ou reúna colegas em um novo espaço
-          de estudo.
+          Instituição e curso ajudam o NexoAula a organizar a descoberta acadêmica sem alterar qualquer matrícula oficial.
         </p>
-        <Link className={s.secondary} href="/grupos/novo">
-          Criar um grupo
-        </Link>
-        <p className={s.muted}>
-          Seu perfil não realiza matrícula em turmas. O acesso ao conteúdo
-          acadêmico acontece pelo grupo de origem, quando disponível.
-        </p>
-      </aside>
+        <Link href="/grupos?view=discover">Descobrir comunidades</Link>
+      </Card>
     </div>
   );
 }

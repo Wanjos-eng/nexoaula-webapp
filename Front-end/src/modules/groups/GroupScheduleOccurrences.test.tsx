@@ -1,7 +1,8 @@
 vi.mock("@/modules/auth", () => ({ useAuthSession: () => ({ user: { id: "owner" } }) }));
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GroupSchedule } from "./GroupSchedule";
+import type { PersonalAttendanceRecord, StudentTopicProgressRecord, StudentAttendanceAdjustmentRecord } from "@/modules/academic/types";
 import type { GroupLessonOccurrence, GroupTopic, TeachingPlan } from "./schedule";
 
 const groupId = "group-test-1";
@@ -56,9 +57,9 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
 function setupServer(options?: {
   canManage?: boolean;
   occurrences?: GroupLessonOccurrence[];
-  attendance?: any[];
-  progress?: any[];
-  adjustments?: any[];
+  attendance?: PersonalAttendanceRecord[];
+  progress?: StudentTopicProgressRecord[];
+  adjustments?: StudentAttendanceAdjustmentRecord[];
 }) {
   const occs = options?.occurrences ?? [mockOccurrence];
   const atts = options?.attendance ?? [];
@@ -157,14 +158,14 @@ describe("GroupSchedule - Occurrences and Attendance UI", () => {
 
     render(<GroupSchedule groupId={groupId} canManage={false} />);
 
-    await screen.findByText(/Uma aula deste grupo foi retificada pelo organizador/);
+    await screen.findByText(/Uma aula desta comunidade foi retificada pelo organizador/);
     expect(screen.getByText(/transferida/)).toBeDefined();
 
     const dismissBtn = screen.getByRole("button", { name: "Entendi / Marcar como visto" });
     fireEvent.click(dismissBtn);
 
     await waitFor(() => {
-      expect(screen.queryByText(/Uma aula deste grupo foi retificada pelo organizador/)).toBeNull();
+      expect(screen.queryByText(/Uma aula desta comunidade foi retificada pelo organizador/)).toBeNull();
     });
   });
 

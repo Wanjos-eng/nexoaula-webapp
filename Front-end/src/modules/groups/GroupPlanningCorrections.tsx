@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { Dialog } from "@/components/ui/Dialog";
 import { ApiError } from "@/lib/api";
 import { Failure, Loading } from "./AsyncState";
 import { useRemote } from "./useRemote";
@@ -238,11 +239,18 @@ export function GroupPlanningCorrections({
       </div>
 
       {target ? (
-        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setTarget(null); }}>
-          <section className={s.modal} role="dialog" aria-modal="true" aria-labelledby="correction-create-title">
-            <h3 id="correction-create-title">Sugerir correção</h3>
-            <p className={s.muted}>{target.title} · a proposta ficará pendente até a decisão do organizador.</p>
-            <form className={s.form} onSubmit={submitSuggestion}>
+        <Dialog
+          descriptionId="correction-create-description"
+          onClose={() => {
+            if (!busy) setTarget(null);
+          }}
+          titleId="correction-create-title"
+        >
+          <h3 id="correction-create-title">Sugerir correção</h3>
+          <p className={s.muted} id="correction-create-description">
+            {target.title} · a proposta ficará pendente até a decisão do organizador.
+          </p>
+          <form className={s.form} onSubmit={submitSuggestion}>
               <label>Tipo de correção<select value={kind} onChange={(event) => setKind(event.target.value as PlanningCorrectionKind)}>
                 <option value="schedule">Cronograma</option><option value="topics">Tópicos</option><option value="status">Status</option><option value="details">Detalhes</option><option value="other">Outro</option>
               </select></label>
@@ -282,26 +290,31 @@ export function GroupPlanningCorrections({
                 <button className={s.primary} disabled={busy} type="submit">{busy ? "Enviando…" : "Enviar sugestão"}</button>
                 <button className={s.secondary} disabled={busy} onClick={() => setTarget(null)} type="button">Fechar</button>
               </div>
-            </form>
-          </section>
-        </div>
+          </form>
+        </Dialog>
       ) : null}
 
       {decision ? (
-        <div className={s.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDecision(null); }}>
-          <section className={s.modal} role="dialog" aria-modal="true" aria-labelledby="correction-decision-title">
-            <h3 id="correction-decision-title">{decision.status === "approved" ? "Aprovar correção?" : "Recusar correção?"}</h3>
-            <p className={s.muted}>{correctionTargetTitle(decision.correction, lessons, occurrences)}</p>
-            <DiffView correction={decision.correction} />
-            <label className={s.field}>Observação da decisão<textarea rows={3} maxLength={2000} value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} placeholder="Opcional" /></label>
-            <div className={s.actions}>
-              <button className={decision.status === "approved" ? s.primary : s.danger} type="button" disabled={busy} onClick={() => void confirmDecision()}>
-                {busy ? "Salvando…" : decision.status === "approved" ? "Confirmar aprovação" : "Confirmar recusa"}
-              </button>
-              <button className={s.secondary} type="button" disabled={busy} onClick={() => setDecision(null)}>Voltar</button>
-            </div>
-          </section>
-        </div>
+        <Dialog
+          descriptionId="correction-decision-description"
+          onClose={() => {
+            if (!busy) setDecision(null);
+          }}
+          titleId="correction-decision-title"
+        >
+          <h3 id="correction-decision-title">{decision.status === "approved" ? "Aprovar correção?" : "Recusar correção?"}</h3>
+          <p className={s.muted} id="correction-decision-description">
+            {correctionTargetTitle(decision.correction, lessons, occurrences)}
+          </p>
+          <DiffView correction={decision.correction} />
+          <label className={s.field}>Observação da decisão<textarea rows={3} maxLength={2000} value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} placeholder="Opcional" /></label>
+          <div className={s.actions}>
+            <button className={decision.status === "approved" ? s.primary : s.danger} type="button" disabled={busy} onClick={() => void confirmDecision()}>
+              {busy ? "Salvando…" : decision.status === "approved" ? "Confirmar aprovação" : "Confirmar recusa"}
+            </button>
+            <button className={s.secondary} type="button" disabled={busy} onClick={() => setDecision(null)}>Voltar</button>
+          </div>
+        </Dialog>
       ) : null}
     </section>
   );

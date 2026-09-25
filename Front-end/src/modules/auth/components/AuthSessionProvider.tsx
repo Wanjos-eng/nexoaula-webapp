@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError, RequestAbortedError } from "@/lib/api";
 import { authService, type PublicUser } from "../services/auth.service";
 
@@ -19,6 +20,7 @@ import styles from "./AuthSessionProvider.module.css";
 type AuthSession = {
   user: PublicUser;
   reload: () => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthSessionContext = createContext<AuthSession | null>(null);
@@ -57,6 +59,12 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
     await restoreSession();
   }, [restoreSession]);
 
+  const logout = useCallback(async () => {
+    abortRef.current?.abort();
+    await authService.logout();
+    replace("/login");
+  }, [replace]);
+
   useEffect(() => {
     const controller = new AbortController();
     abortRef.current = controller;
@@ -81,7 +89,7 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   if (status === "loading") {
     return (
       <main aria-busy="true" className={styles.state}>
-        <p>Verificando sua sessão…</p>
+        <div role="status" aria-label="Abrindo seu espaço"><Skeleton variant="card" /><span className="sr-only">Abrindo seu espaço…</span></div>
       </main>
     );
   }
@@ -99,7 +107,7 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthSessionContext.Provider value={{ reload, user }}>
+    <AuthSessionContext.Provider value={{ logout, reload, user }}>
       {children}
     </AuthSessionContext.Provider>
   );

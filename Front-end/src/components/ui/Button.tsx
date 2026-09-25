@@ -6,20 +6,26 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
   fullWidth?: boolean;
   icon?: ReactNode;
-  variant?: "primary" | "secondary" | "ghost";
+  loading?: boolean;
+  size?: "sm" | "md";
+  variant?: "primary" | "secondary" | "ghost" | "danger";
 };
 
 export function Button({
   children,
   className = "",
+  disabled,
   fullWidth = false,
   icon,
+  loading = false,
+  size = "md",
   variant = "primary",
   ...props
 }: ButtonProps) {
   const classes = [
     styles.button,
     styles[variant],
+    styles[size],
     fullWidth ? styles.fullWidth : "",
     className,
   ]
@@ -27,8 +33,13 @@ export function Button({
     .join(" ");
 
   return (
-    <button className={classes} {...props}>
-      {icon}
+    <button
+      aria-busy={loading || undefined}
+      className={classes}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading ? <span aria-hidden className={styles.spinner} /> : icon}
       <span>{children}</span>
     </button>
   );

@@ -36,10 +36,10 @@ it("moderador cria, renomeia e arquiva; lista acompanha cada alteração", async
   }));
   render(<GroupDetail groupId="g1" />);
   const manager = (await screen.findByRole("heading", {name:"Gerenciar canais"})).closest("section")!;
-  fireEvent.click(within(manager).getByRole("button",{name:"+ Novo Canal"}));
+  fireEvent.click(within(manager).getByRole("button",{name:"Novo canal"}));
   fireEvent.change(within(manager).getByLabelText(/Nome do canal/),{target:{value:"Dúvidas"}});
   await within(manager).findByRole("option",{name:"Álgebra"});
-  fireEvent.change(within(manager).getByLabelText(/Assunto do grupo/),{target:{value:"topic-1"}});
+  fireEvent.change(within(manager).getByLabelText(/Assunto da comunidade/),{target:{value:"topic-1"}});
   fireEvent.click(within(manager).getByRole("button",{name:"Salvar"}));
   await screen.findByText("Canal criado com sucesso.");
   const list = (await screen.findByRole("heading",{name:"Canais por assunto"})).closest("section")!;
@@ -51,6 +51,7 @@ it("moderador cria, renomeia e arquiva; lista acompanha cada alteração", async
   const updated = (await screen.findByRole("heading",{name:"Canais por assunto"})).closest("section")!;
   await within(updated).findByRole("heading",{name:/Revisão/});
   fireEvent.click(screen.getByRole("button",{name:"Arquivar"}));
+  fireEvent.click(screen.getByRole("button",{name:"Arquivar canal"}));
   await screen.findByText("Canal arquivado.");
   const archived = (await screen.findByRole("heading",{name:"Canais por assunto"})).closest("section")!;
   expect(within(archived).getByText("Arquivado")).toBeTruthy();
@@ -62,7 +63,7 @@ it("preserva entrada e mostra erro de API sem anunciar sucesso", async () => {
   vi.stubGlobal("fetch",vi.fn((url:string, options:RequestInit) => Promise.resolve(
     options.method === "POST" ? json({detail:"Já existe um canal com este nome no grupo."},409) : json([]))));
   render(<ChannelManager groupId="g1" onUpdated={updated} />);
-  fireEvent.click(await screen.findByRole("button",{name:"+ Novo Canal"}));
+  fireEvent.click(await screen.findByRole("button",{name:"Novo canal"}));
   fireEvent.change(screen.getByLabelText(/Nome do canal/),{target:{value:"Duplicado"}});
   fireEvent.click(screen.getByRole("button",{name:"Salvar"}));
   await screen.findByText("Já existe um canal com este nome no grupo.");

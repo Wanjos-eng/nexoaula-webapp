@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Info, WarningCircle } from "@phosphor-icons/react";
+import { WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
@@ -14,9 +14,8 @@ import { authService } from "../services/auth.service";
 
 import styles from "./AuthForm.module.css";
 
-
 type BannerState = {
-  type: "success" | "error" | "info";
+  type: "error";
   message: string;
 } | null;
 
@@ -25,10 +24,12 @@ export function RegisterForm() {
   const [errors, setErrors] = useState<RegisterFormErrors>({});
   const [banner, setBanner] = useState<BannerState>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(false);
+  const registeredCredentials = useRef<{ email: string; password: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
   const submissionRef = useRef(false);
-  const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -36,27 +37,20 @@ export function RegisterForm() {
       isMountedRef.current = false;
       abortRef.current?.abort();
       abortRef.current = null;
-      if (navTimeoutRef.current) {
-        clearTimeout(navTimeoutRef.current);
-        navTimeoutRef.current = null;
-      }
     };
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (submissionRef.current) return;
+    if (submissionRef.current || isLoading) return;
+
     setBanner(null);
-
-    if (isLoading) return;
-
     const form = event.currentTarget;
     const data = new FormData(form);
-
     const validation = validateRegisterForm(data);
-    setErrors(validation.errors);
+    setErrors(accountCreated ? {} : validation.errors);
 
-    if (!validation.isValid && validation.firstErrorField) {
+    if (!accountCreated && !validation.isValid && validation.firstErrorField) {
       if (validation.firstErrorField === "terms") {
         form.querySelector<HTMLElement>('input[name="terms"]')?.focus();
       } else {
@@ -75,30 +69,29 @@ export function RegisterForm() {
     setIsLoading(true);
 
     try {
-      await authService.register({ fullName, email, password }, controller.signal);
+      if (!registeredCredentials.current) {
+        await authService.register({ fullName, email, password }, controller.signal);
+        if (!isMountedRef.current) return;
+        registeredCredentials.current = { email, password };
+        setAccountCreated(true);
+      }
+      await authService.login(registeredCredentials.current, controller.signal);
       if (!isMountedRef.current) return;
 
-      setIsLoading(false);
-      setBanner({
-        type: "success",
-        message: "Conta criada com sucesso! Redirecionando para login...",
-      });
-
-      // Atrasa a navegação para que o banner de sucesso seja perceptível
-      navTimeoutRef.current = setTimeout(() => {
-        router.push("/login");
-      }, 1500);
+      router.replace("/inicio");
     } catch (error) {
       if (!isMountedRef.current || error instanceof RequestAbortedError) return;
       setIsLoading(false);
 
+      if (registeredCredentials.current) {
+        setBanner({ type: "error", message: "Sua conta foi criada, mas não conseguimos iniciar a sessão. Tente entrar novamente." });
+        return;
+      }
+
       if (error instanceof ApiError) {
         if (error.status === 409) {
-          setBanner({
-            type: "error",
-            message: "Este e-mail já está em uso.",
-          });
-          setErrors((prev) => ({ ...prev, email: "Este e-mail já está em uso." }));
+          setBanner({ type: "error", message: "Este e-mail já está em uso." });
+          setErrors((previous) => ({ ...previous, email: "Este e-mail já está em uso." }));
           form.querySelector<HTMLElement>('[name="email"]')?.focus();
           return;
         }
@@ -110,6 +103,7 @@ export function RegisterForm() {
           });
           return;
         }
+
         if (error.status === 503) {
           setBanner({
             type: "error",
@@ -141,23 +135,16 @@ export function RegisterForm() {
     <div>
       <div className={styles.header}>
         <h2>Crie sua conta</h2>
-        <p>Preencha seus dados para começar a usar o nexoAula.</p>
+        <p>Comece a organizar sua rotina acadêmica em poucos passos.</p>
       </div>
 
       {banner ? (
         <div
           aria-live="polite"
-          className={`${styles.banner} ${banner.type === "success"
-            ? styles.bannerSuccess
-            : banner.type === "error"
-              ? styles.bannerError
-              : styles.bannerInfo
-            }`}
-          role="status"
+          className={`${styles.banner} ${styles.bannerError}`}
+          role="alert"
         >
-          {banner.type === "success" && <CheckCircle aria-hidden size={20} />}
-          {banner.type === "error" && <WarningCircle aria-hidden size={20} />}
-          {banner.type === "info" && <Info aria-hidden size={20} />}
+          <WarningCircle aria-hidden size={20} />
           <span>{banner.message}</span>
         </div>
       ) : null}
@@ -165,7 +152,7 @@ export function RegisterForm() {
       <form className={styles.form} noValidate onSubmit={handleSubmit}>
         <Field
           autoComplete="name"
-          disabled={isLoading}
+          disabled={isLoading || accountCreated}
           error={errors.fullName}
           id="fullName"
           label="Nome completo"
@@ -178,7 +165,7 @@ export function RegisterForm() {
 
         <Field
           autoComplete="email"
-          disabled={isLoading}
+          disabled={isLoading || accountCreated}
           error={errors.email}
           id="email"
           label="E-mail"
@@ -191,7 +178,7 @@ export function RegisterForm() {
 
         <Field
           autoComplete="new-password"
-          disabled={isLoading}
+          disabled={isLoading || accountCreated}
           error={errors.password}
           hint="Use pelo menos 8 caracteres."
           id="password"
@@ -206,7 +193,7 @@ export function RegisterForm() {
 
         <Field
           autoComplete="new-password"
-          disabled={isLoading}
+          disabled={isLoading || accountCreated}
           error={errors.confirmPassword}
           id="confirmPassword"
           label="Confirmar senha"
@@ -220,13 +207,12 @@ export function RegisterForm() {
           <label className={styles.checkboxLabel}>
             <input
               aria-describedby={errors.terms ? "terms-error" : undefined}
-              disabled={isLoading}
+              disabled={isLoading || accountCreated}
               name="terms"
               type="checkbox"
             />
             <span>
-              Li e concordo com os <a href="#termos">Termos de Uso</a> e a{" "}
-              <a href="#termos">Política de Privacidade</a>.
+              Li e concordo com os termos de uso e a política de privacidade do ambiente.
             </span>
           </label>
           {errors.terms ? (
@@ -236,8 +222,8 @@ export function RegisterForm() {
           ) : null}
         </div>
 
-        <Button disabled={isLoading} fullWidth type="submit">
-          {isLoading ? "Criando conta..." : "Criar conta"}
+        <Button fullWidth loading={isLoading} type="submit">
+          {isLoading ? (accountCreated ? "Entrando…" : "Criando conta…") : accountCreated ? "Tentar entrar novamente" : "Criar conta"}
         </Button>
       </form>
 
