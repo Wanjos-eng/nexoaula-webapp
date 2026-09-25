@@ -190,14 +190,14 @@ for (const width of [1440, 390]) {
       "Quero aprofundar meus estudos em cálculo.",
     );
     await capture("profile");
-    await page.getByRole("link", { name: "Explorar grupos" }).click();
+    await page.getByRole("link", { name: "Explorar comunidades" }).click();
     await page
       .getByRole("button", { name: "Descobrir grupos", exact: true })
       .first()
       .click();
     await expect(page.getByRole("heading", { name: group.name })).toBeVisible();
     await capture("discovery");
-    await page.getByRole("link", { name: "Conhecer grupo" }).click();
+    await page.getByRole("link", { name: "Ver comunidade" }).click();
     await page.getByRole("button", { name: "Solicitar entrada" }).click();
     await expect(
       page.getByText(
