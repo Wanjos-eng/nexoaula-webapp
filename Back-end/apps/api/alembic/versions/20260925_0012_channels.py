@@ -29,8 +29,8 @@ def upgrade() -> None:
                   server_default=sa.text('gen_random_uuid()')),
         sa.Column('group_id', postgresql.UUID(as_uuid=True),
                   sa.ForeignKey('study_groups.id', ondelete='CASCADE'), nullable=False),
-        sa.Column('subject_topic_id', postgresql.UUID(as_uuid=True),
-                  sa.ForeignKey('subject_topics.id', ondelete='RESTRICT'), nullable=True),
+        sa.Column('group_topic_id', postgresql.UUID(as_uuid=True),
+                  nullable=True),
         sa.Column('name', sa.String(80), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('created_by', postgresql.UUID(as_uuid=True),
@@ -40,6 +40,7 @@ def upgrade() -> None:
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False,
                   server_default=sa.text('now()')),
         sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
+        sa.ForeignKeyConstraint(['group_topic_id', 'group_id'], ['group_topics.id', 'group_topics.group_id'], name='fk_channels_topic_group', ondelete='RESTRICT'),
         sa.UniqueConstraint('group_id', 'name', name='uq_channels_group_name'),
         sa.UniqueConstraint('id', 'group_id', name='uq_channels_id_group_id'),
         sa.CheckConstraint(
@@ -49,7 +50,7 @@ def upgrade() -> None:
         ),
     )
     op.create_index('ix_channels_group_id', 'channels', ['group_id'])
-    op.create_index('ix_channels_subject_topic_id', 'channels', ['subject_topic_id'])
+    op.create_index('ix_channels_group_topic_id', 'channels', ['group_topic_id'])
 
 
 def downgrade() -> None:

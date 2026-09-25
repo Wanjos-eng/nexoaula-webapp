@@ -32,6 +32,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
     [groupId],
   );
   const remote = useRemote(groupId, fetcher);
+  const [channelRevision, setChannelRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [error, setError] = useState<unknown>();
@@ -181,7 +182,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
             />
           ) : null}
           {participation.status === "active" ? (
-            <ChannelView groupId={groupId} />
+            <ChannelView key={`${groupId}/${channelRevision}`} groupId={groupId} />
           ) : null}
           {participation.canManage ? (
             <MemberManagement
@@ -194,11 +195,11 @@ export function GroupDetail({ groupId }: { groupId: string }) {
               }}
             />
           ) : null}
-          {participation.role === "owner" ? (
+          {participation.canManage ? (
             <ChannelManager
               key={`channel-management-${groupId}`}
               groupId={groupId}
-              onUpdated={() => remote.reload()}
+              onUpdated={() => setChannelRevision(revision => revision + 1)}
             />
           ) : null}
         </>
@@ -412,7 +413,7 @@ function ChannelView({ groupId }: { groupId: string }) {
     <section className={s.panel}>
       <div>
         <p className={s.eyebrow}>Comunidade</p>
-        <h2>Canais de discussão</h2>
+        <h2>Canais por assunto</h2>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "1rem" }}>
         {channels.map(channel => (
@@ -422,6 +423,7 @@ function ChannelView({ groupId }: { groupId: string }) {
                 # {channel.name}
                 {channel.status === "archived" && <span className={s.badge}>Arquivado</span>}
               </h3>
+              <p>Assunto: {channel.topicName || "Sem assunto específico"}</p>
               {channel.description && <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>{channel.description}</p>}
             </div>
             <div className={s.actions}>

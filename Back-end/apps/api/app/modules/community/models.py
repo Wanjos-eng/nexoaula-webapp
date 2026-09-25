@@ -588,7 +588,7 @@ class Channel(Base):
     __tablename__ = "channels"
     __table_args__ = (
         ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="CASCADE"),
-        ForeignKeyConstraint(["subject_topic_id"], ["subject_topics.id"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["group_topic_id", "group_id"], ["group_topics.id", "group_topics.group_id"], name="fk_channels_topic_group", ondelete="RESTRICT"),
         ForeignKeyConstraint(["created_by"], ["users.id"], ondelete="RESTRICT"),
         UniqueConstraint("group_id", "name", name="uq_channels_group_name"),
         UniqueConstraint("id", "group_id", name="uq_channels_id_group_id"),
@@ -598,14 +598,14 @@ class Channel(Base):
             name="chk_channels_archive_state",
         ),
         Index("ix_channels_group_id", "group_id"),
-        Index("ix_channels_subject_topic_id", "subject_topic_id"),
+        Index("ix_channels_group_topic_id", "group_topic_id"),
     )
 
     id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
-    subject_topic_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    group_topic_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
     name: Mapped[str] = mapped_column(String(80), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
@@ -616,6 +616,8 @@ class Channel(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Meeting(Base):
     __tablename__ = "meetings"
     __table_args__ = (

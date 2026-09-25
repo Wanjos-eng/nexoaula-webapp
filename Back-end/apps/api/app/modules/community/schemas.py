@@ -544,7 +544,7 @@ class ChannelCreate(BaseModel):
 
     name: str = Field(min_length=1, max_length=80)
     description: str | None = Field(default=None, max_length=500)
-    subject_topic_id: UUID | None = Field(default=None, alias="subjectTopicId")
+    group_topic_id: UUID | None = Field(default=None, alias="groupTopicId")
 
     @field_validator("name")
     @classmethod
@@ -579,7 +579,7 @@ class ChannelUpdate(BaseModel):
     @classmethod
     def normalize_name(cls, value: str | None) -> str | None:
         if value is None:
-            return None
+            raise ValueError("O nome do canal não aceita valor nulo.")
         normalized = " ".join(value.split())
         if not normalized:
             raise ValueError("O nome do canal não pode ser vazio.")
@@ -599,7 +599,8 @@ class ChannelResponse(BaseModel):
 
     id: UUID
     group_id: UUID = Field(serialization_alias="groupId")
-    subject_topic_id: UUID | None = Field(default=None, serialization_alias="subjectTopicId")
+    group_topic_id: UUID | None = Field(default=None, serialization_alias="groupTopicId")
+    topic_name: str | None = Field(default=None, serialization_alias="topicName")
     name: str
     description: str | None = None
     created_by: UUID = Field(serialization_alias="createdBy")

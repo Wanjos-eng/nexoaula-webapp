@@ -45,3 +45,14 @@ def test_independent_group_channels(group_state):
     # Arquivamento válido
     connection.execute(text("UPDATE channels SET status='archived', archived_at=now() WHERE id=:channel"), ids)
     assert connection.scalar(text("SELECT count(*) FROM channels WHERE status='archived' AND archived_at IS NOT NULL"), ids) == 1
+
+
+def test_channel_topic_must_belong_to_same_group(group_state):
+    connection, ids = group_state
+    ids['topic'] = uuid4()
+    connection.execute(text("INSERT INTO group_topics(id,group_id,subject_id,custom_title) VALUES (:topic,:group,:subject,'Assunto próprio')"),ids)
+    connection.execute(text('UPDATE channels SET group_topic_id=:topic WHERE id=:channel'),ids)
+    with pytest.raises(IntegrityError) as caught:
+        with connection.begin_nested():
+            connection.execute(text("INSERT INTO channels(group_id,group_topic_id,created_by,name) VALUES (:other_group,:topic,:user,'Wrong group')"),ids)
+    assert caught.value.orig.pgcode == '23503'

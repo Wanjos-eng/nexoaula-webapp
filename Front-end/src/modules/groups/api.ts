@@ -102,7 +102,8 @@ export type ChannelStatus = "active" | "archived";
 export type Channel = {
   id: string;
   groupId: string;
-  subjectTopicId: string | null;
+  groupTopicId: string | null;
+  topicName: string | null;
   name: string;
   description: string | null;
   createdBy: string;
@@ -114,7 +115,7 @@ export type Channel = {
 export type ChannelInput = {
   name: string;
   description: string | null;
-  subjectTopicId?: string | null;
+  groupTopicId?: string | null;
 };
 
 export async function listChannels(groupId: string, signal?: AbortSignal): Promise<Channel[]> {
@@ -122,11 +123,11 @@ export async function listChannels(groupId: string, signal?: AbortSignal): Promi
 }
 
 export async function createChannel(groupId: string, payload: ChannelInput, signal?: AbortSignal): Promise<Channel> {
-  return (await apiClient.post<Channel>(`/v1/groups/${groupId}/channels`, { body: payload as any, signal })).data;
+  return (await apiClient.post<Channel>(`/v1/groups/${groupId}/channels`, { body: payload, signal })).data;
 }
 
-export async function updateChannel(groupId: string, channelId: string, payload: Partial<ChannelInput>, signal?: AbortSignal): Promise<Channel> {
-  return (await apiClient.patch<Channel>(`/v1/groups/${groupId}/channels/${channelId}`, { body: payload as any, signal })).data;
+export async function updateChannel(groupId: string, channelId: string, payload: Partial<Pick<ChannelInput, "name" | "description">>, signal?: AbortSignal): Promise<Channel> {
+  return (await apiClient.patch<Channel>(`/v1/groups/${groupId}/channels/${channelId}`, { body: payload, signal })).data;
 }
 
 export async function archiveChannel(groupId: string, channelId: string, signal?: AbortSignal): Promise<Channel> {

@@ -1,11 +1,16 @@
-import { useState, useRef } from "react";
-import { type Channel, createChannel, updateChannel, archiveChannel, errorMessage } from "./api";
+import { useState, useRef, useCallback } from "react";
+import { type Channel, createChannel, updateChannel, archiveChannel } from "./api";
 import { Failure, Loading } from "./AsyncState";
+import { listGroupTopics } from "./schedule";
+import { useRemote } from "./useRemote";
 import { useChannels } from "./useChannels";
 import s from "./AcademicCommunity.module.css";
 
 export function ChannelManager({ groupId, onUpdated }: { groupId: string; onUpdated: () => void }) {
   const { channels, loading, error, reload } = useChannels(groupId);
+  const topicsFetcher = useCallback((signal: AbortSignal) => listGroupTopics(groupId, signal), [groupId]);
+  const topics = useRemote(`${groupId}/channel-topics`, topicsFetcher, true);
+  const topicRef = useRef<HTMLSelectElement>(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [formError, setFormError] = useState<unknown>();
@@ -28,7 +33,7 @@ export function ChannelManager({ groupId, onUpdated }: { groupId: string; onUpda
     try {
       const name = nameRef.current?.value || "";
       const description = descRef.current?.value || null;
-      await createChannel(groupId, { name, description });
+      await createChannel(groupId, { name, description, groupTopicId: topicRef.current?.value || null });
       setFeedback("Canal criado com sucesso.");
       setIsCreating(false);
       reload();
@@ -67,7 +72,7 @@ export function ChannelManager({ groupId, onUpdated }: { groupId: string; onUpda
 
   async function handleArchive(channelId: string) {
     if (lock.current) return;
-    if (!confirm("Tem certeza que deseja arquivar este canal? Ele não poderá receber novas interações.")) return;
+    if (!confirm("Tem certeza que deseja arquivar este canal? Ele continuará visível no histórico do grupo.")) return;
     
     lock.current = true;
     setBusy(true);
@@ -95,7 +100,7 @@ export function ChannelManager({ groupId, onUpdated }: { groupId: string; onUpda
       <div>
         <p className={s.eyebrow}>Organização</p>
         <h2>Gerenciar canais</h2>
-        <p>Crie canais para organizar as conversas e dúvidas do grupo por assunto.</p>
+        <p>Organize os assuntos do grupo. O chat está previsto no roadmap e não faz parte desta entrega.</p>
       </div>
 
       {feedback && <div role="status" className={s.success}>{feedback}</div>}
@@ -110,7 +115,7 @@ export function ChannelManager({ groupId, onUpdated }: { groupId: string; onUpda
       </div>
 
       {(isCreating || editingChannel) && (
-        <form className={s.form} onSubmit={isCreating ? handleCreate : handleUpdate}>
+        <form key={editingChannel?.id ?? "new"} className={s.form} onSubmit={isCreating ? handleCreate : handleUpdate}>
           <h3>{isCreating ? "Criar novo canal" : "Renomear canal"}</h3>
           <div className={s.field}>
             <label htmlFor="channelName">Nome do canal (ex: Dúvidas, Projetos)</label>
@@ -136,6 +141,16 @@ export function ChannelManager({ groupId, onUpdated }: { groupId: string; onUpda
               rows={2}
             />
           </div>
+          {isCreating && (
+            <div className={s.field}>
+              <label htmlFor="channelTopic">Assunto do grupo (opcional)</label>
+              {topics.error ? <Failure error={topics.error} retry={topics.reload} /> : null}
+              <select id="channelTopic" ref={topicRef} disabled={busy || topics.loading || !!topics.error}>
+                <option value="">Sem assunto específico</option>
+                {topics.data?.map(topic => <option key={topic.id} value={topic.id}>{topic.topicName || topic.customTitle || "Assunto do grupo"}</option>)}
+              </select>
+            </div>
+          )}
           <div className={s.actions}>
             <button className={s.primary} type="submit" disabled={busy}>
               {busy ? "Salvando..." : "Salvar"}
@@ -168,6 +183,7 @@ export function ChannelManager({ groupId, onUpdated }: { groupId: string; onUpda
                     # {channel.name}
                     {channel.status === "archived" && <span className={s.badge}>Arquivado</span>}
                   </h3>
+                  <p>Assunto: {channel.topicName || "Sem assunto específico"}</p>
                   {channel.description && <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>{channel.description}</p>}
                 </div>
                 <div className={s.actions}>
