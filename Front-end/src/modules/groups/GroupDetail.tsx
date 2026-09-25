@@ -5,6 +5,7 @@ import {
   LockKey,
   UsersThree,
 } from "@phosphor-icons/react";
+import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 
 import { BackButton } from "@/components/ui/BackButton";
@@ -144,7 +145,9 @@ export function GroupDetail({ groupId }: { groupId: string }) {
           <nav className={styles.sectionNav} aria-label="Seções da comunidade">
             <a href="#visao-geral">Visão geral</a>
             <a href="#encontros">Encontros</a>
+            <a href="#ementa">Ementa</a>
             <a href="#cronograma">Cronograma</a>
+            <Link href={`/disciplinas/${group.offeringId || group.id}?group=${group.id}`}>Meus registros</Link>
             <a href="#canais">Canais</a>
             {participation.canManage ? <a href="#membros">Membros</a> : null}
             {participation.canManage ? <a href="#gestao">Gestão</a> : null}

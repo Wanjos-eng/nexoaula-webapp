@@ -10,10 +10,6 @@ async function register(page: Page, role: string) {
   await page.getByLabel("Confirmar senha").fill(password);
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Criar conta" }).click();
-  await page.waitForURL(/\/login$/);
-  await page.getByLabel("E-mail").fill(email);
-  await page.getByLabel("Senha", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Entrar" }).click();
   await page.waitForURL(/\/inicio$/);
 }
 function headers(page: Page) { return { Origin: new URL(page.url()).origin, "X-NexoAula-CSRF": "1", "Content-Type": "application/json" }; }

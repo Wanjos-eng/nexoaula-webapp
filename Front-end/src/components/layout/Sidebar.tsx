@@ -3,6 +3,8 @@
 import {
   BookOpenText,
   CalendarDots,
+  ChatCircleDots,
+  UserCheck,
   ChartLineUp,
   House,
   IdentificationCard,
@@ -26,22 +28,27 @@ type SidebarProps = {
   onClose: () => void;
 };
 
-const primaryNavigation = [
-  { href: "/inicio", icon: House, label: "Início" },
-  { href: "/disciplinas", icon: BookOpenText, label: "Minhas Disciplinas" },
-  { href: "/grupos", icon: UsersThree, label: "Comunidades" },
-  { href: "/calendario", icon: CalendarDots, label: "Calendário" },
-  { href: "/sessoes", icon: Storefront, label: "Tutorias" },
-  { href: "/progresso", icon: ChartLineUp, label: "Meu Progresso" },
+const navigationSections = [
+  { label: "Visão geral", items: [{ href: "/inicio", icon: House, label: "Início" }] },
+  { label: "Meu espaço", items: [
+    { href: "/disciplinas", icon: BookOpenText, label: "Minhas Disciplinas" },
+    { href: "/frequencia", icon: UserCheck, label: "Minha Frequência" },
+    { href: "/calendario", icon: CalendarDots, label: "Calendário" },
+    { href: "/progresso", icon: ChartLineUp, label: "Meu Progresso" },
+  ] },
+  { label: "Em comunidade", items: [
+    { href: "/grupos", icon: UsersThree, label: "Comunidades" },
+    { href: "/chat", icon: ChatCircleDots, label: "Chat" },
+  ] },
+  { label: "Tutorias", items: [
+    { href: "/sessoes", icon: Storefront, label: "Explorar tutorias" },
+    { href: "/sessoes/minhas", icon: CalendarDots, label: "Minhas tutorias" },
+    { href: "/tutor", icon: IdentificationCard, label: "Área do Tutor" },
+  ] },
 ];
 
-const tutorNavigation = {
-  href: "/tutor",
-  icon: IdentificationCard,
-  label: "Área do Tutor",
-};
-
 function isRouteActive(pathname: string, href: string) {
+  if (href === "/sessoes" && pathname.startsWith("/sessoes/minhas")) return false;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -94,39 +101,22 @@ export function Sidebar({ closeButtonRef, isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className={styles.navList}>
-          {primaryNavigation.map(({ href, icon: NavIcon, label }) => {
-            const isActive = isRouteActive(pathname, href);
-            return (
-              <Link
-                aria-current={isActive ? "page" : undefined}
-                className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`}
-                href={href}
-                key={href}
-                onClick={onClose}
-              >
-                <NavIcon aria-hidden size={21} weight={isActive ? "fill" : "regular"} />
-                <span>{label}</span>
-              </Link>
-            );
-          })}
-
-          <div aria-hidden className={styles.navDivider} />
-
-          <Link
-            aria-current={isRouteActive(pathname, tutorNavigation.href) ? "page" : undefined}
-            className={`${styles.navItem} ${styles.tutorNavItem} ${
-              isRouteActive(pathname, tutorNavigation.href) ? styles.navItemActive : ""
-            }`}
-            href={tutorNavigation.href}
-            onClick={onClose}
-          >
-            <tutorNavigation.icon
-              aria-hidden
-              size={21}
-              weight={isRouteActive(pathname, tutorNavigation.href) ? "fill" : "regular"}
-            />
-            <span>{tutorNavigation.label}</span>
-          </Link>
+          {navigationSections.map((section) => (
+            <div key={section.label} role="group" aria-label={section.label}>
+              <p className={styles.navSectionLabel}>{section.label}</p>
+              {section.items.map(({ href, icon: NavIcon, label }) => {
+                const isActive = isRouteActive(pathname, href);
+                return (
+                  <Link aria-current={isActive ? "page" : undefined}
+                    className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`}
+                    href={href} key={href} onClick={onClose}>
+                    <NavIcon aria-hidden size={21} weight={isActive ? "fill" : "regular"} />
+                    <span>{label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className={styles.profile}>

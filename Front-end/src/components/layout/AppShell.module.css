@@ -33,6 +33,7 @@
 }
 
 .sidebarHeader {
+  flex-shrink: 0;
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -69,6 +70,9 @@
 }
 
 .navList {
+  overflow-y: auto;
+  min-height: 0;
+  padding-bottom: var(--space-4);
   display: grid;
   gap: var(--space-1);
 }
@@ -116,6 +120,7 @@
 }
 
 .profile {
+  flex-shrink: 0;
   margin-top: auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 40px;
@@ -401,3 +406,5 @@
     padding: var(--space-4) var(--space-4) var(--space-8);
   }
 }
+
+.navSectionLabel { padding: 14px 12px 6px; color: var(--color-text-muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }

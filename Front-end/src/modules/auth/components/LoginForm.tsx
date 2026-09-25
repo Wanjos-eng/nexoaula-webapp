@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, WarningCircle } from "@phosphor-icons/react";
+import { WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
@@ -15,7 +15,7 @@ import { validateLoginForm, type LoginFormErrors } from "../schemas/authSchemas"
 import styles from "./AuthForm.module.css";
 
 type BannerState = {
-  type: "success" | "error";
+  type: "error";
   message: string;
 } | null;
 
@@ -27,7 +27,7 @@ export function LoginForm() {
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
   const submissionRef = useRef(false);
-  const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -35,10 +35,6 @@ export function LoginForm() {
       isMountedRef.current = false;
       abortRef.current?.abort();
       abortRef.current = null;
-      if (navTimeoutRef.current) {
-        clearTimeout(navTimeoutRef.current);
-        navTimeoutRef.current = null;
-      }
     };
   }, []);
 
@@ -69,14 +65,7 @@ export function LoginForm() {
       await authService.login({ email, password }, controller.signal);
       if (!isMountedRef.current) return;
 
-      setBanner({
-        type: "success",
-        message: "Acesso confirmado. Abrindo seu painel acadêmico...",
-      });
-
-      navTimeoutRef.current = setTimeout(() => {
-        router.replace("/inicio");
-      }, 450);
+      router.replace("/inicio");
     } catch (error) {
       if (!isMountedRef.current || error instanceof RequestAbortedError) return;
       setIsLoading(false);
@@ -120,16 +109,10 @@ export function LoginForm() {
       {banner ? (
         <div
           aria-live="polite"
-          className={`${styles.banner} ${
-            banner.type === "success" ? styles.bannerSuccess : styles.bannerError
-          }`}
-          role="status"
+          className={`${styles.banner} ${styles.bannerError}`}
+          role="alert"
         >
-          {banner.type === "success" ? (
-            <CheckCircle aria-hidden size={20} />
-          ) : (
-            <WarningCircle aria-hidden size={20} />
-          )}
+          <WarningCircle aria-hidden size={20} />
           <span>{banner.message}</span>
         </div>
       ) : null}
@@ -164,7 +147,7 @@ export function LoginForm() {
         </div>
 
         <Button fullWidth loading={isLoading} type="submit">
-          Entrar
+          {isLoading ? "Entrando…" : "Entrar"}
         </Button>
       </form>
 

@@ -149,6 +149,7 @@
 }
 
 .cardMeta dd {
+  margin: 0;
   min-width: 0;
   color: var(--color-text);
   font-size: var(--font-size-caption);
@@ -219,6 +220,8 @@
     align-items: stretch;
     flex-direction: column;
   }
+
+  .searchField { flex-basis: auto; }
 
   .searchField,
   .termField,

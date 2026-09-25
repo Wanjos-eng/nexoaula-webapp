@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError, RequestAbortedError } from "@/lib/api";
 import { authService, type PublicUser } from "../services/auth.service";
 
@@ -88,7 +89,7 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   if (status === "loading") {
     return (
       <main aria-busy="true" className={styles.state}>
-        <p>Verificando sua sessão…</p>
+        <div role="status" aria-label="Abrindo seu espaço"><Skeleton variant="card" /><span className="sr-only">Abrindo seu espaço…</span></div>
       </main>
     );
   }

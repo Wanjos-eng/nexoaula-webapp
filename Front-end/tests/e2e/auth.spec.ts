@@ -26,11 +26,12 @@ test.describe("autenticação real", () => {
     });
 
     await register(page, user);
-    await expect(page.getByRole("status")).toContainText("Conta criada com sucesso");
-    await expect(page).toHaveURL(/\/login$/, { timeout: 5_000 });
+    await expect(page).toHaveURL(/\/inicio$/, { timeout: 5_000 });
+    await page.getByRole("button", { name: "Sair" }).click();
+    await page.waitForURL(/\/login$/);
 
     await register(page, user);
-    await expect(page.getByRole("status")).toContainText("já está em uso");
+    await expect(page.getByRole("alert")).toContainText("já está em uso");
 
     await page.goto("/login");
     await page.getByLabel("E-mail").fill(user.email);
@@ -52,6 +53,8 @@ test.describe("autenticação real", () => {
   test("usa mensagem genérica para conta inexistente e senha incorreta", async ({ page }) => {
     const existingUser = uniqueUser();
     await register(page, existingUser);
+    await page.waitForURL(/\/inicio$/);
+    await page.getByRole("button", { name: "Sair" }).click();
     await page.waitForURL(/\/login$/);
 
     for (const credentials of [
@@ -62,19 +65,15 @@ test.describe("autenticação real", () => {
       await page.getByLabel("E-mail").fill(credentials.email);
       await page.getByLabel("Senha", { exact: true }).fill(credentials.password);
       await page.getByRole("button", { name: "Entrar" }).click();
-      await expect(page.getByRole("status")).toHaveText("E-mail ou senha incorretos.");
+      await expect(page.getByRole("alert")).toHaveText("E-mail ou senha incorretos.");
       await expect(page).toHaveURL(/\/login$/);
     }
   });
 
   test("envia CSRF e logout limpa o cookie do navegador", async ({ page, context }) => {
     const user = uniqueUser();
-    await register(page, user);
-    await page.waitForURL(/\/login$/);
     const loginRequest = page.waitForRequest("**/api/v1/auth/login");
-    await page.getByLabel("E-mail").fill(user.email);
-    await page.getByLabel("Senha", { exact: true }).fill(password);
-    await page.getByRole("button", { name: "Entrar" }).click();
+    await register(page, user);
     expect((await loginRequest).headers()["x-nexoaula-csrf"]).toBe("1");
     await page.waitForURL(/\/inicio$/);
 

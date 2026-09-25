@@ -49,7 +49,7 @@ describe("AuthSessionProvider", () => {
       </AuthSessionProvider>,
     );
 
-    expect(screen.getByText("Verificando sua sessão…")).toBeDefined();
+    expect(screen.getByRole("status", { name: "Abrindo seu espaço" })).toBeDefined();
     expect(screen.queryByText(/Sessão de/)).toBeNull();
     resolveRequest(sessionResponse);
 

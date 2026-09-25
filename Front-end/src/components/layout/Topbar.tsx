@@ -18,6 +18,8 @@ type Crumb = {
 };
 
 function breadcrumbs(pathname: string): Crumb[] {
+  if (pathname === "/chat") return [{ label: "Chat das comunidades" }];
+  if (pathname === "/frequencia") return [{ label: "Minha Frequência" }];
   if (pathname === "/inicio") return [{ label: "Início" }];
   if (pathname === "/disciplinas") return [{ label: "Minhas Disciplinas" }];
   if (pathname.startsWith("/disciplinas/")) {

@@ -21,21 +21,28 @@ import styles from "./AcademicGroups.module.css";
 
 export function AcademicGroups() {
   const fetcher = useCallback(async (signal: AbortSignal) => {
-    const [groups, teachers, assignments, lessons, progress] = await Promise.all([
-      academicGroups(signal),
+    const groups = await academicGroups(signal);
+    const [teachers, assignments, lessons, progress] = await Promise.allSettled([
       catalog("teachers", signal),
       catalog("class-section-teachers", signal),
       readAll<Lesson>("groups/me/lessons?period=future", signal),
       fetchMyProgress(undefined, signal),
     ]);
-    return { groups, teachers, assignments, lessons, progress };
+    return {
+      groups,
+      teachers: teachers.status === "fulfilled" ? teachers.value : [],
+      assignments: assignments.status === "fulfilled" ? assignments.value : [],
+      lessons: lessons.status === "fulfilled" ? lessons.value : [],
+      progress: progress.status === "fulfilled" ? progress.value : [],
+      partial: [teachers, assignments, lessons, progress].some((result) => result.status === "rejected"),
+    };
   }, []);
 
   const remote = useRemote("academic-groups", fetcher, true);
   const [query, setQuery] = useState("");
   const [term, setTerm] = useState("");
 
-  const groups = remote.data?.groups ?? [];
+  const groups = useMemo(() => remote.data?.groups ?? [], [remote.data]);
   const terms = useMemo(
     () => [...new Set(groups.map((group) => group.term))].filter(Boolean),
     [groups],
@@ -56,8 +63,8 @@ export function AcademicGroups() {
             Abrir calendário
           </Link>
         }
-        description="Acesse o contexto acadêmico e o cronograma das comunidades em que você participa."
-        eyebrow="Vida acadêmica"
+        description="Acompanhe suas aulas, faltas e conteúdos. O planejamento é compartilhado; seus registros são pessoais."
+        eyebrow="Meu espaço"
         title="Minhas Disciplinas"
       />
 
@@ -94,6 +101,7 @@ export function AcademicGroups() {
         </Card>
       ) : (
         <>
+          {remote.data?.partial && <Card className={styles.filteredEmpty} role="status"><p>Suas disciplinas estão disponíveis. Alguns detalhes não puderam ser atualizados.</p><Button size="sm" variant="secondary" onClick={remote.reload}>Atualizar detalhes</Button></Card>}
           <section className={styles.filters} aria-label="Filtrar disciplinas">
             <label className={styles.searchField}>
               <MagnifyingGlass aria-hidden size={18} />
@@ -158,7 +166,7 @@ export function AcademicGroups() {
                   </div>
 
                   <div className={styles.cardCopy}>
-                    <h2>{group.subject}</h2>
+                    <h2>{group.subject || group.name}</h2>
                     <p>{group.name}</p>
                     <small>{group.section}</small>
                   </div>
@@ -170,6 +178,7 @@ export function AcademicGroups() {
                         <dd>{teacher}</dd>
                       </div>
                     ) : null}
+                    {!teacher ? <div><dt>Docente</dt><dd>Ainda não informado</dd></div> : null}
                     {nextLesson ? (
                       <div>
                         <dt>Próxima aula</dt>
@@ -186,6 +195,7 @@ export function AcademicGroups() {
                         </dd>
                       </div>
                     ) : null}
+                    {!nextLesson ? <div><dt>Próxima aula</dt><dd>Aguardando publicação do organizador</dd></div> : null}
                     {groupProgress.length ? (
                       <div>
                         <dt>Meu progresso</dt>
@@ -203,8 +213,8 @@ export function AcademicGroups() {
                     <Link href={`/grupos/${group.id}`}>
                       Ver comunidade
                     </Link>
-                    <Link className={styles.primaryLink} href={`/grupos/${group.id}#cronograma`}>
-                      Abrir cronograma
+                    <Link className={styles.primaryLink} href={`/disciplinas/${group.offeringId || group.id}?group=${group.id}`}>
+                      Abrir disciplina
                     </Link>
                   </div>
                 </Card>

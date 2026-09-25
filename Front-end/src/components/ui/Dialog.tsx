@@ -20,7 +20,7 @@ export function Dialog({ children, descriptionId, onClose, titleId }: DialogProp
 
   useEffect(() => {
     onCloseRef.current = onClose;
-  }, []);
+  }, [onClose]);
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement as HTMLElement | null;
@@ -66,7 +66,7 @@ export function Dialog({ children, descriptionId, onClose, titleId }: DialogProp
       document.removeEventListener("keydown", handleKeyDown);
       previousFocusRef.current?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div

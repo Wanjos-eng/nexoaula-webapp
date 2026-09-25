@@ -25,11 +25,6 @@ async function registerAndLogin(page: Page, user: User) {
   await page.getByLabel("Confirmar senha").fill(password);
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Criar conta" }).click();
-  await expect(page.getByRole("status")).toContainText("Conta criada com sucesso");
-  await page.waitForURL(/\/login$/, { timeout: 5_000 });
-  await page.getByLabel("E-mail").fill(user.email);
-  await page.getByLabel("Senha", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Entrar" }).click();
   await page.waitForURL(/\/inicio$/, { timeout: 5_000 });
 }
 

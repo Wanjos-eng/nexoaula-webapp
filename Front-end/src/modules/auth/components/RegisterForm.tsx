@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, WarningCircle } from "@phosphor-icons/react";
+import { WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
@@ -15,7 +15,7 @@ import { authService } from "../services/auth.service";
 import styles from "./AuthForm.module.css";
 
 type BannerState = {
-  type: "success" | "error";
+  type: "error";
   message: string;
 } | null;
 
@@ -24,10 +24,12 @@ export function RegisterForm() {
   const [errors, setErrors] = useState<RegisterFormErrors>({});
   const [banner, setBanner] = useState<BannerState>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(false);
+  const registeredCredentials = useRef<{ email: string; password: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
   const submissionRef = useRef(false);
-  const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -35,10 +37,6 @@ export function RegisterForm() {
       isMountedRef.current = false;
       abortRef.current?.abort();
       abortRef.current = null;
-      if (navTimeoutRef.current) {
-        clearTimeout(navTimeoutRef.current);
-        navTimeoutRef.current = null;
-      }
     };
   }, []);
 
@@ -50,9 +48,9 @@ export function RegisterForm() {
     const form = event.currentTarget;
     const data = new FormData(form);
     const validation = validateRegisterForm(data);
-    setErrors(validation.errors);
+    setErrors(accountCreated ? {} : validation.errors);
 
-    if (!validation.isValid && validation.firstErrorField) {
+    if (!accountCreated && !validation.isValid && validation.firstErrorField) {
       if (validation.firstErrorField === "terms") {
         form.querySelector<HTMLElement>('input[name="terms"]')?.focus();
       } else {
@@ -71,21 +69,24 @@ export function RegisterForm() {
     setIsLoading(true);
 
     try {
-      await authService.register({ fullName, email, password }, controller.signal);
+      if (!registeredCredentials.current) {
+        await authService.register({ fullName, email, password }, controller.signal);
+        if (!isMountedRef.current) return;
+        registeredCredentials.current = { email, password };
+        setAccountCreated(true);
+      }
+      await authService.login(registeredCredentials.current, controller.signal);
       if (!isMountedRef.current) return;
 
-      setIsLoading(false);
-      setBanner({
-        type: "success",
-        message: "Conta criada com sucesso. Você já pode entrar.",
-      });
-
-      navTimeoutRef.current = setTimeout(() => {
-        router.push("/login");
-      }, 650);
+      router.replace("/inicio");
     } catch (error) {
       if (!isMountedRef.current || error instanceof RequestAbortedError) return;
       setIsLoading(false);
+
+      if (registeredCredentials.current) {
+        setBanner({ type: "error", message: "Sua conta foi criada, mas não conseguimos iniciar a sessão. Tente entrar novamente." });
+        return;
+      }
 
       if (error instanceof ApiError) {
         if (error.status === 409) {
@@ -140,16 +141,10 @@ export function RegisterForm() {
       {banner ? (
         <div
           aria-live="polite"
-          className={`${styles.banner} ${
-            banner.type === "success" ? styles.bannerSuccess : styles.bannerError
-          }`}
-          role="status"
+          className={`${styles.banner} ${styles.bannerError}`}
+          role="alert"
         >
-          {banner.type === "success" ? (
-            <CheckCircle aria-hidden size={20} />
-          ) : (
-            <WarningCircle aria-hidden size={20} />
-          )}
+          <WarningCircle aria-hidden size={20} />
           <span>{banner.message}</span>
         </div>
       ) : null}
@@ -157,7 +152,7 @@ export function RegisterForm() {
       <form className={styles.form} noValidate onSubmit={handleSubmit}>
         <Field
           autoComplete="name"
-          disabled={isLoading}
+          disabled={isLoading || accountCreated}
           error={errors.fullName}
           id="fullName"
           label="Nome completo"
@@ -170,7 +165,7 @@ export function RegisterForm() {
 
         <Field
           autoComplete="email"
-          disabled={isLoading}
+          disabled={isLoading || accountCreated}
           error={errors.email}
           id="email"
           label="E-mail"
@@ -183,7 +178,7 @@ export function RegisterForm() {
 
         <Field
           autoComplete="new-password"
-          disabled={isLoading}
+          disabled={isLoading || accountCreated}
           error={errors.password}
           hint="Use pelo menos 8 caracteres."
           id="password"
@@ -198,7 +193,7 @@ export function RegisterForm() {
 
         <Field
           autoComplete="new-password"
-          disabled={isLoading}
+          disabled={isLoading || accountCreated}
           error={errors.confirmPassword}
           id="confirmPassword"
           label="Confirmar senha"
@@ -212,7 +207,7 @@ export function RegisterForm() {
           <label className={styles.checkboxLabel}>
             <input
               aria-describedby={errors.terms ? "terms-error" : undefined}
-              disabled={isLoading}
+              disabled={isLoading || accountCreated}
               name="terms"
               type="checkbox"
             />
@@ -228,7 +223,7 @@ export function RegisterForm() {
         </div>
 
         <Button fullWidth loading={isLoading} type="submit">
-          Criar conta
+          {isLoading ? (accountCreated ? "Entrando…" : "Criando conta…") : accountCreated ? "Tentar entrar novamente" : "Criar conta"}
         </Button>
       </form>
 
