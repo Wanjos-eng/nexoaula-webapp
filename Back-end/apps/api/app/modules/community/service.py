@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from app.modules.community.errors import CommunityError
 from app.modules.community.models import (
+    ChannelStatus as ModelChannelStatus,
     GroupJoinPolicy,
     GroupMember,
     GroupStatus as ModelGroupStatus,
@@ -26,10 +27,18 @@ from app.modules.community.models import (
     StudyGroup,
     TeachingPlan,
 )
-from app.modules.community.repository import CommunityUnitOfWork, GroupDiscoveryRecord
+from app.modules.community.repository import (
+    ChannelMessageRecord,
+    CommunityUnitOfWork,
+    GroupDiscoveryRecord,
+)
 from app.modules.community.schemas import (
     AttendanceAdjustmentResponse,
     ChannelCreate,
+    ChannelMessageCreate,
+    ChannelMessageReplyPreview,
+    ChannelMessageResponse,
+    ChannelMessageUpdate,
     ChannelUpdate,
     ChannelResponse,
     GroupCreate,
@@ -1076,4 +1085,105 @@ class CommunityService:
     def _channel_response(uow, channel) -> ChannelResponse:
         return ChannelResponse.model_validate(channel).model_copy(
             update={"topic_name": uow.community.channel_topic_name(channel)}
+        )
+
+
+    def list_channel_messages(self, group_id: UUID, channel_id: UUID, user_id: UUID,
+                              offset: int = 0, limit: int = 50) -> list[ChannelMessageResponse]:
+        with self._uow_factory() as uow:
+            self._require_message_access(uow, group_id, channel_id, user_id)
+            records = uow.community.list_channel_messages(channel_id, offset, limit)
+            return [self._message_response(record) for record in reversed(records)]
+
+    def create_channel_message(self, group_id: UUID, channel_id: UUID, user_id: UUID,
+                               data: ChannelMessageCreate) -> ChannelMessageResponse:
+        with self._uow_factory() as uow:
+            channel = self._require_message_access(
+                uow, group_id, channel_id, user_id, require_active_group=True
+            )
+            if self._value(channel.status) != ModelChannelStatus.ACTIVE.value:
+                raise CommunityError("Não é possível enviar mensagens em um canal arquivado.", 409)
+            if data.reply_to_message_id is not None:
+                target = uow.community.find_channel_message_by_id(data.reply_to_message_id)
+                if target is None or target.channel_id != channel_id:
+                    raise CommunityError("A mensagem respondida deve pertencer ao mesmo canal.", 422)
+            message = uow.community.create_channel_message(
+                channel_id, user_id, data.content, data.reply_to_message_id
+            )
+            record = uow.community.find_channel_message_record(message.id)
+            if record is None:
+                raise CommunityError("Mensagem não encontrada.", 404)
+            uow.commit()
+            return self._message_response(record)
+
+    def update_channel_message(self, group_id: UUID, channel_id: UUID, message_id: UUID,
+                               user_id: UUID, data: ChannelMessageUpdate) -> ChannelMessageResponse:
+        with self._uow_factory() as uow:
+            self._require_message_access(uow, group_id, channel_id, user_id)
+            message = uow.community.find_channel_message_by_id(message_id, lock=True)
+            self._require_owned_message(message, channel_id, user_id)
+            if message.deleted_at is not None:
+                raise CommunityError("Mensagens removidas não podem ser editadas.", 409)
+            uow.community.update_channel_message(message, data.content)
+            record = uow.community.find_channel_message_record(message.id)
+            if record is None:
+                raise CommunityError("Mensagem não encontrada.", 404)
+            uow.commit()
+            return self._message_response(record)
+
+    def delete_channel_message(self, group_id: UUID, channel_id: UUID, message_id: UUID,
+                               user_id: UUID) -> ChannelMessageResponse:
+        with self._uow_factory() as uow:
+            self._require_message_access(uow, group_id, channel_id, user_id)
+            message = uow.community.find_channel_message_by_id(message_id, lock=True)
+            self._require_owned_message(message, channel_id, user_id)
+            if message.deleted_at is not None:
+                raise CommunityError("Mensagem já foi removida.", 409)
+            uow.community.soft_delete_channel_message(message)
+            record = uow.community.find_channel_message_record(message.id)
+            if record is None:
+                raise CommunityError("Mensagem não encontrada.", 404)
+            uow.commit()
+            return self._message_response(record)
+
+    @staticmethod
+    def _require_owned_message(message, channel_id: UUID, user_id: UUID) -> None:
+        if message is None or message.channel_id != channel_id:
+            raise CommunityError("Mensagem não encontrada.", 404)
+        if message.author_id != user_id:
+            raise CommunityError("Apenas o autor pode alterar esta mensagem.", 403)
+
+    @staticmethod
+    def _require_message_access(uow: CommunityUnitOfWork, group_id: UUID, channel_id: UUID,
+                                user_id: UUID, require_active_group: bool = False):
+        group = uow.community.find_by_id(group_id)
+        if group is None:
+            raise CommunityError("Grupo não encontrado.", 404)
+        if not uow.community.is_active_member(group_id, user_id):
+            raise CommunityError("Apenas participantes ativos do grupo podem acessar as mensagens.", 403)
+        if require_active_group and CommunityService._value(group.status) != ModelGroupStatus.ACTIVE.value:
+            raise CommunityError("O grupo não está ativo.", 409)
+        channel = uow.community.find_channel_by_id(channel_id)
+        if channel is None or channel.group_id != group_id:
+            raise CommunityError("Canal não encontrado.", 404)
+        return channel
+
+    @staticmethod
+    def _message_response(record: ChannelMessageRecord) -> ChannelMessageResponse:
+        message = record.message
+        deleted = message.deleted_at is not None
+        reply_preview = None
+        if message.reply_to_message_id is not None:
+            reply_deleted = record.reply_deleted_at is not None
+            reply_preview = ChannelMessageReplyPreview(
+                id=message.reply_to_message_id,
+                author_name=record.reply_author_name or "Estudante",
+                content=None if reply_deleted else record.reply_content,
+                deleted=reply_deleted,
+            )
+        return ChannelMessageResponse(
+            id=message.id, channel_id=message.channel_id, author_id=message.author_id,
+            author_name=record.author_name, reply_to_message_id=message.reply_to_message_id,
+            reply_preview=reply_preview, content=None if deleted else message.content,
+            created_at=message.created_at, edited_at=message.edited_at, deleted_at=message.deleted_at,
         )
