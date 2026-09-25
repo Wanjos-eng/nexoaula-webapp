@@ -2,23 +2,40 @@
 
 import { BookOpenText, MagnifyingGlass } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { academicGroups } from "@/modules/groups/schedule";
+import { fetchMyProgress } from "@/modules/academic/attendance";
+import { catalog } from "@/modules/groups/api";
+import {
+  academicGroups,
+  readAll,
+  type Lesson,
+} from "@/modules/groups/schedule";
 import { useRemote } from "@/modules/groups/useRemote";
 import styles from "./AcademicGroups.module.css";
 
 export function AcademicGroups() {
-  const remote = useRemote("academic-groups", academicGroups, true);
+  const fetcher = useCallback(async (signal: AbortSignal) => {
+    const [groups, teachers, assignments, lessons, progress] = await Promise.all([
+      academicGroups(signal),
+      catalog("teachers", signal),
+      catalog("class-section-teachers", signal),
+      readAll<Lesson>("groups/me/lessons?period=future", signal),
+      fetchMyProgress(undefined, signal),
+    ]);
+    return { groups, teachers, assignments, lessons, progress };
+  }, []);
+
+  const remote = useRemote("academic-groups", fetcher, true);
   const [query, setQuery] = useState("");
   const [term, setTerm] = useState("");
 
-  const groups = remote.data ?? [];
+  const groups = remote.data?.groups ?? [];
   const terms = useMemo(
     () => [...new Set(groups.map((group) => group.term))].filter(Boolean),
     [groups],
@@ -108,7 +125,32 @@ export function AcademicGroups() {
 
           {filtered.length ? (
             <section className={styles.grid} aria-label="Disciplinas por comunidade">
-              {filtered.map((group) => (
+              {filtered.map((group) => {
+                const assignment = remote.data?.assignments.find(
+                  (item) => item.classSectionId === group.offeringId,
+                );
+                const teacher = remote.data?.teachers.find(
+                  (item) => item.id === assignment?.teacherId,
+                )?.fullName;
+                const nextLesson = remote.data?.lessons
+                  .filter((lesson) => lesson.groupId === group.id)
+                  .sort(
+                    (left, right) =>
+                      new Date(left.scheduledAt).getTime() -
+                      new Date(right.scheduledAt).getTime(),
+                  )[0];
+                const groupProgress =
+                  remote.data?.progress.filter(
+                    (record) => record.groupId === group.id,
+                  ) ?? [];
+                const mastered = groupProgress.filter(
+                  (record) => record.status === "mastered",
+                ).length;
+                const reviewing = groupProgress.filter(
+                  (record) => record.status === "reviewing",
+                ).length;
+
+                return (
                 <Card className={styles.disciplineCard} interactive key={group.id}>
                   <div className={styles.cardTop}>
                     <Badge variant="success">{group.term}</Badge>
@@ -121,6 +163,42 @@ export function AcademicGroups() {
                     <small>{group.section}</small>
                   </div>
 
+                  <dl className={styles.cardMeta}>
+                    {teacher ? (
+                      <div>
+                        <dt>Docente</dt>
+                        <dd>{teacher}</dd>
+                      </div>
+                    ) : null}
+                    {nextLesson ? (
+                      <div>
+                        <dt>Próxima aula</dt>
+                        <dd>
+                          {new Date(nextLesson.scheduledAt).toLocaleString(
+                            "pt-BR",
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
+                        </dd>
+                      </div>
+                    ) : null}
+                    {groupProgress.length ? (
+                      <div>
+                        <dt>Meu progresso</dt>
+                        <dd>
+                          {mastered} concluído{mastered === 1 ? "" : "s"}
+                          {reviewing
+                            ? ` · ${reviewing} em revisão`
+                            : ""}
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+
                   <div className={styles.cardActions}>
                     <Link href={`/grupos/${group.id}`}>
                       Ver comunidade
@@ -130,7 +208,8 @@ export function AcademicGroups() {
                     </Link>
                   </div>
                 </Card>
-              ))}
+                );
+              })}
             </section>
           ) : (
             <Card className={styles.filteredEmpty}>
