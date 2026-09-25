@@ -16,7 +16,6 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import {
   cancelGroupInvitation,
   createGroupInvitation,
-  errorMessage,
   listGroupInvitations,
   type GroupInvitation,
 } from "./api";

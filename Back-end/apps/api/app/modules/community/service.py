@@ -505,7 +505,7 @@ class CommunityService:
             uow.commit()
             response = self._invitation_response(record)
             return GroupInvitationCreatedResponse(
-                **response.model_dump(),
+                **response.model_dump(by_alias=False),
                 token=token,
             )
 

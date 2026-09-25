@@ -152,7 +152,9 @@ test.describe("ciclo completo de acesso às comunidades", () => {
 
       await member.goto(`/grupos/${moderatedGroup.id}`);
       await member.getByRole("button", { name: "Solicitar entrada" }).click();
-      await expect(member.getByText("Solicitação pendente")).toBeVisible();
+      await expect(
+        member.getByRole("heading", { name: "Solicitação pendente" }),
+      ).toBeVisible();
 
       await member.getByRole("button", { name: "Cancelar solicitação" }).click();
       const cancelDialog = member.getByRole("dialog");
