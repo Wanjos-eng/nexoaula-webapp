@@ -6,7 +6,7 @@ from app.modules.academic.models import (
     Course,
     Subject,
     AcademicTerm,
-    ClassSection,
+    ClassSection, Teacher, ClassSectionTeacher,
 )
 from app.modules.academic.schemas import (
     AcademicProfileResponse,
@@ -14,13 +14,19 @@ from app.modules.academic.schemas import (
     CourseResponse,
     SubjectResponse,
     AcademicTermResponse,
-    ClassSectionResponse,
+    ClassSectionResponse, TeacherResponse, ClassSectionTeacherResponse, TopicResponse, SubjectTopicResponse,
     CatalogKind,
     Output,
 )
 from app.modules.users.profile_access import ProfileAccess
 
+from app.modules.community.models import Topic, SubjectTopic
+
 CATALOG = {
+    "teachers": (Teacher, TeacherResponse),
+    "class-section-teachers": (ClassSectionTeacher, ClassSectionTeacherResponse),
+    "topics": (Topic, TopicResponse),
+    "subject-topics": (SubjectTopic, SubjectTopicResponse),
     "institutions": (Institution, InstitutionResponse),
     "courses": (Course, CourseResponse),
     "subjects": (Subject, SubjectResponse),
@@ -58,11 +64,15 @@ class SqlAlchemyAcademicRepository:
     def list(self, kind, institution_id, subject_id, limit, offset):
         model, response = CATALOG[kind]
         query = select(model)
-        if institution_id is not None and kind != "institutions":
+        if institution_id is not None and hasattr(model, "institution_id"):
             query = query.where(model.institution_id == institution_id)
-        if subject_id is not None and kind == "class-sections":
+        if subject_id is not None and kind in {"class-sections", "subject-topics"}:
             query = query.where(model.subject_id == subject_id)
-        label = model.name if hasattr(model, "name") else model.label
+        if institution_id is not None and kind == "subject-topics":
+            query = query.join(Subject, Subject.id == SubjectTopic.subject_id).where(Subject.institution_id == institution_id)
+        if subject_id is not None and kind == "class-section-teachers":
+            query = query.join(ClassSection, ClassSection.id == ClassSectionTeacher.class_section_id).where(ClassSection.subject_id == subject_id)
+        label = next((getattr(model, field) for field in ("name", "label", "full_name", "display_order", "starts_on") if hasattr(model, field)), model.id)
         rows = self._session.scalars(
             query.order_by(label, model.id).limit(limit).offset(offset)
         )

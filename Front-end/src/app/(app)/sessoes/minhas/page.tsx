@@ -4,27 +4,23 @@ import { ArrowLeft, CalendarBlank, Storefront, UsersThree } from "@phosphor-icon
 import Link from "next/link";
 import { useState } from "react";
 
-import { apiErrorMessage, cancelEnrollment, useMyBookings } from "@/modules/marketplace/marketplace.api";
+import { useState } from "react";
+import { useMarketplace } from "@/modules/marketplace/useMarketplace";
+import { marketplaceApi, marketplaceError, marketplacePath, type Booking } from "@/modules/marketplace/marketplace.api";
 import { formatCents } from "@/modules/marketplace/marketplace.types";
 import styles from "./page.module.css";
 
 export default function MyBookingsPage() {
-  const { data: bookings, loaded, error } = useMyBookings();
-  const [cancelledIds, setCancelledIds] = useState<Set<string>>(() => new Set());
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  async function handleCancel(sessionId: string, bookingId: string) {
-    setCancellingId(bookingId);
-    setActionError(null);
-    try {
-      await cancelEnrollment(sessionId);
-      setCancelledIds((current) => new Set(current).add(bookingId));
-    } catch (cause: unknown) {
-      setActionError(apiErrorMessage(cause));
-    } finally {
-      setCancellingId(null);
-    }
+  const [offset, setOffset] = useState(0);
+  const { data: bookings = [], error, loading, refresh } = useMarketplace<Booking[]>(`${marketplacePath}/bookings/mine?limit=20&offset=${offset}`);
+  const [now] = useState(() => Date.now());
+  const [busy, setBusy] = useState<string | null>(null);
+  const [failure, setFailure] = useState("");
+  async function cancel(id: string) {
+    setBusy(id); setFailure("");
+    try { await marketplaceApi.cancel(id); refresh(); }
+    catch (error) { setFailure(marketplaceError(error)); }
+    finally { setBusy(null); }
   }
   return (
     <main className={styles.page}>
@@ -41,9 +37,8 @@ export default function MyBookingsPage() {
       <p className={styles.notice} role="note">
         Demonstração acadêmica: nenhuma cobrança ou pagamento real foi realizado.
       </p>
-      {error ? <p role="alert">{error}</p> : null}
-      {actionError ? <p role="alert">{actionError}</p> : null}
-      {!loaded ? <p className={styles.empty}>Carregando inscrições…</p> : bookings.length === 0 ? (
+      {failure && <p role="alert">{failure}</p>}
+      {loading ? <p role="status">Carregando inscrições…</p> : error ? <div role="alert">{error} <button onClick={refresh}>Tentar novamente</button></div> : bookings.length === 0 ? (
         <p className={styles.empty}>Você ainda não possui inscrições simuladas.</p>
       ) : (
         <ul className={styles.list} aria-label="Histórico de inscrições">
@@ -51,7 +46,7 @@ export default function MyBookingsPage() {
             const starts = new Date(booking.session.starts_at);
             const bookingStatus = cancelledIds.has(booking.id) ? "cancelled" : booking.status;
             return (
-              <li className={styles.card} key={booking.id}>
+              <li className={styles.card} key={booking.booking_id}>
                 <div>
                   <span className={styles.status}>
                     {bookingStatus === "confirmed" ? "Confirmada" : "Cancelada"}
@@ -70,31 +65,22 @@ export default function MyBookingsPage() {
                     <UsersThree aria-hidden size={14} /> Tutor: {booking.session.tutor_name}
                   </p>
                 </div>
-                <div>
-                  <strong>
-                    {formatCents(booking.session.price_cents, booking.session.currency)}
-                    <small> valor simulado</small>
-                  </strong>
-                  {booking.transaction ? (
-                    <p>
-                      Recibo: comissão de {formatCents(booking.transaction.commission_cents, booking.transaction.currency)}
-                    </p>
-                  ) : null}
-                  {bookingStatus === "confirmed" ? (
-                    <button
-                      type="button"
-                      onClick={() => handleCancel(booking.session.id, booking.id)}
-                      disabled={cancellingId === booking.id}
-                    >
-                      {cancellingId === booking.id ? "Cancelando…" : "Cancelar inscrição"}
-                    </button>
-                  ) : null}
-                </div>
+                <strong>
+                  {formatCents(booking.transaction.amount_cents, booking.transaction.currency)}
+                  <small> valor simulado</small>
+                </strong>
+                <p>Comissão demonstrativa (15%): {formatCents(booking.transaction.commission_cents)}</p>
+                <p>{booking.notice}</p>
+                {booking.status === "confirmed" && new Date(booking.session.starts_at).getTime() > now && <button disabled={busy !== null} onClick={() => cancel(booking.session_id)}>Cancelar inscrição</button>}
               </li>
             );
           })}
         </ul>
       )}
+      <nav aria-label="Paginação de inscrições">
+        <button disabled={loading || offset === 0} onClick={() => setOffset(Math.max(0, offset - 20))}>Anterior</button>
+        <button disabled={loading || bookings.length < 20} onClick={() => setOffset(offset + 20)}>Próxima</button>
+      </nav>
     </main>
   );
 }

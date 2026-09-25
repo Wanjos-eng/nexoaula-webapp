@@ -7,19 +7,36 @@ import {
   CaretLeft,
   CaretRight,
   Clock,
+  GraduationCap,
   UsersThree,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { DayPicker } from "react-day-picker";
 import type { DayButtonProps } from "react-day-picker";
 import { ptBR } from "react-day-picker/locale";
 import "react-day-picker/style.css";
 
-import { calendarEventsList } from "@/mocks/academic/academicCatalog";
 import type { AcademicCalendarEvent } from "@/modules/academic/types";
-import { AcademicPreviewState, type AcademicViewState } from "./AcademicPreviewState";
+import { academicGroups, readAll, type Lesson } from "@/modules/groups/schedule";
+import { listMyMeetings, type Meeting } from "@/modules/groups/meetings.api";
+import { useRemote } from "@/modules/groups/useRemote";
+import { Failure, Loading } from "@/modules/groups/AsyncState";
 import styles from "@/components/academic/AcademicPage.module.css";
+
+type TutorBookingForCalendar = {
+  booking_id: string;
+  session_id: string;
+  status: "confirmed" | "cancelled";
+  session: {
+    title: string;
+    tutor_name: string;
+    subject_name: string;
+    starts_at: string;
+    ends_at: string;
+    status: "draft" | "scheduled" | "completed" | "cancelled";
+  };
+};
 
 function formatDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
@@ -32,18 +49,85 @@ function parseDateKey(key: string): Date {
   return new Date(year, month - 1, day);
 }
 
-export function AcademicCalendarView({ state = "ready" }: { state?: AcademicViewState }) {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date(2026, 7, 31));
-  const [month, setMonth] = useState<Date>(new Date(2026, 7, 1));
+export function AcademicCalendarView() {
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [month, setMonth] = useState<Date>(() => new Date());
+  // Include outside days displayed in the six-week calendar grid.
+  const first = new Date(month.getFullYear(), month.getMonth(), 1);
+  first.setDate(first.getDate() - first.getDay());
+  const last = new Date(first);
+  last.setDate(last.getDate() + 42);
+  const start = first.toISOString(), end = last.toISOString();
+  const fetcher = useCallback(async (signal: AbortSignal) => {
+    const [groups, meetings, bookings] = await Promise.all([
+      academicGroups(signal),
+      listMyMeetings(start, end, signal),
+      readAll<TutorBookingForCalendar>("marketplace/bookings/mine", signal),
+    ]);
+    const query = new URLSearchParams({ start, end });
+    const lessons = groups.length
+      ? await readAll<Lesson>(`groups/me/lessons?${query}`, signal)
+      : [];
+    const byId = new Map(groups.map((group) => [group.id, group]));
+    const lessonEvents = lessons.flatMap((lesson): AcademicCalendarEvent[] => {
+      const group = byId.get(lesson.groupId);
+      if (!group) return [];
+      const date = new Date(lesson.scheduledAt);
+      return [{
+        id: lesson.id, groupName: group.name, title: lesson.title, type: "Aula",
+        date: formatDateKey(date),
+        time: date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+        context: `${group.subject} · ${group.section} · ${group.term}`,
+        occurrenceStatus: "scheduled",
+        href: `/grupos/${group.id}#aula-${lesson.id}`,
+      }];
+    });
+    const meetingEvents = meetings.flatMap((meeting): AcademicCalendarEvent[] => {
+      const group = byId.get(meeting.groupId);
+      if (!group) return [];
+      const date = new Date(meeting.startsAt);
+      return [{
+        id: `meeting-${meeting.id}`,
+        groupName: group.name,
+        title: meeting.title,
+        type: "Encontro",
+        date: formatDateKey(date),
+        time: `${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}${meeting.endsAt ? `–${new Date(meeting.endsAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : ""}`,
+        context: `${group.subject} · ${group.section}`,
+        eventStatus: meeting.status,
+        href: `/grupos/${group.id}#encontros`,
+      }];
+    });
+    const tutoringEvents = bookings.flatMap((booking): AcademicCalendarEvent[] => {
+      if (booking.status !== "confirmed" || booking.session.status !== "scheduled") return [];
+      const date = new Date(booking.session.starts_at);
+      return [{
+        id: `tutoring-${booking.booking_id}`,
+        groupName: booking.session.tutor_name,
+        title: booking.session.title,
+        type: "Mentoria/Tutoria",
+        date: formatDateKey(date),
+        time: `${date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}–${new Date(booking.session.ends_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`,
+        context: booking.session.subject_name,
+        eventStatus: booking.session.status,
+        href: `/sessoes/${booking.session_id}`,
+      }];
+    });
+    const events = [...lessonEvents, ...meetingEvents, ...tutoringEvents].sort(
+      (left, right) => `${left.date}T${left.time}`.localeCompare(`${right.date}T${right.time}`),
+    );
+    return { groups, events };
+  }, [start, end]);
+  const remote = useRemote(`${start}/${end}`, fetcher, true);
 
   const eventsByDate = useMemo(() => {
     const map: Record<string, AcademicCalendarEvent[]> = {};
-    (state === "empty" ? [] : calendarEventsList).forEach((evt) => {
+    (remote.data?.events ?? []).forEach((evt) => {
       if (!map[evt.date]) map[evt.date] = [];
       map[evt.date].push(evt);
     });
     return map;
-  }, [state]);
+  }, [remote.data]);
 
   const eventDays = useMemo(
     () => Object.keys(eventsByDate).map((key) => parseDateKey(key)),
@@ -61,36 +145,40 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
     year: "numeric",
   }).format(month);
 
+  const todayLabel = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date());
+
   function moveMonth(offset: number) {
     setMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
   }
 
   function goToToday() {
-    const today = new Date(2026, 7, 31); // Anchor mock today
+    const today = new Date();
     setMonth(new Date(today.getFullYear(), today.getMonth(), 1));
     setSelectedDate(today);
   }
 
-  if (state === "loading" || state === "error") return <AcademicPreviewState state={state} />;
   return (
     <div className={styles.page}>
-      <p>Prévia demonstrativa: agenda fictícia de 31/08/2026, sem persistência.</p>
       <header className={styles.header}>
         <div>
           <p className={styles.eyebrow}>Agenda acadêmica</p>
           <h2>Calendário</h2>
-          <p>Aulas, encontros de comunidades e entregas em uma visão integrada.</p>
+          <p>Aulas, encontros dos grupos ativos e mentorias com inscrição confirmada.</p>
         </div>
-        <Link className={styles.primaryButton} href="/grupos/comunidade-msd-c8">
-          Ver encontros de comunidades
+        <Link className={styles.primaryButton} href="/grupos">
+          Ver meus grupos
         </Link>
       </header>
+      <button className={styles.outlineButton} onClick={remote.reload} type="button">Atualizar calendário</button>
 
       {/* Toolbar */}
       <section aria-label="Controles do calendário" className={styles.calendarToolbar}>
         <div className={styles.calendarToolbarGroup}>
           <button className={styles.outlineButton} onClick={goToToday} type="button">
-            Hoje (31/08, demonstração)
+            Hoje ({todayLabel})
           </button>
           <div className={styles.calendarNav}>
             <button
@@ -118,11 +206,22 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
       </section>
 
       {/* Layout */}
+      {remote.loading ? <Loading /> : remote.error ? <Failure error={remote.error} retry={remote.reload} /> : !remote.data?.groups.length && !remote.data?.events.length ? (
+        <section className={styles.emptyDay} data-testid="calendar-empty-state" aria-labelledby="calendar-empty-title">
+          <h2 id="calendar-empty-title">Você ainda não participa de grupos</h2>
+          <p>Entre em um grupo para visualizar seus próximos encontros.</p>
+          <Link className={styles.primaryButton} href="/grupos?view=discover">Descobrir grupos</Link>
+        </section>
+      ) : (
+      <>
+      <nav aria-label="Grupos no calendário">
+        {remote.data.groups.map((group) => <p key={group.id}><Link href={`/grupos/${group.id}#cronograma`}>{group.name}</Link> · {group.subject} · {group.term}</p>)}
+      </nav>
       <div className={styles.calendarLayout}>
         <section aria-label="Calendário mensal" className={styles.calendarBoard}>
           <div className={styles.calendarBoardHeader}>
             <div>
-              <p className={styles.label}>Aulas e encontros</p>
+              <p className={styles.label}>Atividades agendadas</p>
               <p className={styles.calendarBoardHint}>
                 Selecione uma data para visualizar os detalhes da agenda.
               </p>
@@ -131,9 +230,8 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
               <span>
                 <i className={styles.dotClass} /> Aula
               </span>
-              <span>
-                <i className={styles.dotMeeting} /> Encontro
-              </span>
+              <span><i className={styles.dotMeeting} /> Encontro</span>
+              <span><i className={styles.dotTutoring} /> Mentoria/Tutoria</span>
             </div>
           </div>
 
@@ -180,27 +278,25 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
                 {selectedEvents.map((event) => (
                   <article
                     className={styles.dayEvent}
-                    key={`${event.title}-${event.time}`}
+                    key={event.id}
                   >
                     <div
                       className={
-                        event.type === "Aula"
-                          ? styles.eventIconClass
-                          : styles.eventIconMeeting
+                        event.type === "Aula" || event.type === "Entrega" ? styles.eventIconClass : event.type === "Encontro" ? styles.eventIconMeeting : styles.eventIconTutoring
                       }
                     >
-                      {event.type === "Aula" ? (
+                      {event.type === "Aula" || event.type === "Entrega" ? (
                         <BookOpenText aria-hidden size={20} />
-                      ) : (
+                      ) : event.type === "Encontro" ? (
                         <UsersThree aria-hidden size={20} />
+                      ) : (
+                        <GraduationCap aria-hidden size={20} />
                       )}
                     </div>
                     <div>
                       <span
                         className={
-                          event.type === "Aula"
-                            ? styles.eventTypeClass
-                            : styles.eventTypeMeeting
+                          event.type === "Aula" || event.type === "Entrega" ? styles.eventTypeClass : event.type === "Encontro" ? styles.eventTypeMeeting : styles.eventTypeTutoring
                         }
                       >
                         {event.type}
@@ -208,13 +304,24 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
                           ? " (Adiada)"
                           : event.occurrenceStatus === "held"
                           ? " (Realizada)"
-                          : event.occurrenceStatus === "cancelled" ? " (Cancelada)" : ""}
+                          : event.occurrenceStatus === "cancelled"
+                          ? " (Cancelada)"
+                          : event.eventStatus === "cancelled"
+                          ? " (Cancelado)"
+                          : event.eventStatus === "completed"
+                          ? " (Encerrado)"
+                          : event.eventStatus === "postponed"
+                          ? " (Adiado)"
+                          : ""}
                       </span>
                       <h4>{event.title}</h4>
                       <p>
                         <Clock aria-hidden size={15} /> {event.time}
                       </p>
-                      <small>{event.context} · {event.groupName}</small>
+                      <small>
+                        {event.context} · {event.groupName}
+                      </small>
+                      {event.href ? <p><Link href={event.href}>{event.type === "Aula" ? "Detalhar aula no grupo" : event.type === "Encontro" ? "Ver encontro no grupo" : "Ver detalhes da mentoria"}</Link></p> : null}
                     </div>
                   </article>
                 ))}
@@ -223,15 +330,17 @@ export function AcademicCalendarView({ state = "ready" }: { state?: AcademicView
               <div className={styles.emptyDay}>
                 <CalendarBlank aria-hidden size={25} />
                 <h4>Dia livre</h4>
-                <p>Nenhuma aula ou encontro agendado para esta data.</p>
+                <p>Nenhuma atividade agendada para esta data.</p>
               </div>
             )}
-            <Link className={styles.dayAction} href="/progresso">
-              Ver meu progresso <ArrowRight aria-hidden size={15} />
+            <Link className={styles.dayAction} href="/disciplinas">
+              Ver minhas disciplinas <ArrowRight aria-hidden size={15} />
             </Link>
           </section>
         </aside>
       </div>
+      </>
+      )}
     </div>
   );
 }
@@ -259,9 +368,9 @@ function CalendarDayButton({
       {events.slice(0, 2).map((event) => (
         <span
           className={
-            event.type === "Aula" ? styles.dayEventClass : styles.dayEventMeeting
+            event.type === "Aula" || event.type === "Entrega" ? styles.dayEventClass : event.type === "Encontro" ? styles.dayEventMeeting : styles.dayEventTutoring
           }
-          key={`${event.title}-${event.time}`}
+          key={event.id}
           title={`${event.type}: ${event.title} · ${event.time}`}
         >
           {event.time.split("–")[0]}

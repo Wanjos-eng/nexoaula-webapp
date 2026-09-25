@@ -12,6 +12,12 @@ def test_released_migration_chain_resolves_from_any_directory(tmp_path, monkeypa
     revisions = list(ScriptDirectory.from_config(config).walk_revisions())
 
     assert [revision.revision for revision in revisions] == [
+        "0014_planning_corrections",
+        "0013_academic_discovery",
+        "0012_channels",
+        "0011_meeting_postponed",
+        "0010_meetings",
+        "0009_occurrences_attendance",
         "0008_teaching_plans_and_lessons",
         "0007_marketplace_simulation",
         "0006_group_join_requests",
@@ -22,6 +28,12 @@ def test_released_migration_chain_resolves_from_any_directory(tmp_path, monkeypa
         "0001_identity",
     ]
     assert [r.down_revision for r in revisions] == [
+        "0013_academic_discovery",
+        "0012_channels",
+        "0011_meeting_postponed",
+        "0010_meetings",
+        "0009_occurrences_attendance",
+        "0008_teaching_plans_and_lessons",
         "0007_marketplace_simulation",
         "0006_group_join_requests",
         "0005_group_rules",

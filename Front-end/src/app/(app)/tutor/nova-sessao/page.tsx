@@ -4,9 +4,9 @@ import { ArrowLeft, CheckCircle, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 
-import { catalog, type CatalogItem } from "@/modules/groups/api";
-import { apiErrorMessage, createSession, publishSession } from "@/modules/marketplace/marketplace.api";
-import { calcCommission, formatCents } from "@/modules/marketplace/marketplace.types";
+import { useMarketplace } from "@/modules/marketplace/useMarketplace";
+import { marketplaceApi, marketplaceError } from "@/modules/marketplace/marketplace.api";
+import { formatCents } from "@/modules/marketplace/marketplace.types";
 import styles from "./page.module.css";
 
 type PublicationState = "editing" | "draft" | "published";
@@ -25,6 +25,9 @@ type SessionDraft = {
 };
 
 export default function NewTutorSessionPage() {
+  const subjects = useMarketplace<{ id: string; name: string }[]>("/v1/academic/subjects?limit=100");
+  const [offerId, setOfferId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [state, setState] = useState<PublicationState>("editing");
   const [draft, setDraft] = useState<SessionDraft | null>(null);
   const [error, setError] = useState("");
@@ -34,8 +37,9 @@ export default function NewTutorSessionPage() {
     catalog("subjects").then(setSubjects).catch((cause: unknown) => setError(apiErrorMessage(cause)));
   }, []);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy) return;
     const formData = new FormData(event.currentTarget);
     const startsAt = String(formData.get("startsAt"));
     const endsAt = String(formData.get("endsAt"));
@@ -70,31 +74,23 @@ export default function NewTutorSessionPage() {
       capacity,
       priceCents,
     });
-    setState("draft");
+    setBusy(true);
+    try {
+      const payload = { title, subject_id: subject, starts_at: new Date(startsAt).toISOString(),
+        ends_at: new Date(endsAt).toISOString(), modality, location: modality === "online" ? null : location,
+        external_url: modality === "in_person" ? null : externalUrl, capacity, price_cents: priceCents };
+      const offer = offerId ? await marketplaceApi.edit(offerId, payload) : await marketplaceApi.create(payload);
+      setOfferId(offer.id); setState("draft");
+    } catch (error) { setError(marketplaceError(error)); }
+    finally { setBusy(false); }
   }
 
-  const commission = draft ? calcCommission(draft.priceCents) : 0;
-
   async function handlePublish() {
-    if (!draft) return;
-    try {
-      const session = await createSession({
-        subject_id: draft.subjectId,
-        title: draft.title,
-        modality: draft.modality,
-        location: draft.modality === "online" ? null : draft.location,
-        external_url: draft.modality === "in_person" ? null : draft.externalUrl,
-        starts_at: new Date(draft.startsAt).toISOString(),
-        ends_at: new Date(draft.endsAt).toISOString(),
-        capacity: draft.capacity,
-        price_cents: draft.priceCents,
-      });
-      await publishSession(session.id);
-      setError("");
-      setState("published");
-    } catch (cause: unknown) {
-      setError(apiErrorMessage(cause));
-    }
+    if (!offerId || busy) return;
+    setBusy(true); setError("");
+    try { await marketplaceApi.publish(offerId); setState("published"); }
+    catch (error) { setError(marketplaceError(error)); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -120,10 +116,11 @@ export default function NewTutorSessionPage() {
           </label>
           <label>
             <span>Disciplina</span>
-            <select name="subjectId" defaultValue={draft?.subjectId ?? ""} required>
-              <option value="" disabled>Selecione uma disciplina</option>
-              {subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
+            <select name="subject" defaultValue={draft?.subject ?? ""} required disabled={subjects.loading}>
+              <option value="">Selecione uma disciplina</option>
+              {subjects.data?.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
             </select>
+            {subjects.error && <span role="alert">{subjects.error}</span>}
           </label>
           <div className={styles.row}>
             <label>
@@ -161,7 +158,7 @@ export default function NewTutorSessionPage() {
               <input min="0" name="price" defaultValue={draft ? draft.priceCents / 100 : undefined} required step="0.01" type="number" />
             </label>
           </div>
-          <button className={styles.primary} type="submit">Revisar oferta</button>
+          <button className={styles.primary} disabled={busy || subjects.loading} type="submit">{busy ? "Salvando…" : "Revisar oferta"}</button>
         </form>
       ) : draft ? (
         <section className={styles.summary} aria-labelledby="offer-summary">
@@ -174,17 +171,16 @@ export default function NewTutorSessionPage() {
           <h2 id="offer-summary">Resumo da oferta</h2>
           <dl>
             <div><dt>Título</dt><dd>{draft.title}</dd></div>
-            <div><dt>Disciplina</dt><dd>{draft.subjectName}</dd></div>
+            <div><dt>Disciplina</dt><dd>{subjects.data?.find((subject) => subject.id === draft.subject)?.name}</dd></div>
             <div><dt>Início</dt><dd>{new Date(draft.startsAt).toLocaleString("pt-BR")}</dd></div>
             <div><dt>Término</dt><dd>{new Date(draft.endsAt).toLocaleString("pt-BR")}</dd></div>
             <div><dt>Capacidade</dt><dd>{draft.capacity} estudantes</dd></div>
             <div><dt>Valor demonstrativo</dt><dd>{formatCents(draft.priceCents)}</dd></div>
-            <div><dt>Comissão simulada (15%)</dt><dd>{formatCents(commission)}</dd></div>
           </dl>
           {state === "draft" ? (
             <div className={styles.actions}>
-              <button className={styles.secondary} onClick={() => setState("editing")} type="button">Editar</button>
-              <button className={styles.primary} onClick={handlePublish} type="button">Publicar sessão simulada</button>
+              <button className={styles.secondary} onClick={() => setState("editing")} disabled={busy} type="button">Editar</button>
+              <button className={styles.primary} onClick={handlePublish} disabled={busy} type="button">Publicar sessão simulada</button>
             </div>
           ) : (
             <Link className={styles.primaryLink} href="/sessoes">Ver vitrine de sessões</Link>

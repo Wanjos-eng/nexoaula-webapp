@@ -176,3 +176,46 @@ Sem segredo, health continua disponível, mas login/validação de sessão retor
 Veja os contratos, os exemplos de login/me/logout, a política CSRF e a limitação
 de revogação no [README de Auth](app/modules/auth/README.md). O cadastro também
 exige os headers CSRF. A integração do frontend continua fora desta entrega.
+
+## Descoberta acadêmica (#121)
+
+A migração `0013_academic_discovery` adiciona apenas `teachers` e
+`class_section_teachers`, já previstos no DBML. Turmas, assuntos e assuntos do
+grupo reutilizam `class_sections`, `topics`, `subject_topics` e `group_topics`.
+As FKs compostas impedem vínculos professor/turma entre instituições; o banco
+valida o intervalo de datas e a unicidade do vínculo por início. Não há dados
+pré-carregados nem vínculo automático de professores com contas de usuários.
+
+Todos os endpoints de referência exigem sessão ativa. GET é paginado por
+`limit` (1–100) e `offset`; POST exige a mesma proteção CSRF dos catálogos atuais:
+
+| Rota `/api/v1/academic/…` | Campos de criação |
+| --- | --- |
+| `teachers` | `institutionId`, `fullName`, `externalCode` opcional |
+| `class-section-teachers` | `classSectionId`, `teacherId`, `startsOn`, `endsOn` opcional, `role` (`lead`, `assistant`, `substitute`) |
+| `topics` | `slug`, `name`, `description` opcional |
+| `subject-topics` | `subjectId`, `topicId`, `displayOrder` opcional |
+
+Reutilize um assunto existente de `topics` ao vinculá-lo a outra disciplina.
+O cadastro mínimo segue a política existente dos POSTs acadêmicos: disponível a
+estudantes autenticados, sem nova função administrativa. GET `subject-topics` e
+`class-section-teachers` aceitam `subjectId`; os catálogos institucionais também
+aceitam `institutionId`.
+
+`GET /api/v1/groups` preserva os filtros textuais `subject`, `period`, `topic` e
+adiciona UUIDs opcionais `subjectId`, `classSectionId`, `teacherId`,
+`subjectTopicId`. Todos são combinados por AND. `topic` também encontra nomes de
+assuntos efetivamente associados ao grupo e títulos personalizados; não basta
+existir no catálogo da disciplina. `teacherId` considera vínculos históricos da
+turma, independentemente da data atual, permitindo descoberta em períodos
+anteriores. Filtros inexistentes ou incompatíveis respondem 422. Combinações
+válidas sem grupos retornam uma lista vazia. Somente grupos públicos, ativos e
+não excluídos aparecem; relações múltiplas não duplicam linhas na paginação.
+
+`POST /groups` e `PATCH /groups/{id}` aceitam `subjectTopicIds` (até 100, sem
+repetições). Omitir mantém os assuntos; lista vazia remove os assuntos de catálogo
+sem uso. A disciplina é validada no servidor e a gravação é atômica. Na edição,
+somente o proprietário ativo de grupo ativo pode alterar a seleção. Assuntos
+personalizados são preservados. Assuntos com canais, aulas, encontros ou progresso
+não podem ser removidos (409), evitando perda de histórico. A leitura existente
+`GET /groups/{id}/topics` permite restaurar a seleção após recarga.

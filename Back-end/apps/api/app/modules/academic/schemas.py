@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 CatalogKind = Literal[
-    "institutions", "courses", "subjects", "academic-terms", "class-sections"
+    "institutions", "courses", "subjects", "academic-terms", "class-sections", "teachers", "class-section-teachers", "topics", "subject-topics"
 ]
 
 
@@ -134,3 +134,66 @@ class ClassSectionResponse(Output):
     label: str
     created_by: UUID = Field(serialization_alias="createdBy")
     created_at: datetime = Field(serialization_alias="createdAt")
+
+
+class TeacherCreate(Input):
+    institution_id: UUID = Field(alias="institutionId")
+    full_name: str = Field(alias="fullName", min_length=2, max_length=200)
+    external_code: str | None = Field(default=None, alias="externalCode", min_length=1, max_length=50)
+
+
+class TeacherResponse(Output):
+    id: UUID
+    institution_id: UUID = Field(serialization_alias="institutionId")
+    full_name: str = Field(serialization_alias="fullName")
+    external_code: str | None = Field(serialization_alias="externalCode")
+
+
+class ClassSectionTeacherCreate(Input):
+    class_section_id: UUID = Field(alias="classSectionId")
+    teacher_id: UUID = Field(alias="teacherId")
+    role: Literal["lead", "assistant", "substitute"] = "lead"
+    starts_on: date = Field(alias="startsOn")
+    ends_on: date | None = Field(default=None, alias="endsOn")
+
+    @model_validator(mode="after")
+    def valid_range(self):
+        if self.ends_on is not None and self.ends_on < self.starts_on:
+            raise ValueError("A data final não pode ser anterior à inicial.")
+        return self
+
+
+class ClassSectionTeacherResponse(Output):
+    id: UUID
+    institution_id: UUID = Field(serialization_alias="institutionId")
+    class_section_id: UUID = Field(serialization_alias="classSectionId")
+    teacher_id: UUID = Field(serialization_alias="teacherId")
+    role: str
+    starts_on: date = Field(serialization_alias="startsOn")
+    ends_on: date | None = Field(serialization_alias="endsOn")
+
+
+class TopicCreate(Input):
+    slug: str = Field(min_length=1, max_length=180, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    name: str = Field(min_length=1, max_length=150)
+    description: str | None = Field(default=None, max_length=2000)
+
+
+class TopicResponse(Output):
+    id: UUID
+    slug: str
+    name: str
+    description: str | None
+
+
+class SubjectTopicCreate(Input):
+    subject_id: UUID = Field(alias="subjectId")
+    topic_id: UUID = Field(alias="topicId")
+    display_order: int | None = Field(default=None, alias="displayOrder", ge=0)
+
+
+class SubjectTopicResponse(Output):
+    id: UUID
+    subject_id: UUID = Field(serialization_alias="subjectId")
+    topic_id: UUID = Field(serialization_alias="topicId")
+    display_order: int | None = Field(serialization_alias="displayOrder")

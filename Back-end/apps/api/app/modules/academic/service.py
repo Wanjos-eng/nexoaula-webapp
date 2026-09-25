@@ -48,7 +48,7 @@ class AcademicService:
     def create(self, kind: CatalogKind, data: Input, user_id: UUID):
         values = data.model_dump()
         with self._uow_factory() as uow:
-            if kind in {"courses", "subjects", "academic-terms"}:
+            if kind in {"courses", "subjects", "academic-terms", "teachers"}:
                 self._required(uow.academic, "institutions", values["institution_id"])
             if kind == "class-sections":
                 subject = self._required(uow.academic, "subjects", values["subject_id"])
@@ -63,6 +63,15 @@ class AcademicService:
                     "institution_id": subject.institution_id,
                     "created_by": user_id,
                 }
+            if kind == "subject-topics":
+                self._required(uow.academic, "subjects", values["subject_id"])
+                self._required(uow.academic, "topics", values["topic_id"])
+            if kind == "class-section-teachers":
+                section = self._required(uow.academic, "class-sections", values["class_section_id"])
+                teacher = self._required(uow.academic, "teachers", values["teacher_id"])
+                if section.institution_id != teacher.institution_id:
+                    raise AcademicError("Professor e turma devem pertencer à mesma instituição.")
+                values["institution_id"] = section.institution_id
             result = uow.academic.add(kind, values)
             uow.commit()
             return result

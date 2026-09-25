@@ -14,6 +14,10 @@ import {
 import { useRemote } from "./useRemote";
 import { Failure, Loading } from "./AsyncState";
 import { GroupForm } from "./GroupForm";
+import { GroupSchedule } from "./GroupSchedule";
+import { invalidateGroups } from "./schedule";
+import { ChannelManager } from "./ChannelManager";
+import { useChannels } from "./useChannels";
 import s from "./AcademicCommunity.module.css";
 
 export function GroupDetail({ groupId }: { groupId: string }) {
@@ -28,6 +32,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
     [groupId],
   );
   const remote = useRemote(groupId, fetcher);
+  const [channelRevision, setChannelRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [error, setError] = useState<unknown>();
@@ -52,6 +57,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
     } catch (e) {
       setError(e);
     } finally {
+      invalidateGroups();
       remote.reload();
       lock.current = false;
       setBusy(false);
@@ -159,19 +165,28 @@ export function GroupDetail({ groupId }: { groupId: string }) {
               ) : null}
             </aside>
           </div>
+          {participation.status === "active" ? (
+            <GroupSchedule key={groupId} groupId={groupId} canManage={participation.canManage} />
+          ) : (
+            <section className={s.panel}><h2>Plano e cronograma</h2><p>Entre no grupo para acessar as aulas publicadas.</p></section>
+          )}
           {editing && participation.role === "owner" ? (
             <GroupForm
               group={group}
               onSaved={() => {
                 setEditing(false);
                 setFeedback("Configurações salvas.");
+                invalidateGroups();
                 remote.reload();
               }}
             />
           ) : null}
+          {participation.status === "active" ? (
+            <ChannelView key={`${groupId}/${channelRevision}`} groupId={groupId} />
+          ) : null}
           {participation.canManage ? (
             <MemberManagement
-              key={groupId}
+              key={`member-management-${groupId}`}
               groupId={groupId}
               onChanged={(message, error) => {
                 setFeedback(message);
@@ -180,7 +195,15 @@ export function GroupDetail({ groupId }: { groupId: string }) {
               }}
             />
           ) : null}
+          {participation.canManage ? (
+            <ChannelManager
+              key={`channel-management-${groupId}`}
+              groupId={groupId}
+              onUpdated={() => setChannelRevision(revision => revision + 1)}
+            />
+          ) : null}
         </>
+
       ) : null}
     </div>
   );
@@ -232,6 +255,7 @@ function MemberManagement({
       resultError = e;
       setError(e);
     } finally {
+      invalidateGroups();
       lock.current = false;
       setBusy(false);
       remote.reload();
@@ -374,6 +398,46 @@ function MemberManagement({
           </button>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function ChannelView({ groupId }: { groupId: string }) {
+  const { channels, loading, error, reload } = useChannels(groupId);
+
+  if (loading) return <section className={s.panel}><Loading /></section>;
+  if (error) return <section className={s.panel}><Failure error={error} retry={reload} /></section>;
+  if (!channels?.length) return null;
+
+  return (
+    <section className={s.panel}>
+      <div>
+        <p className={s.eyebrow}>Comunidade</p>
+        <h2>Canais por assunto</h2>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "1rem" }}>
+        {channels.map(channel => (
+          <div key={channel.id} className={s.row} style={{ padding: "1rem", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+            <div>
+              <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                # {channel.name}
+                {channel.status === "archived" && <span className={s.badge}>Arquivado</span>}
+              </h3>
+              <p>Assunto: {channel.topicName || "Sem assunto específico"}</p>
+              {channel.description && <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>{channel.description}</p>}
+            </div>
+            <div className={s.actions}>
+              {channel.status === "active" ? (
+                <button className={s.secondary} disabled>
+                  Chat disponível em breve
+                </button>
+              ) : (
+                <span style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>Este canal foi arquivado e está somente leitura.</span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

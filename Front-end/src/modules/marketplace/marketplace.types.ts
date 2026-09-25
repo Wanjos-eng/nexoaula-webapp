@@ -76,8 +76,3 @@ export function formatCents(cents: number, currency = "BRL"): string {
     currency,
   });
 }
-
-/** Calcula comissão demonstrativa: 15% fixo (ADR-0004) */
-export function calcCommission(amountCents: number): number {
-  return Math.round(amountCents * 0.15);
-}

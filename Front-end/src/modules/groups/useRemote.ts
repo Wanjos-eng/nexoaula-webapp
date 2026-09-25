@@ -5,8 +5,24 @@ import { useEffect, useState } from "react";
 export function useRemote<T>(
   key: string,
   fetcher: (signal: AbortSignal) => Promise<T>,
+  revalidate = false,
 ) {
   const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    if (!revalidate) return;
+    const refresh = () => setRevision((r) => r + 1);
+    const visible = () => { if (document.visibilityState === "visible") refresh(); };
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+    window.addEventListener("nexoaula:groups-changed", refresh);
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("pageshow", refresh);
+      window.removeEventListener("nexoaula:groups-changed", refresh);
+      document.removeEventListener("visibilitychange", visible);
+    };
+  }, [revalidate]);
   const [result, setResult] = useState<{
     key: string;
     revision: number;

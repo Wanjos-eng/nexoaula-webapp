@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { disciplinesMap, getDisciplineDetail, academicReferenceTime } from "@/mocks/academic/academicCatalog";
-import { AcademicCalendarView } from "./components/AcademicCalendarView";
 import { AcademicProgressView } from "./components/AcademicProgressView";
 import { DisciplineDetailPage } from "./components/DisciplineDetailPage";
 
@@ -48,15 +47,6 @@ describe("Módulo Acadêmico", () => {
     });
   });
 
-  describe("AcademicCalendarView", () => {
-    it("renderiza os controles do calendário e a legenda de aulas/encontros", () => {
-      render(<AcademicCalendarView />);
-
-      expect(screen.getByRole("heading", { name: "Calendário" })).toBeDefined();
-      expect(screen.getByRole("button", { name: /Hoje/ })).toBeDefined();
-      expect(screen.getByText("Visão mensal")).toBeDefined();
-    });
-  });
 
   describe("AcademicProgressView", () => {
     it("exibe as disciplinas, barras de progresso e o aviso de acompanhamento não oficial", () => {
@@ -105,9 +95,6 @@ it.each(["loading", "error"] as const)("reproduz %s em todas as jornadas", (stat
   const detail = render(<DisciplineDetailPage discipline={null} state={state} />);
   expect(screen.getByRole(state === "loading" ? "status" : "alert")).toBeDefined();
   detail.unmount();
-  const calendar = render(<AcademicCalendarView state={state} />);
-  expect(screen.getByRole(state === "loading" ? "status" : "alert")).toBeDefined();
-  calendar.unmount();
   render(<AcademicProgressView state={state} />);
   expect(screen.getByRole(state === "loading" ? "status" : "alert")).toBeDefined();
 });

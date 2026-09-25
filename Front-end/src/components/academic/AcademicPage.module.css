@@ -52,3 +52,7 @@
 .disciplineNotice{margin-top:14px;color:var(--color-green);font-size:.7rem}
 @media(max-width:920px){.disciplineGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.disciplinesHeader{display:block;margin-bottom:16px}.disciplineControls{margin-top:14px}.disciplineSearch{flex:1;width:auto}.disciplineGrid{grid-template-columns:1fr}.disciplineTile{padding:15px}.tileActions{margin-top:15px}.termFilter select{max-width:122px}}
+.dotTutoring{background:#7253b5}
+.eventIconTutoring{width:38px;height:38px;display:grid;place-items:center;border-radius:8px;color:#7253b5;background:#f1edfa}
+.eventTypeTutoring{display:inline-flex;margin-bottom:4px;color:#7253b5;font-size:.59rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.dayEventTutoring{display:block;overflow:hidden;padding:5px 6px;border-left:3px solid #7253b5;color:var(--color-text);background:#f1edfa;font-size:.6rem;font-weight:700;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}

@@ -26,6 +26,7 @@ def test_only_released_tables_exist(database_engine):
 
     assert tables == {
         "alembic_version",
+        "channels",
         "tutor_profiles",
         "tutor_subjects",
         "tutor_sessions",
@@ -39,6 +40,8 @@ def test_only_released_tables_exist(database_engine):
         "group_members",
         "group_join_requests",
         "class_sections",
+        "teachers",
+        "class_section_teachers",
         "institutions",
         "study_groups",
         "courses",
@@ -48,6 +51,15 @@ def test_only_released_tables_exist(database_engine):
         "teaching_plans",
         "scheduled_lessons",
         "scheduled_lesson_topics",
+        "lesson_occurrences",
+        "occurrence_topics",
+        "student_lesson_attendance",
+        "student_attendance_adjustments",
+        "student_topic_progress",
+        "meetings",
+        "meeting_participants",
+        "meeting_topics",
+        "planning_corrections",
     }
 
 

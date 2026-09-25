@@ -1,3 +1,4 @@
+vi.mock("@/modules/auth", () => ({ useAuthSession: () => ({ user: { id: "owner" } }) }));
 import {
   act,
   fireEvent,
@@ -37,7 +38,8 @@ type Handler = (
 function server(handler: Handler) {
   return vi.stubGlobal(
     "fetch",
-    vi.fn((url: string, options: RequestInit) => handler(url, options)),
+    vi.fn((url: string, options: RequestInit) =>
+      (url.includes("/plans?") || (url.endsWith("/meetings") || url.endsWith("/channels")) || url.includes("/topics")) ? json([]) : handler(url, options)),
   );
 }
 function catalogs(url: string) {
