@@ -175,6 +175,14 @@ for (const width of [1440, 1024, 768, 390]) {
       });
     };
     await page.goto("/perfil");
+
+    if (width <= 820) {
+      const openMenu = page.getByRole("button", { name: "Abrir menu de navegação" });
+      const closeMenu = page.getByRole("button", { name: "Fechar menu", exact: true });
+      await openMenu.click();
+      await expect(closeMenu).toBeFocused();
+      await page.keyboard.press("Escape");
+    }
     await expect(
       page.getByRole("heading", { name: "Ana Silva" }),
     ).toBeVisible();
