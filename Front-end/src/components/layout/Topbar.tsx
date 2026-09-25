@@ -1,6 +1,6 @@
 "use client";
 
-import { CaretRight, List, UserPlus } from "@phosphor-icons/react";
+import { CaretRight, List } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { RefObject } from "react";
@@ -21,26 +21,44 @@ function breadcrumbs(pathname: string): Crumb[] {
   if (pathname === "/inicio") return [{ label: "Início" }];
   if (pathname === "/disciplinas") return [{ label: "Minhas Disciplinas" }];
   if (pathname.startsWith("/disciplinas/")) {
-    return [{ href: "/disciplinas", label: "Minhas Disciplinas" }, { label: "Disciplina" }];
+    return [
+      { href: "/disciplinas", label: "Minhas Disciplinas" },
+      { label: "Disciplina" },
+    ];
   }
   if (pathname === "/grupos") return [{ label: "Comunidades" }];
   if (pathname === "/grupos/novo") {
-    return [{ href: "/grupos", label: "Comunidades" }, { label: "Nova comunidade" }];
+    return [
+      { href: "/grupos", label: "Comunidades" },
+      { label: "Nova comunidade" },
+    ];
   }
   if (pathname.startsWith("/grupos/")) {
-    return [{ href: "/grupos", label: "Comunidades" }, { label: "Comunidade" }];
+    return [
+      { href: "/grupos", label: "Comunidades" },
+      { label: "Comunidade" },
+    ];
   }
   if (pathname === "/calendario") return [{ label: "Calendário" }];
   if (pathname === "/sessoes") return [{ label: "Tutorias" }];
   if (pathname === "/sessoes/minhas") {
-    return [{ href: "/sessoes", label: "Tutorias" }, { label: "Minhas tutorias" }];
+    return [
+      { href: "/sessoes", label: "Tutorias" },
+      { label: "Minhas tutorias" },
+    ];
   }
   if (pathname.startsWith("/sessoes/")) {
-    return [{ href: "/sessoes", label: "Tutorias" }, { label: "Detalhes" }];
+    return [
+      { href: "/sessoes", label: "Tutorias" },
+      { label: "Detalhes" },
+    ];
   }
   if (pathname === "/tutor") return [{ label: "Área do Tutor" }];
   if (pathname.startsWith("/tutor/")) {
-    return [{ href: "/tutor", label: "Área do Tutor" }, { label: "Nova tutoria" }];
+    return [
+      { href: "/tutor", label: "Área do Tutor" },
+      { label: "Nova tutoria" },
+    ];
   }
   if (pathname === "/progresso") return [{ label: "Meu Progresso" }];
   if (pathname === "/perfil") return [{ label: "Meu Perfil" }];
@@ -50,7 +68,6 @@ function breadcrumbs(pathname: string): Crumb[] {
 export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
   const pathname = usePathname();
   const crumbs = breadcrumbs(pathname);
-  const canCreateCommunity = pathname === "/grupos";
 
   return (
     <header className={styles.topbar}>
@@ -68,20 +85,20 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
 
         <nav aria-label="Contexto da página" className={styles.breadcrumbs}>
           {crumbs.map((crumb, index) => (
-            <span className={styles.breadcrumbItem} key={`${crumb.label}-${index}`}>
+            <span
+              className={styles.breadcrumbItem}
+              key={`${crumb.label}-${index}`}
+            >
               {index > 0 ? <CaretRight aria-hidden size={14} /> : null}
-              {crumb.href ? <Link href={crumb.href}>{crumb.label}</Link> : <strong>{crumb.label}</strong>}
+              {crumb.href ? (
+                <Link href={crumb.href}>{crumb.label}</Link>
+              ) : (
+                <strong>{crumb.label}</strong>
+              )}
             </span>
           ))}
         </nav>
       </div>
-
-      {canCreateCommunity ? (
-        <Link className={styles.createGroupButton} href="/grupos/novo">
-          <UserPlus aria-hidden size={18} weight="bold" />
-          <span>Criar comunidade</span>
-        </Link>
-      ) : null}
     </header>
   );
 }
