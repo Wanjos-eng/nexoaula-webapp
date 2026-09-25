@@ -20,8 +20,15 @@ const sessionResponse = {
 };
 
 function SessionConsumer() {
-  const { user } = useAuthSession();
-  return <p>Sessão de {user.email}</p>;
+  const { logout, user } = useAuthSession();
+  return (
+    <>
+      <p>Sessão de {user.email}</p>
+      <button onClick={() => void logout()} type="button">
+        Sair
+      </button>
+    </>
+  );
 }
 
 describe("AuthSessionProvider", () => {
@@ -76,4 +83,22 @@ describe("AuthSessionProvider", () => {
     expect(await screen.findByText("Sessão de lucas@example.com")).toBeDefined();
     expect(me).toHaveBeenCalledTimes(2);
   });
+  it("encerra a sessão e retorna ao login", async () => {
+    vi.spyOn(authService, "me").mockResolvedValueOnce(sessionResponse);
+    const logout = vi
+      .spyOn(authService, "logout")
+      .mockResolvedValueOnce({ status: 204, data: undefined });
+
+    render(
+      <AuthSessionProvider>
+        <SessionConsumer />
+      </AuthSessionProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Sair" }));
+
+    await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
+  });
+
 });
