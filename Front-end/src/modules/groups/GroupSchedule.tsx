@@ -333,30 +333,17 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
 
       {/* Adjustment Notices Banner */}
       {adjustments.length > 0 && (
-        <div style={{ display: "grid", gap: "10px" }} aria-label="Avisos de ajuste de frequência">
+        <div className={s.adjustmentList} aria-label="Avisos de ajuste de frequência">
           {adjustments.map((adj) => (
-            <div
-              key={adj.id}
-              className={s.panel}
-              style={{
-                borderLeft: "4px solid #f59e0b",
-                padding: "14px 18px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "12px",
-                flexWrap: "wrap",
-              }}
-            >
-              <p style={{ margin: 0, fontSize: "14px", lineHeight: "1.5" }}>
+            <div key={adj.id} className={s.adjustmentNotice}>
+              <p className={s.adjustmentText}>
                 <strong>Aviso de retificação:</strong> Uma aula deste grupo foi retificada pelo organizador.
                 Sua frequência anterior foi{" "}
                 <strong>{adj.outcome === "transferred" ? "transferida" : "invalidada"}</strong>.
               </p>
               <button
                 type="button"
-                className={s.secondary}
-                style={{ minHeight: "34px", padding: "6px 14px", fontSize: "13px" }}
+                className={`${s.secondary} ${s.compactButton}`}
                 onClick={() => handleDismissAdjustment(adj.id)}
               >
                 Entendi / Marcar como visto
@@ -368,10 +355,10 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
 
       {/* Topic Management for Organizer */}
       {canManage && (
-        <div className={s.panel} style={{ padding: "18px", gap: "14px" }} aria-label="Gestão de tópicos do grupo">
-          <h3 style={{ fontSize: "16px" }}>Tópicos de estudo do grupo</h3>
+        <div className={`${s.panel} ${s.topicManager}`} aria-label="Gestão de tópicos do grupo">
+          <h3 className={s.subsectionTitle}>Tópicos de estudo da comunidade</h3>
           {topics.length > 0 ? (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            <div className={s.topicBadges}>
               {topics.map((top) => (
                 <span key={top.id} className={s.badge}>
                   {top.customTitle}
@@ -379,13 +366,13 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
               ))}
             </div>
           ) : (
-            <p className={s.muted} style={{ fontSize: "13px", margin: 0 }}>
+            <p className={s.muted}>
               Nenhum tópico cadastrado no grupo ainda.
             </p>
           )}
-          <form onSubmit={handleAddTopic} style={{ display: "flex", gap: "10px", alignItems: "flex-end", flexWrap: "wrap" }}>
-            <label className={s.field} style={{ flex: "1 1 200px" }}>
-              <span style={{ fontSize: "13px" }}>Cadastrar novo tópico</span>
+          <form className={s.topicForm} onSubmit={handleAddTopic}>
+            <label className={`${s.field} ${s.topicInput}`}>
+              <span>Cadastrar novo tópico</span>
               <input
                 value={newTopicTitle}
                 onChange={(e) => setNewTopicTitle(e.target.value)}
@@ -407,7 +394,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
             <div>
               <p>Plano publicado · versão {published.version}</p>
               {published.lessons.length ? (
-                <div aria-label="Aulas publicadas" style={{ display: "grid", gap: "16px", marginTop: "12px" }}>
+                <div aria-label="Aulas publicadas" className={s.lessonList}>
                   {published.lessons.map((lesson) => {
                     const occ = occurrences.find((o) => o.scheduledLessonId === lesson.id);
                     const isHeld = occ?.status === "held";
@@ -436,8 +423,8 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
                       );
 
                     return (
-                      <article className={s.row} id={`aula-${lesson.id}`} key={lesson.id} style={{ display: "grid", gap: "12px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", flexWrap: "wrap" }}>
+                      <article className={`${s.row} ${s.lessonCard}`} id={`aula-${lesson.id}`} key={lesson.id}>
+                        <div className={s.lessonHeader}>
                           <div>
                             <h3>{lesson.title}</h3>
                             <time dateTime={lesson.scheduledAt}>{new Date(lesson.scheduledAt).toLocaleString("pt-BR")}</time>
@@ -445,15 +432,15 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
                           </div>
                           <div>
                             {isHeld ? (
-                              <span className={s.badge} style={{ color: "#10b981", borderColor: "#10b981" }}>
+                              <span className={`${s.badge} ${s.badgeSuccess}`}>
                                 Realizada
                               </span>
                             ) : isCancelled ? (
-                              <span className={s.badge} style={{ color: "#ef4444", borderColor: "#ef4444" }}>
+                              <span className={`${s.badge} ${s.badgeDanger}`}>
                                 Cancelada
                               </span>
                             ) : isPostponed ? (
-                              <span className={s.badge} style={{ color: "#f59e0b", borderColor: "#f59e0b" }}>
+                              <span className={`${s.badge} ${s.badgeWarning}`}>
                                 Adiada
                               </span>
                             ) : (
@@ -464,9 +451,9 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
 
                         {/* Occurrence Details */}
                         {occ && (
-                          <div style={{ fontSize: "13px", color: "var(--color-text-muted)", display: "grid", gap: "4px" }}>
+                          <div className={s.occurrenceDetails}>
                             {isHeld && occ.actualStartedAt && occ.actualEndedAt && (
-                              <p style={{ margin: 0 }}>
+                              <p>
                                 <strong>Realização:</strong> {new Date(occ.actualStartedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} às{" "}
                                 {new Date(occ.actualEndedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                               </p>
@@ -477,7 +464,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
                               </p>
                             )}
                             {occ.notes && (
-                              <p style={{ margin: 0, fontStyle: "italic" }}>
+                              <p className={s.occurrenceNotes}>
                                 Notas: {occ.notes}
                               </p>
                             )}
@@ -489,8 +476,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
                           <div className={s.actions}>
                             <button
                               type="button"
-                              className={s.secondary}
-                              style={{ fontSize: "13px", minHeight: "36px", padding: "6px 14px" }}
+                              className={`${s.secondary} ${s.compactButton}`}
                               onClick={() => startOccurrenceForm(lesson.id, lesson.title, lesson.scheduledAt, occ)}
                             >
                               {occ ? "Retificar ocorrência" : "Registrar ocorrência"}
@@ -500,35 +486,23 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
 
                         {/* Student Private Attendance & Topic Progress */}
                         {canMarkAttendance && occ && (
-                          <div
-                            style={{
-                              marginTop: "8px",
-                              padding: "16px",
-                              border: "1px dashed var(--color-border)",
-                              borderRadius: "12px",
-                              background: "var(--color-surface)",
-                              display: "grid",
-                              gap: "12px",
-                            }}
-                          >
-                            <p style={{ fontSize: "12px", fontWeight: 700, margin: 0, color: "var(--color-text-muted)" }}>
+                          <div className={s.personalPanel}>
+                            <p className={s.privateLabel}>
                               🔒 Registro Pessoal e Não Oficial (visível apenas para você)
                             </p>
 
-                            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                              <span style={{ fontSize: "13px", fontWeight: 600 }}>Sua frequência:</span>
+                            <div className={s.attendanceControls}>
+                              <span className={s.attendanceLabel}>Sua frequência:</span>
                               <button
                                 type="button"
-                                className={myAtt?.status === "present" ? s.primary : s.secondary}
-                                style={{ minHeight: "34px", padding: "6px 14px", fontSize: "13px" }}
+                                className={`${myAtt?.status === "present" ? s.primary : s.secondary} ${s.compactButton}`}
                                 onClick={() => handleRecordAttendance(occ.id, "present")}
                               >
                                 {myAtt?.status === "present" ? "✓ Presente" : "Presença"}
                               </button>
                               <button
                                 type="button"
-                                className={myAtt?.status === "absent" ? s.danger : s.secondary}
-                                style={{ minHeight: "34px", padding: "6px 14px", fontSize: "13px" }}
+                                className={`${myAtt?.status === "absent" ? s.danger : s.secondary} ${s.compactButton}`}
                                 onClick={() => handleRecordAttendance(occ.id, "absent")}
                               >
                                 {myAtt?.status === "absent" ? "✗ Falta" : "Falta"}
@@ -536,8 +510,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
                               {myAtt && (
                                 <button
                                   type="button"
-                                  className={s.secondary}
-                                  style={{ minHeight: "34px", padding: "6px 14px", fontSize: "12px", color: "var(--color-text-muted)" }}
+                                  className={`${s.secondary} ${s.compactButton} ${s.mutedButton}`}
                                   onClick={() => handleRemoveAttendance(occ.id)}
                                 >
                                   Remover
@@ -547,32 +520,20 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
 
                             {/* Topic Progress for this Lesson */}
                             {lessonTopics.length > 0 && (
-                              <div style={{ display: "grid", gap: "8px", marginTop: "4px" }}>
-                                <p style={{ fontSize: "13px", fontWeight: 600, margin: 0 }}>
+                              <div className={s.topicProgress}>
+                                <p className={s.topicProgressTitle}>
                                   Progresso pessoal nos tópicos abordados:
                                 </p>
                                 {lessonTopics.map((top) => {
                                   const prog = myProgress.find((p) => p.groupTopicId === top.id);
                                   const currentStatus = prog?.status ?? "pending";
                                   return (
-                                    <div
-                                      key={top.id}
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "space-between",
-                                        gap: "12px",
-                                        flexWrap: "wrap",
-                                        padding: "6px 0",
-                                        borderBottom: "1px solid var(--color-border)",
-                                      }}
-                                    >
-                                      <span style={{ fontSize: "13px" }}>{top.customTitle}</span>
-                                      <div className={s.actions} style={{ gap: "6px" }}>
+                                    <div className={s.topicProgressRow} key={top.id}>
+                                      <span className={s.topicName}>{top.customTitle}</span>
+                                      <div className={`${s.actions} ${s.topicStatusActions}`}>
                                         <button
                                           type="button"
-                                          style={{ fontSize: "11px", padding: "4px 8px", minHeight: "28px" }}
-                                          className={currentStatus === "pending" ? s.primary : s.secondary}
+                                          className={`${currentStatus === "pending" ? s.primary : s.secondary} ${s.microButton}`}
                                           onClick={() => handleUpdateProgress(top.id, "pending")}
                                         >
                                           Pendente
@@ -610,7 +571,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
           ) : <p>O organizador ainda não publicou o cronograma deste grupo.</p>}
 
           {canManage && !editing && (
-            <div className={s.actions} style={{ marginTop: "16px" }}>
+            <div className={`${s.actions} ${s.scheduleActions}`}>
               <button className={s.primary} onClick={() => edit(draft ?? published)}>
                 {draft ? "Editar rascunho" : published ? "Criar nova versão" : "Criar rascunho"}
               </button>
@@ -622,11 +583,11 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
 
       {/* Occurrence Recording Modal/Panel */}
       {recordingOcc && (
-        <form onSubmit={submitOccurrence} className={s.panel} style={{ border: "2px solid var(--color-green)", padding: "20px" }}>
+        <form onSubmit={submitOccurrence} className={`${s.panel} ${s.occurrenceForm}`}>
           <h3>
             {recordingOcc.supersedesOccurrenceId ? "Retificar ocorrência" : "Registrar ocorrência"}: {recordingOcc.lessonTitle}
           </h3>
-          <p style={{ fontSize: "14px", margin: 0 }}>
+          <p className={s.formHint}>
             {recordingOcc.supersedesOccurrenceId
               ? "Ao retificar uma aula realizada para outra realizada, a frequência dos alunos será transferida automaticamente. Se for alterada para cancelada ou adiada, a frequência anterior será invalidada."
               : "Defina se a aula foi realizada, cancelada ou adiada."}
@@ -720,12 +681,12 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
                 {/* Topic selection for each lesson */}
                 {topics.length > 0 && (
                   <div className={s.field}>
-                    <span style={{ fontSize: "13px" }}>Tópicos desta aula</span>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                    <span className={s.fieldLabel}>Tópicos desta aula</span>
+                    <div className={s.topicCheckboxes}>
                       {topics.map((t) => {
                         const checked = lesson.topicIds.includes(t.id);
                         return (
-                          <label key={t.id} style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+                          <label className={s.topicCheckbox} key={t.id}>
                             <input
                               type="checkbox"
                               checked={checked}
