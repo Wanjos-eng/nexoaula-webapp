@@ -1,324 +1,418 @@
 .page {
   display: grid;
-  gap: 20px;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 28px 24px 64px;
+  gap: var(--space-6);
 }
 
-.back {
-  align-items: center;
-  color: var(--color-text-muted);
-  display: flex;
-  font-size: 0.85rem;
-  gap: 6px;
-  text-decoration: none;
-  width: fit-content;
+.backSkeleton {
+  width: 180px;
 }
 
-.back:hover {
-  color: var(--color-green);
-}
-
-.simulationBanner {
-  background: color-mix(in srgb, var(--color-green) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-green) 30%, transparent);
-  border-radius: 8px;
-  color: var(--color-text-primary);
-  font-size: 0.85rem;
-  padding: 10px 16px;
+.loadingLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--space-6);
 }
 
 .layout {
   display: grid;
-  gap: 28px;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: var(--space-8);
+  align-items: start;
 }
 
-@media (max-width: 768px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-.main {
+.content {
+  min-width: 0;
   display: grid;
-  gap: 16px;
-  align-content: start;
+  gap: var(--space-6);
 }
 
-.subject {
-  background: color-mix(in srgb, var(--color-green) 12%, transparent);
-  border-radius: 20px;
-  color: var(--color-green);
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 4px 12px;
-  width: fit-content;
+.hero {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
 }
 
-.title {
-  font-size: 1.5rem;
+.heroMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.hero h1 {
+  max-width: 760px;
+  color: var(--color-text);
+  font-size: var(--font-size-page-title);
   font-weight: 700;
-  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .tutor {
   color: var(--color-text-muted);
-  font-size: 0.9rem;
-  margin: 0;
+  font-size: var(--font-size-body);
+}
+
+.tutor strong {
+  color: var(--color-text);
 }
 
 .description {
-  color: var(--color-text-secondary);
-  font-size: 0.9rem;
-  line-height: 1.6;
-  margin: 0;
+  max-width: 760px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body);
+  line-height: 1.65;
+}
+
+.detailsCard {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.detailsCard h2,
+.successState h2,
+.cancelledState h2,
+.errorState h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-card-title);
+  line-height: 1.3;
 }
 
 .facts {
   display: grid;
-  gap: 10px;
-  margin: 0;
+  gap: var(--space-4);
 }
 
 .facts > div {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
 }
 
 .facts dt {
-  align-items: center;
-  color: var(--color-text-muted);
   display: flex;
-  font-size: 0.82rem;
-  gap: 5px;
-  min-width: 90px;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  font-weight: 650;
 }
 
 .facts dd {
-  color: var(--color-text-primary);
-  font-size: 0.85rem;
-  font-weight: 500;
-  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  line-height: 1.45;
 }
 
-/* Sidebar */
-.sidebar {
-  align-self: start;
+.bookingColumn {
   position: sticky;
-  top: 80px;
+  top: 88px;
 }
 
-.priceCard {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
+.bookingCard {
   display: grid;
-  gap: 10px;
-  padding: 24px;
+  gap: var(--space-5);
+  padding: var(--space-6);
 }
 
-.priceLabel {
+.price {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.price span {
   color: var(--color-text-muted);
-  font-size: 0.78rem;
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: var(--font-size-small);
+  font-weight: 600;
 }
 
-.priceValue {
-  font-size: 1.6rem;
+.price strong {
+  color: var(--color-text);
+  font-size: 1.75rem;
   font-weight: 800;
-  margin: 0;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
-.priceNote {
-  color: var(--color-text-secondary);
-  font-size: 0.8rem;
-  margin: 0;
-}
-
-.divider {
-  border: none;
-  border-top: 1px solid var(--color-border);
-  margin: 4px 0;
-}
-
-.enrollButton {
-  background: var(--color-green);
-  border: none;
-  border-radius: 10px;
-  color: #fff;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 700;
-  padding: 14px;
-  width: 100%;
-  transition: opacity 0.15s;
-}
-
-.enrollButton:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-.enrollButton:disabled {
-  background: var(--color-border);
-  color: var(--color-text-muted);
-  cursor: not-allowed;
-}
-
-/* Confirm box */
-.confirmBox {
-  background: color-mix(in srgb, var(--color-green) 6%, var(--color-surface));
-  border: 1px solid color-mix(in srgb, var(--color-green) 25%, transparent);
-  border-radius: 10px;
-  display: grid;
-  gap: 10px;
-  padding: 16px;
-}
-
-.confirmText {
-  font-size: 0.88rem;
-  margin: 0;
-}
-
-.simulationNote {
-  align-items: center;
-  color: var(--color-text-muted);
+.demoNotice {
   display: flex;
-  font-size: 0.78rem;
-  gap: 5px;
-  margin: 0;
-}
-
-.confirmActions {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: 1fr 1fr;
-}
-
-.cancelButton {
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  font-size: 0.82rem;
-  padding: 10px;
-}
-
-.confirmButton {
-  background: var(--color-green);
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  cursor: pointer;
-  font-size: 0.82rem;
-  font-weight: 700;
-  padding: 10px;
-}
-
-.failureButton {
-  background: transparent;
-  border: 0;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
   color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 0.75rem;
-  text-decoration: underline;
+  background: var(--color-success-soft);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-caption);
+  line-height: 1.45;
 }
 
-/* Receipt */
-.receipt {
-  align-items: center;
-  display: grid;
-  gap: 10px;
-  text-align: center;
-}
-
-.receiptIcon {
+.demoNotice svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
   color: var(--color-green);
-  margin: 0 auto;
 }
 
-.receiptTitle {
-  font-size: 0.95rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.receiptDetails {
-  background: var(--color-background);
-  border-radius: 8px;
+.successState,
+.cancelledState,
+.errorState {
   display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 12px;
-  text-align: left;
-  width: 100%;
+  gap: var(--space-4);
+  animation: state-in var(--motion-normal) var(--ease-standard);
 }
 
-.receiptDetails > div {
+.successState > svg {
+  color: var(--color-success);
+}
+
+.cancelledState > svg {
+  color: var(--color-text-muted);
+}
+
+.errorState > svg {
+  color: var(--color-danger);
+}
+
+.successState > div,
+.cancelledState > div,
+.errorState > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.successState p,
+.cancelledState p,
+.errorState p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+}
+
+.receipt {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-background);
+  border-radius: var(--radius-sm);
+}
+
+.receipt > div {
   display: flex;
   justify-content: space-between;
+  gap: var(--space-3);
 }
 
-.receiptDetails dt {
+.receipt dt {
   color: var(--color-text-muted);
-  font-size: 0.78rem;
+  font-size: var(--font-size-caption);
+  font-weight: 600;
 }
 
-.receiptDetails dd {
-  font-size: 0.78rem;
-  font-weight: 600;
-  margin: 0;
+.receipt dd {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+  font-weight: 700;
 }
 
 .receiptNotice {
-  background: color-mix(in srgb, var(--color-green) 8%, transparent);
-  border-radius: 6px;
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  margin: 0;
-  padding: 8px;
+  padding: var(--space-3);
+  color: var(--color-text-muted);
+  background: var(--color-info-soft);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-caption) !important;
 }
 
-.cancelEnrollButton {
-  background: transparent;
+.secondaryLink {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-4);
+  color: var(--color-green);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 0.78rem;
-  padding: 8px 12px;
-  width: 100%;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
 }
 
-/* Cancelled */
-.cancelledBox {
+.secondaryLink:hover {
+  background: var(--color-surface-hover);
+  border-color: #c2cec8;
+}
+
+.stateCard {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-8);
   color: var(--color-text-muted);
-  display: grid;
-  gap: 10px;
   text-align: center;
 }
 
-.cancelledBox p {
-  font-size: 0.88rem;
-  margin: 0;
+.stateCard > svg {
+  color: var(--color-danger);
 }
 
-.errorBox {
-  align-items: center;
-  color: var(--color-danger, #b42318);
+.stateCard > div {
   display: grid;
-  gap: 10px;
-  text-align: center;
+  gap: var(--space-2);
 }
 
-.errorBox p {
-  font-size: 0.82rem;
+.stateCard h1 {
+  color: var(--color-text);
+  font-size: var(--font-size-section-title);
+}
+
+.stateActions {
+  display: flex !important;
+  align-items: center;
+  gap: var(--space-3) !important;
+}
+
+.stateActions a {
+  color: var(--color-green);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+}
+
+.dialogContent {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.dialogContent > div:first-child {
+  display: grid;
+  gap: var(--space-2);
+  padding-right: var(--space-8);
+}
+
+.dialogEyebrow {
+  color: var(--color-green);
+  font-size: var(--font-size-caption);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dialogContent h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-section-title);
+  line-height: 1.25;
+}
+
+.dialogContent h2 + p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+}
+
+.summary {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-background);
+  border-radius: var(--radius-md);
+}
+
+.summary > div {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.summary dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+}
+
+.summary dd {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+  text-align: right;
+}
+
+.summaryTotal {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.summaryTotal dd {
+  color: var(--color-green);
+  font-size: var(--font-size-card-title);
+}
+
+.dialogNotice {
+  padding: var(--space-3);
+  color: var(--color-text-muted);
+  background: var(--color-success-soft);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-caption);
   line-height: 1.45;
-  margin: 0;
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+@keyframes state-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 820px) {
+  .loadingLayout,
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .bookingColumn {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .detailsCard,
+  .bookingCard {
+    padding: var(--space-4);
+  }
+
+  .facts > div {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .dialogActions {
+    flex-direction: column-reverse;
+  }
+
+  .dialogActions button {
+    width: 100%;
+  }
+
+  .summary > div {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .summary dd {
+    text-align: left;
+  }
 }
