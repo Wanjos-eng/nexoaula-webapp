@@ -292,7 +292,7 @@ export default function TutorPage() {
             </div>
             {view === "active" && activeProfile ? (
               <Link className={styles.secondaryLink} href="/tutor/nova-sessao">
-                Criar tutoria
+                Criar primeira tutoria
               </Link>
             ) : null}
           </Card>
