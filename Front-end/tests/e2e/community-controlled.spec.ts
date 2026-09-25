@@ -135,6 +135,9 @@ for (const width of [1440, 1024, 768, 390]) {
         body = { status: "active" };
       } else if (path.endsWith("/groups/mine"))
         body = participation.status === "active" ? [group] : [];
+      else if (path.endsWith("/groups/me/lessons")) body = [];
+      else if (path.endsWith("/me/meetings")) body = [];
+      else if (path.endsWith("/marketplace/bookings/mine")) body = [];
       else if (path.endsWith("/groups") && request.method() === "POST") {
         group = { ...group, ...request.postDataJSON(), ownerId: "ana" };
         participation = {
