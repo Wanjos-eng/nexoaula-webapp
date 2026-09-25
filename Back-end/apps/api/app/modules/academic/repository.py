@@ -1,4 +1,4 @@
-from typing import Protocol, Self
+from typing import Any, Protocol, Self
 from uuid import UUID
 from app.modules.academic.schemas import AcademicProfileResponse, CatalogKind, Output
 
@@ -18,6 +18,22 @@ class AcademicRepository(Protocol):
         limit: int,
         offset: int,
     ) -> list[Output]: ...
+    def get_file(self, file_id: UUID) -> Any | None: ...
+    def create_file(
+        self,
+        owner_id: UUID,
+        purpose: Any,
+        storage_provider: str,
+        storage_key: str,
+        mime_type: str,
+        size_bytes: int,
+        checksum_sha256: str | None = None,
+        original_filename: str | None = None,
+    ) -> Any: ...
+    def delete_file(self, file_id: UUID) -> None: ...
+    def set_avatar_file(
+        self, user_id: UUID, file_id: UUID | None
+    ) -> AcademicProfileResponse: ...
 
 
 class AcademicUnitOfWork(Protocol):

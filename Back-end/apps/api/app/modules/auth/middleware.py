@@ -43,9 +43,13 @@ class AuthSecurityMiddleware:
                     )
                 except ValueError:
                     origin = None
+            content_type = headers.get("content-type", "").split(";", 1)[0].strip().lower()
+            content_type_valid = (
+                content_type in {"application/json", "multipart/form-data"}
+                or (scope["method"] == "DELETE" and not content_type)
+            )
             valid = (
-                headers.get("content-type", "").split(";", 1)[0].strip().lower()
-                == "application/json"
+                content_type_valid
                 and headers.get("x-nexoaula-csrf") == "1"
                 and origin in settings.AUTH_ALLOWED_ORIGINS
                 and headers.get("sec-fetch-site", "").lower() != "cross-site"

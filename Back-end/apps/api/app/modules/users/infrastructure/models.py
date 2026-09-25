@@ -3,6 +3,7 @@ from enum import Enum
 from uuid import UUID
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -19,6 +20,48 @@ from sqlalchemy.dialects.postgresql import UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+
+
+class FilePurpose(str, Enum):
+    AVATAR = "avatar"
+    GROUP_COVER = "group_cover"
+    TEACHING_PLAN_SOURCE = "teaching_plan_source"
+    MATERIAL_CONTENT = "material_content"
+
+
+FILE_PURPOSE = SqlEnum(
+    FilePurpose,
+    name="file_purpose",
+    values_callable=lambda enum: [member.value for member in enum],
+    validate_strings=True,
+)
+
+
+class File(Base):
+    __tablename__ = "files"
+    __table_args__ = (
+        CheckConstraint("size_bytes > 0", name="chk_files_positive_size"),
+        Index("ix_files_owner_id", "owner_id"),
+        Index("ix_files_purpose", "purpose"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    owner_id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    purpose: Mapped[FilePurpose] = mapped_column(FILE_PURPOSE, nullable=False)
+    storage_provider: Mapped[str] = mapped_column(String(40), nullable=False, server_default=text("'local'"))
+    storage_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    original_filename: Mapped[str | None] = mapped_column(String(255))
+    mime_type: Mapped[str] = mapped_column(String(150), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    checksum_sha256: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AuthTokenType(str, Enum):
@@ -58,6 +101,7 @@ class User(Base):
 class UserProfile(Base):
     __tablename__ = "user_profiles"
     __table_args__ = (
+        ForeignKeyConstraint(["avatar_file_id"], ["files.id"], name="fk_user_profiles_avatar_file", ondelete="SET NULL"),
         ForeignKeyConstraint(["institution_id"], ["institutions.id"], name="fk_user_profiles_institution", ondelete="RESTRICT"),
         ForeignKeyConstraint(["course_id", "institution_id"], ["courses.id", "courses.institution_id"], name="fk_user_profiles_course_institution", ondelete="RESTRICT"),
         CheckConstraint(

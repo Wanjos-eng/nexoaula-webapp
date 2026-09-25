@@ -1,7 +1,10 @@
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
+
+from app.core.storage import compute_sha256, default_storage, validate_teaching_plan_file
+from app.modules.users.infrastructure.models import FilePurpose
 
 from pydantic import ValidationError
 
@@ -579,6 +582,14 @@ class CommunityService:
             )
             for lesson, topic_ids in lessons_data
         ]
+        source_file_name = None
+        source_file_size = None
+        if plan.source_file_id:
+            file_rec = uow.community.get_file(plan.source_file_id)
+            if file_rec:
+                source_file_name = file_rec.original_filename
+                source_file_size = file_rec.size_bytes
+
         return TeachingPlanResponse(
             id=plan.id,
             group_id=plan.group_id,
@@ -588,6 +599,8 @@ class CommunityService:
             published_at=plan.published_at,
             creator_id=plan.creator_id,
             source_file_id=plan.source_file_id,
+            source_file_name=source_file_name,
+            source_file_size=source_file_size,
             created_at=plan.created_at,
             lessons=lessons_responses,
         )
@@ -599,6 +612,108 @@ class CommunityService:
                 raise CommunityError("Apenas membros podem visualizar os planos.", 403)
             return [self._to_teaching_plan_response(uow, plan) for plan in
                     uow.community.list_teaching_plans(group_id, offset, limit)]
+
+    def attach_plan_source(
+        self,
+        group_id: UUID,
+        plan_id: UUID,
+        user_id: UUID,
+        content: bytes,
+        original_filename: str | None = None,
+        content_type: str | None = None,
+    ) -> TeachingPlanResponse:
+        mime_type, ext = validate_teaching_plan_file(content, original_filename, content_type)
+        checksum = compute_sha256(content)
+        key = f"plans/{group_id}/{plan_id}/{uuid4().hex}{ext}"
+        default_storage.save(key, content)
+
+        old_key = None
+        old_file_id = None
+        try:
+            with self._uow_factory() as uow:
+                if not uow.community.is_active_organizer(group_id, user_id):
+                    raise CommunityError("Apenas organizadores podem alterar anexos do plano de aulas.", 403)
+                plan = uow.community.find_teaching_plan_by_id(plan_id)
+                if plan is None or plan.group_id != group_id:
+                    raise CommunityError("Plano de aulas não encontrado.", 404)
+
+                if plan.source_file_id:
+                    old_file_id = plan.source_file_id
+                    old_file = uow.community.get_file(old_file_id)
+                    if old_file:
+                        old_key = old_file.storage_key
+
+                file_record = uow.community.create_file(
+                    owner_id=user_id,
+                    purpose=FilePurpose.TEACHING_PLAN_SOURCE,
+                    storage_provider="local",
+                    storage_key=key,
+                    mime_type=mime_type,
+                    size_bytes=len(content),
+                    checksum_sha256=checksum,
+                    original_filename=original_filename,
+                )
+                uow.community.update_teaching_plan_source_file(plan_id, file_record.id)
+                if old_file_id:
+                    uow.community.delete_file(old_file_id)
+                uow.commit()
+                response = self._to_teaching_plan_response(uow, plan)
+        except Exception:
+            default_storage.delete(key)
+            raise
+
+        if old_key:
+            default_storage.delete(old_key)
+
+        return response
+
+    def remove_plan_source(
+        self, group_id: UUID, plan_id: UUID, user_id: UUID
+    ) -> TeachingPlanResponse:
+        old_key = None
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores podem alterar anexos do plano de aulas.", 403)
+            plan = uow.community.find_teaching_plan_by_id(plan_id)
+            if plan is None or plan.group_id != group_id:
+                raise CommunityError("Plano de aulas não encontrado.", 404)
+
+            if plan.source_file_id:
+                old_file = uow.community.get_file(plan.source_file_id)
+                if old_file:
+                    old_key = old_file.storage_key
+                uow.community.delete_file(plan.source_file_id)
+                uow.community.update_teaching_plan_source_file(plan_id, None)
+            uow.commit()
+            response = self._to_teaching_plan_response(uow, plan)
+
+        if old_key:
+            default_storage.delete(old_key)
+
+        return response
+
+    def download_plan_source(
+        self, group_id: UUID, plan_id: UUID, user_id: UUID
+    ) -> tuple[bytes, str, str]:
+        with self._uow_factory() as uow:
+            if not uow.community.is_active_member(group_id, user_id):
+                raise CommunityError("Apenas membros ativos podem baixar o anexo do plano.", 403)
+            plan = uow.community.find_teaching_plan_by_id(plan_id)
+            if plan is None or plan.group_id != group_id:
+                raise CommunityError("Plano de aulas não encontrado.", 404)
+            if not plan.source_file_id:
+                raise CommunityError("Este plano não possui anexo.", 404)
+
+            file_record = uow.community.get_file(plan.source_file_id)
+            if file_record is None:
+                raise CommunityError("Arquivo anexo não encontrado.", 404)
+
+            content = default_storage.read(file_record.storage_key)
+            if content is None:
+                raise CommunityError("Arquivo não encontrado no armazenamento.", 404)
+
+            filename = file_record.original_filename or f"plano_versao_{plan.version}.pdf"
+            return content, filename, file_record.mime_type
 
     def publish_plan(self, group_id: UUID, plan_id: UUID, user_id: UUID):
         self.get_group(group_id, user_id)

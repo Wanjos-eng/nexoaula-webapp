@@ -47,6 +47,7 @@ target/
 .cache/
 tmp/
 temp/
+storage/
 
 # Test coverage
 coverage/

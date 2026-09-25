@@ -18,6 +18,8 @@ export type Profile = {
   institutionId: string | null;
   courseId: string | null;
   bio: string | null;
+  avatarFileId?: string | null;
+  avatarUrl?: string | null;
 };
 export type GroupInput = {
   name: string;

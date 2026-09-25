@@ -365,7 +365,7 @@ class TeachingPlan(Base):
         CheckConstraint("version > 0", name="chk_teaching_plans_positive_version"),
         CheckConstraint("status IN ('draft', 'published', 'archived')", name="chk_teaching_plans_status"),
         CheckConstraint("status = 'draft' OR (published_by IS NOT NULL AND published_at IS NOT NULL)", name="chk_teaching_plans_publication_data"),
-        CheckConstraint("source_file_id IS NULL", name="chk_teaching_plans_manual_source"),
+        ForeignKeyConstraint(["source_file_id"], ["files.id"], name="fk_teaching_plans_source_file", ondelete="SET NULL"),
         Index("uq_teaching_plans_current_published", "group_id", unique=True, postgresql_where=text("status = 'published'")),
     )
 

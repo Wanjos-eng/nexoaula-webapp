@@ -20,6 +20,9 @@ export type TeachingPlan = {
   status: "draft" | "published" | "archived";
   publishedAt: string | null;
   lessons: Lesson[];
+  sourceFileId?: string | null;
+  sourceFileName?: string | null;
+  sourceFileSize?: number | null;
 };
 
 export type GroupTopic = {
@@ -163,5 +166,38 @@ export async function createGroupOccurrence(
   });
   invalidateGroups();
   return response.data;
+}
+
+export async function attachPlanFile(
+  groupId: string,
+  planId: string,
+  file: File,
+  signal?: AbortSignal,
+): Promise<TeachingPlan> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await apiClient.post<TeachingPlan>(
+    `/v1/groups/${groupId}/plans/${planId}/attachment`,
+    { body: formData, signal },
+  );
+  invalidateGroups();
+  return response.data;
+}
+
+export async function removePlanFile(
+  groupId: string,
+  planId: string,
+  signal?: AbortSignal,
+): Promise<TeachingPlan> {
+  const response = await apiClient.del<TeachingPlan>(
+    `/v1/groups/${groupId}/plans/${planId}/attachment`,
+    { signal },
+  );
+  invalidateGroups();
+  return response.data;
+}
+
+export function getPlanFileDownloadUrl(groupId: string, planId: string): string {
+  return `/api/v1/groups/${groupId}/plans/${planId}/attachment`;
 }
 

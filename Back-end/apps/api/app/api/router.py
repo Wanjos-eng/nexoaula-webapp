@@ -5,11 +5,13 @@ from app.modules.auth.router import router as auth_router
 from app.modules.community.router import me_router, router as community_router
 from app.modules.community.meetings_router import router as meetings_router
 from app.modules.marketplace.router import router as marketplace_router
+from app.modules.users.router import router as users_router
 
 router = APIRouter()
 
 router.include_router(auth_router)
 router.include_router(academic_router)
+router.include_router(users_router)
 router.include_router(community_router)
 router.include_router(meetings_router)
 router.include_router(me_router)

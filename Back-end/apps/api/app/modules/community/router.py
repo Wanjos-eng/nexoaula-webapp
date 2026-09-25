@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 from pydantic import AwareDatetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 
 from app.modules.auth.dependencies import active_subject
 from app.modules.community.dependencies import get_community_service
@@ -216,6 +216,68 @@ def replace_plan(group_id: UUID, plan_id: UUID, user_id: UserId, payload: Teachi
              openapi_extra=MUTATION_SECURITY)
 def publish_plan(group_id: UUID, plan_id: UUID, user_id: UserId, service: Service):
     return service.publish_plan(group_id, plan_id, user_id)
+
+
+@router.post(
+    "/{group_id}/plans/{plan_id}/attachment",
+    response_model=TeachingPlanResponse,
+    openapi_extra=MUTATION_SECURITY,
+    summary="Anexar arquivo PDF ao plano de aulas",
+)
+async def attach_plan_source(
+    group_id: UUID,
+    plan_id: UUID,
+    user_id: UserId,
+    service: Service,
+    file: UploadFile = File(...),
+) -> TeachingPlanResponse:
+    content = await file.read()
+    return service.attach_plan_source(
+        group_id,
+        plan_id,
+        user_id,
+        content=content,
+        original_filename=file.filename,
+        content_type=file.content_type,
+    )
+
+
+@router.delete(
+    "/{group_id}/plans/{plan_id}/attachment",
+    response_model=TeachingPlanResponse,
+    openapi_extra=MUTATION_SECURITY,
+    summary="Remover anexo do plano de aulas",
+)
+def remove_plan_source(
+    group_id: UUID,
+    plan_id: UUID,
+    user_id: UserId,
+    service: Service,
+) -> TeachingPlanResponse:
+    return service.remove_plan_source(group_id, plan_id, user_id)
+
+
+@router.get(
+    "/{group_id}/plans/{plan_id}/attachment",
+    summary="Baixar anexo do plano de aulas",
+)
+def download_plan_source(
+    group_id: UUID,
+    plan_id: UUID,
+    user_id: UserId,
+    service: Service,
+):
+    content, filename, mime_type = service.download_plan_source(
+        group_id, plan_id, user_id
+    )
+    return Response(
+        content=content,
+        media_type=mime_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "private, no-cache",
+        },
+    )
 
 
 # --- TASK US20: Sugestões e decisões de correção do cronograma ---

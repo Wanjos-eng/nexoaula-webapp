@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.core.storage import StorageValidationError
 from app.modules.auth.security import InvalidCredentialsError
 from app.modules.academic.errors import AcademicError
 from app.modules.community.errors import CommunityError
@@ -70,6 +71,17 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=503,
             content={"detail": "Autenticação temporariamente indisponível."},
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.exception_handler(StorageValidationError)
+    async def storage_validation_handler(
+        request: Request, error: StorageValidationError
+    ) -> JSONResponse:
+        del request
+        return JSONResponse(
+            status_code=error.status_code,
+            content={"detail": error.message},
             headers={"Cache-Control": "no-store"},
         )
 

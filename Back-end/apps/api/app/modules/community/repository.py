@@ -60,7 +60,7 @@ from app.modules.community.schemas import (
     ScheduledLessonUpdate,
     TeachingPlanCreate,
 )
-from app.modules.users.infrastructure.models import UserProfile
+from app.modules.users.infrastructure.models import File, FilePurpose, UserProfile
 
 
 @dataclass(frozen=True)
@@ -139,6 +139,22 @@ class CommunityRepository(Protocol):
     def replace_draft(self, group_id: UUID, plan_id: UUID, data: TeachingPlanCreate) -> TeachingPlan: ...
     def list_user_lessons(self, user_id: UUID, start: datetime | None, end: datetime | None,
                          period: str | None, offset: int, limit: int) -> list[tuple[ScheduledLesson, list[UUID]]]: ...
+    def get_file(self, file_id: UUID) -> File | None: ...
+    def create_file(
+        self,
+        owner_id: UUID,
+        purpose: FilePurpose,
+        storage_provider: str,
+        storage_key: str,
+        mime_type: str,
+        size_bytes: int,
+        checksum_sha256: str | None = None,
+        original_filename: str | None = None,
+    ) -> File: ...
+    def delete_file(self, file_id: UUID) -> None: ...
+    def update_teaching_plan_source_file(
+        self, plan_id: UUID, source_file_id: UUID | None
+    ) -> TeachingPlan | None: ...
 
     # --- TASK #114: Ocorrências de Aula, Frequência e Progresso ---
     def create_lesson_occurrence(self, group_id: UUID, recorded_by: UUID, data: LessonOccurrenceCreate) -> tuple[LessonOccurrence, list[UUID]]: ...
@@ -882,6 +898,51 @@ class SqlAlchemyCommunityRepository:
         lessons = list(self._session.scalars(stmt.order_by(ScheduledLesson.scheduled_at, ScheduledLesson.id).offset(offset).limit(limit)))
         return [(lesson, list(self._session.scalars(select(ScheduledLessonTopic.group_topic_id).where(
             ScheduledLessonTopic.lesson_id == lesson.id)))) for lesson in lessons]
+
+    def get_file(self, file_id: UUID) -> File | None:
+        return self._session.get(File, file_id)
+
+    def create_file(
+        self,
+        owner_id: UUID,
+        purpose: FilePurpose,
+        storage_provider: str,
+        storage_key: str,
+        mime_type: str,
+        size_bytes: int,
+        checksum_sha256: str | None = None,
+        original_filename: str | None = None,
+    ) -> File:
+        file_record = File(
+            id=uuid4(),
+            owner_id=owner_id,
+            purpose=purpose,
+            storage_provider=storage_provider,
+            storage_key=storage_key,
+            mime_type=mime_type,
+            size_bytes=size_bytes,
+            checksum_sha256=checksum_sha256,
+            original_filename=original_filename,
+            created_at=datetime.now(UTC),
+        )
+        self._session.add(file_record)
+        self._session.flush()
+        return file_record
+
+    def delete_file(self, file_id: UUID) -> None:
+        file_record = self._session.get(File, file_id)
+        if file_record:
+            self._session.delete(file_record)
+            self._session.flush()
+
+    def update_teaching_plan_source_file(
+        self, plan_id: UUID, source_file_id: UUID | None
+    ) -> TeachingPlan | None:
+        plan = self._session.get(TeachingPlan, plan_id)
+        if plan:
+            plan.source_file_id = source_file_id
+            self._session.flush()
+        return plan
 
     def create_lesson_occurrence(
         self, group_id: UUID, recorded_by: UUID, data: LessonOccurrenceCreate

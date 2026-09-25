@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     AUTH_JWT_SECRET: SecretStr | None = None
     AUTH_COOKIE_SECURE: bool = True
     AUTH_ALLOWED_ORIGINS: list[str] = Field(default_factory=list)
+    STORAGE_PATH: Path = Field(default_factory=lambda: API_ROOT / "storage")
+    MAX_AVATAR_SIZE_BYTES: int = 5 * 1024 * 1024
+    MAX_PLAN_ATTACHMENT_SIZE_BYTES: int = 10 * 1024 * 1024
 
     @model_validator(mode="after")
     def validate_auth_configuration(self) -> "Settings":

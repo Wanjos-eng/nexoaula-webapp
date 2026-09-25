@@ -490,6 +490,8 @@ class TeachingPlanResponse(BaseModel):
     published_at: datetime | None = Field(default=None, serialization_alias="publishedAt")
     creator_id: UUID = Field(serialization_alias="creatorId")
     source_file_id: UUID | None = Field(default=None, serialization_alias="sourceFileId")
+    source_file_name: str | None = Field(default=None, serialization_alias="sourceFileName")
+    source_file_size: int | None = Field(default=None, serialization_alias="sourceFileSize")
     created_at: datetime = Field(serialization_alias="createdAt")
     lessons: list[ScheduledLessonResponse] = Field(default_factory=list)
 

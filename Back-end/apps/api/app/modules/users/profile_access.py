@@ -32,3 +32,13 @@ class ProfileAccess:
         row.updated_at = datetime.now(UTC)
         self._session.flush()
         return UserProfileRecord.model_validate(row)
+
+    def set_avatar(self, user_id: UUID, file_id: UUID | None) -> UserProfileRecord:
+        row = self._session.get(UserProfile, user_id)
+        if row is None:
+            raise LookupError("Profile not found")
+        row.avatar_file_id = file_id
+        row.updated_at = datetime.now(UTC)
+        self._session.flush()
+        return UserProfileRecord.model_validate(row)
+

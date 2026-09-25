@@ -70,7 +70,8 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
   }
 
   const url = `${API_PREFIX}${path}`;
-  const serializedBody = body !== undefined ? JSON.stringify(body) : undefined;
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  const serializedBody = isFormData ? (body as BodyInit) : body !== undefined ? JSON.stringify(body) : undefined;
 
   // Timeout via AbortController
   const controller = new AbortController();
@@ -97,8 +98,8 @@ async function request<T>(method: HttpMethod, path: string, options: RequestOpti
     requestHeaders.set(CSRF_HEADER, CSRF_VALUE);
   }
 
-  // Content-Type para requests com body
-  if (body !== undefined) {
+  // Content-Type para requests com body (exceto FormData, onde o browser adiciona boundary)
+  if (body !== undefined && !isFormData) {
     requestHeaders.set("Content-Type", "application/json");
   }
 

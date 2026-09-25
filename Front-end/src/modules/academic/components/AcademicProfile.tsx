@@ -60,6 +60,63 @@ function ProfileForm({
   const lock = useRef(false);
   const [error, setError] = useState<unknown>();
   const [saved, setSaved] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError("O tamanho da foto excede o limite de 5 MB.");
+      return;
+    }
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      setAvatarError("Formato de imagem inválido. Formatos suportados: JPEG e PNG.");
+      return;
+    }
+
+    setAvatarBusy(true);
+    setAvatarError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await apiClient.post<Profile>("/v1/academic/profile/avatar", {
+        body: formData,
+      });
+      setDraft((prev) => ({
+        ...prev,
+        avatarFileId: res.data.avatarFileId,
+        avatarUrl: res.data.avatarUrl,
+      }));
+    } catch (err: unknown) {
+      const msg = (err as { data?: { detail?: string } })?.data?.detail || "Falha ao enviar a foto. Tente novamente.";
+      setAvatarError(typeof msg === "string" ? msg : "Falha ao enviar a foto.");
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
+  async function handleAvatarDelete() {
+    setAvatarBusy(true);
+    setAvatarError(null);
+    try {
+      await apiClient.del<Profile>("/v1/academic/profile/avatar");
+      setDraft((prev) => ({
+        ...prev,
+        avatarFileId: null,
+        avatarUrl: null,
+      }));
+    } catch (err: unknown) {
+      const msg = (err as { data?: { detail?: string } })?.data?.detail || "Falha ao remover a foto.";
+      setAvatarError(typeof msg === "string" ? msg : "Falha ao remover a foto.");
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (lock.current) return;
@@ -91,9 +148,80 @@ function ProfileForm({
         onSubmit={submit}
         aria-label="Contexto acadêmico"
       >
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <div
+            style={{
+              width: "72px",
+              height: "72px",
+              borderRadius: "50%",
+              overflow: "hidden",
+              backgroundColor: "var(--color-surface-hover, #23272f)",
+              border: "2px solid var(--color-border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "24px",
+              fontWeight: "700",
+              color: "var(--color-text)",
+              flexShrink: 0,
+            }}
+            data-testid="avatar-container"
+          >
+            {draft.avatarUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={draft.avatarUrl}
+                alt={`Foto de ${draft.displayName}`}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              <span>{(draft.displayName || "U").charAt(0).toUpperCase()}</span>
+            )}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <h2 style={{ margin: 0 }}>{draft.displayName}</h2>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                style={{ display: "none" }}
+                onChange={handleAvatarUpload}
+                disabled={avatarBusy}
+                data-testid="avatar-input"
+              />
+              <button
+                type="button"
+                className={s.secondary}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={avatarBusy}
+              >
+                {avatarBusy ? "Enviando..." : draft.avatarFileId ? "Trocar foto" : "Adicionar foto"}
+              </button>
+              {draft.avatarFileId ? (
+                <button
+                  type="button"
+                  className={s.secondary}
+                  onClick={handleAvatarDelete}
+                  disabled={avatarBusy}
+                  style={{ color: "var(--color-danger, #e53e3e)" }}
+                >
+                  Remover foto
+                </button>
+              ) : null}
+            </div>
+            <small style={{ color: "var(--color-text-muted)" }}>
+              JPEG ou PNG até 5 MB.
+            </small>
+            {avatarError ? (
+              <p role="alert" style={{ color: "var(--color-danger, #e53e3e)", fontSize: "13px", margin: 0 }}>
+                {avatarError}
+              </p>
+            ) : null}
+          </div>
+        </div>
         <div>
-          <h2>{draft.displayName}</h2>
-          <p>Contexto acadêmico</p>
+          <p style={{ margin: 0, color: "var(--color-text-muted)", fontSize: "14px" }}>Contexto acadêmico</p>
         </div>
         <fieldset
           disabled={busy}

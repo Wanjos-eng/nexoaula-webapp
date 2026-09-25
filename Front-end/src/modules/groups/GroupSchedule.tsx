@@ -6,6 +6,7 @@ import { ApiError } from "@/lib/api";
 import { Failure, Loading } from "./AsyncState";
 import { useRemote } from "./useRemote";
 import {
+  attachPlanFile,
   createGroupOccurrence,
   createGroupTopic,
   groupPlans,
@@ -13,6 +14,7 @@ import {
   listGroupTopics,
   localDateTime,
   publishPlan,
+  removePlanFile,
   saveDraft,
   type GroupLessonOccurrence,
   type GroupTopic,
@@ -52,8 +54,87 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
   const [feedback, setFeedback] = useState("");
   const published = remote.data?.find((plan) => plan.status === "published");
   const draft = remote.data?.find((plan) => plan.status === "draft" && plan.version > (published?.version ?? 0));
+  const currentPlan = published ?? (canManage ? draft : undefined);
   const accessDenied = remote.error instanceof ApiError && [401, 403, 404].includes(remote.error.status);
   const scrolledTo = useRef("");
+
+  // Plan PDF Attachment States
+  const [attachmentBusy, setAttachmentBusy] = useState(false);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleAttachmentUpload(e: React.ChangeEvent<HTMLInputElement>, planId: string) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    if (file.size > 10 * 1024 * 1024) {
+      setAttachmentError("O anexo excede o limite permitido de 10 MB.");
+      return;
+    }
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setAttachmentError("Formato de arquivo inválido. O plano exige um arquivo PDF.");
+      return;
+    }
+
+    setAttachmentBusy(true);
+    setAttachmentError(null);
+    try {
+      await attachPlanFile(groupId, planId, file);
+      setFeedback("Anexo do plano de ensino atualizado com sucesso.");
+      remote.reload();
+    } catch (err: unknown) {
+      const msg = (err as { data?: { detail?: string } })?.data?.detail || "Falha ao enviar o anexo do plano.";
+      setAttachmentError(typeof msg === "string" ? msg : "Falha ao enviar anexo.");
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+
+  async function handleAttachmentRemove(planId: string) {
+    setAttachmentBusy(true);
+    setAttachmentError(null);
+    try {
+      await removePlanFile(groupId, planId);
+      setFeedback("Anexo do plano de ensino removido.");
+      remote.reload();
+    } catch (err: unknown) {
+      const msg = (err as { data?: { detail?: string } })?.data?.detail || "Falha ao remover o anexo.";
+      setAttachmentError(typeof msg === "string" ? msg : "Falha ao remover anexo.");
+    } finally {
+      setAttachmentBusy(false);
+    }
+  }
+
+  async function handleDownloadAttachment(planId: string, filename: string) {
+    try {
+      setAttachmentError(null);
+      const res = await fetch(`/api/v1/groups/${groupId}/plans/${planId}/attachment`, {
+        credentials: "same-origin",
+      });
+      if (!res.ok) {
+        if (res.status === 403) {
+          throw new Error("Acesso negado: apenas participantes ativos do grupo podem baixar o anexo.");
+        }
+        if (res.status === 404) {
+          throw new Error("Anexo não encontrado.");
+        }
+        throw new Error("Falha ao baixar o anexo.");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: unknown) {
+      const msg = (err as Error)?.message || "Falha ao baixar o arquivo.";
+      setAttachmentError(msg);
+    }
+  }
 
   // Academic Extra States
   const [topics, setTopics] = useState<GroupTopic[]>([]);
@@ -96,6 +177,7 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
   }, [groupId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadExtraData();
   }, [loadExtraData]);
 
@@ -615,6 +697,123 @@ export function GroupSchedule({ groupId, canManage }: { groupId: string; canMana
                 {draft ? "Editar rascunho" : published ? "Criar nova versão" : "Criar rascunho"}
               </button>
               {draft && <span>Rascunho · versão {draft.version}</span>}
+            </div>
+          )}
+
+          {/* Anexo do Plano de Ensino (PDF) */}
+          {currentPlan && (
+            <div
+              className={s.panel}
+              style={{
+                padding: "18px 22px",
+                background: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "14px",
+                display: "grid",
+                gap: "12px",
+                marginTop: "16px",
+              }}
+              aria-label="Anexo complementar do plano"
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "16px" }}>Documento oficial do plano (PDF)</h3>
+                  <p style={{ margin: "4px 0 0", fontSize: "13px", color: "var(--color-text-muted)" }}>
+                    Aviso: Este anexo serve como fonte complementar de consulta. O cronograma manual continua independente.
+                  </p>
+                </div>
+              </div>
+
+              {currentPlan.sourceFileId ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", background: "var(--color-surface-hover, #23272f)", padding: "12px 16px", borderRadius: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{ fontSize: "20px" }}>📄</span>
+                    <div>
+                      <span style={{ fontWeight: 600, fontSize: "14px" }}>{currentPlan.sourceFileName ?? "plano-de-ensino.pdf"}</span>
+                      {currentPlan.sourceFileSize && (
+                        <span style={{ fontSize: "12px", color: "var(--color-text-muted)", marginLeft: "8px" }}>
+                          ({(currentPlan.sourceFileSize / (1024 * 1024)).toFixed(2)} MB)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      className={s.secondary}
+                      style={{ fontSize: "13px", minHeight: "34px", padding: "6px 14px" }}
+                      onClick={() => handleDownloadAttachment(currentPlan.id, currentPlan.sourceFileName ?? "plano-de-ensino.pdf")}
+                      disabled={attachmentBusy}
+                    >
+                      Baixar PDF
+                    </button>
+                    {canManage && (
+                      <>
+                        <input
+                          ref={attachmentInputRef}
+                          type="file"
+                          accept="application/pdf"
+                          style={{ display: "none" }}
+                          onChange={(e) => handleAttachmentUpload(e, currentPlan.id)}
+                          disabled={attachmentBusy}
+                          data-testid="plan-attachment-input"
+                        />
+                        <button
+                          type="button"
+                          className={s.secondary}
+                          style={{ fontSize: "13px", minHeight: "34px", padding: "6px 14px" }}
+                          onClick={() => attachmentInputRef.current?.click()}
+                          disabled={attachmentBusy}
+                        >
+                          {attachmentBusy ? "Enviando..." : "Substituir PDF"}
+                        </button>
+                        <button
+                          type="button"
+                          className={s.danger}
+                          style={{ fontSize: "13px", minHeight: "34px", padding: "6px 14px" }}
+                          onClick={() => handleAttachmentRemove(currentPlan.id)}
+                          disabled={attachmentBusy}
+                        >
+                          Remover anexo
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                  <p style={{ margin: 0, fontSize: "13px", color: "var(--color-text-muted)" }}>
+                    Nenhum arquivo PDF anexado a este plano de ensino.
+                  </p>
+                  {canManage && (
+                    <div>
+                      <input
+                        ref={attachmentInputRef}
+                        type="file"
+                        accept="application/pdf"
+                        style={{ display: "none" }}
+                        onChange={(e) => handleAttachmentUpload(e, currentPlan.id)}
+                        disabled={attachmentBusy}
+                        data-testid="plan-attachment-input"
+                      />
+                      <button
+                        type="button"
+                        className={s.secondary}
+                        style={{ fontSize: "13px", minHeight: "34px", padding: "6px 14px" }}
+                        onClick={() => attachmentInputRef.current?.click()}
+                        disabled={attachmentBusy}
+                      >
+                        {attachmentBusy ? "Enviando..." : "Anexar PDF (até 10 MB)"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {attachmentError && (
+                <p role="alert" style={{ color: "var(--color-danger, #e53e3e)", fontSize: "13px", margin: 0 }}>
+                  {attachmentError}
+                </p>
+              )}
             </div>
           )}
         </>
