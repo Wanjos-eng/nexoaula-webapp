@@ -61,7 +61,6 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     abortRef.current?.abort();
     await authService.logout();
-    setUser(null);
     replace("/login");
   }, [replace]);
 
