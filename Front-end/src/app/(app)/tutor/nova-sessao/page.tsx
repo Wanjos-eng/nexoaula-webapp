@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { BackButton } from "@/components/ui/BackButton";
-import { apiClient } from "@/lib/api";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -15,7 +14,6 @@ import { useToast } from "@/components/ui/Toast";
 import {
   marketplaceApi,
   marketplaceError,
-  marketplacePath,
   type SessionOffer,
 } from "@/modules/marketplace/marketplace.api";
 import { formatCents } from "@/modules/marketplace/marketplace.types";
@@ -49,7 +47,8 @@ export default function NewTutorSessionPage() {
   );
   const [offerId, setOfferId] = useState<string | null>(null);
   const [editSessionId, setEditSessionId] = useState<string | null>(null);
-  const [loadingExisting, setLoadingExisting] = useState(true);
+  const [loadingEdit, setLoadingEdit] = useState(true);
+  const [editLoadError, setEditLoadError] = useState("");
   const [busy, setBusy] = useState(false);
   const [state, setState] = useState<PublicationState>("editing");
   const [draft, setDraft] = useState<SessionDraft | null>(null);
@@ -63,43 +62,31 @@ export default function NewTutorSessionPage() {
     setEditSessionId(sessionId);
 
     if (!sessionId) {
-      setLoadingExisting(false);
+      setLoadingEdit(false);
       return;
     }
 
     const controller = new AbortController();
-    apiClient
-      .get<SessionOffer[]>(
-        `${marketplacePath}/sessions/mine?limit=100&offset=0`,
-        { signal: controller.signal },
-      )
-      .then(({ data }) => {
+    marketplaceApi
+      .listMine(100, 0, controller.signal)
+      .then((offers) => {
         if (controller.signal.aborted) return;
-        const offer = data.find((item) => item.id === sessionId);
+        const offer = offers.find((item) => item.id === sessionId);
         if (!offer || offer.status !== "draft") {
-          setError("Este rascunho não está disponível para edição.");
+          setEditLoadError("Este rascunho não está disponível para edição.");
           return;
         }
 
         setOfferId(offer.id);
-        setDraft({
-          title: offer.title,
-          subject: offer.subject_id,
-          description: offer.description ?? "",
-          startsAt: toLocalDateTimeInput(offer.starts_at),
-          endsAt: toLocalDateTimeInput(offer.ends_at),
-          location: offer.location ?? "",
-          externalUrl: offer.external_url ?? "",
-          modality: offer.modality,
-          capacity: offer.capacity,
-          priceCents: offer.price_cents,
-        });
+        setDraft(sessionOfferToDraft(offer));
       })
       .catch((cause: unknown) => {
-        if (!controller.signal.aborted) setError(marketplaceError(cause));
+        if (!controller.signal.aborted) {
+          setEditLoadError(marketplaceError(cause));
+        }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoadingExisting(false);
+        if (!controller.signal.aborted) setLoadingEdit(false);
       });
 
     return () => controller.abort();
@@ -208,32 +195,6 @@ export default function NewTutorSessionPage() {
     } finally {
       setBusy(false);
     }
-  }
-
-  if (loadingExisting) {
-    return (
-      <div className={styles.page} role="status" aria-label="Carregando tutoria">
-        <BackButton fallback="/tutor">Voltar ao painel</BackButton>
-        <Skeleton variant="card" />
-      </div>
-    );
-  }
-
-  if (editSessionId && !offerId && error) {
-    return (
-      <div className={styles.page}>
-        <BackButton fallback="/tutor">Voltar ao painel</BackButton>
-        <PageHeader
-          description="O rascunho solicitado não pôde ser carregado."
-          eyebrow="Área do Tutor"
-          title="Editar tutoria"
-        />
-        <Card className={styles.formCard} role="alert">
-          <p>{error}</p>
-          <Link href="/tutor">Voltar ao painel</Link>
-        </Card>
-      </div>
-    );
   }
 
   return (
@@ -550,15 +511,6 @@ export default function NewTutorSessionPage() {
     </div>
   );
 }
-
-function toLocalDateTimeInput(value: string): string {
-  const date = new Date(value);
-  const pad = (part: number) => String(part).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate(),
-  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
 
 function sessionOfferToDraft(offer: SessionOffer): SessionDraft {
   return {
