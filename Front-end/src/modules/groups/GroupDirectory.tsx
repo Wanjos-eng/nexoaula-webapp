@@ -8,6 +8,7 @@ import {
   visibilityLabels,
   type Group,
 } from "./api";
+import { AcademicFilters, emptyFilters } from "./AcademicFilters";
 import { useRemote } from "./useRemote";
 import { Failure, Loading } from "./AsyncState";
 import s from "./AcademicCommunity.module.css";
@@ -19,11 +20,7 @@ export function GroupDirectory({
 }) {
   const [view, setView] = useState(initialView);
   const [offset, setOffset] = useState(0);
-  const [filters, setFilters] = useState({
-    subject: "",
-    period: "",
-    topic: "",
-  });
+  const [filters, setFilters] = useState(emptyFilters);
   const [query, setQuery] = useState("");
   const path = `groups${view === "mine" ? "/mine" : ""}?limit=${PAGE_SIZE + 1}&offset=${offset}${view === "discover" ? `&${query}` : ""}`;
   const fetcher = useCallback(
@@ -34,7 +31,7 @@ export function GroupDirectory({
   function search(event: FormEvent) {
     event.preventDefault();
     setOffset(0);
-    setQuery(new URLSearchParams(filters).toString());
+    setQuery(new URLSearchParams(Object.entries(filters).filter(([, value]) => value.trim())).toString());
     remote.reload();
   }
   function switchView(next: "mine" | "discover") {
@@ -91,12 +88,17 @@ export function GroupDirectory({
                   value={filters[field]}
                   placeholder={placeholder}
                   onChange={(e) =>
-                    setFilters({ ...filters, [field]: e.target.value })
+                    setFilters({ ...filters, [field]: e.target.value,
+                      ...(field === "subject" ? { subjectId: "", classSectionId: "", teacherId: "", subjectTopicId: "" } : {}),
+                      ...(field === "period" ? { classSectionId: "", teacherId: "" } : {}),
+                      ...(field === "topic" ? { subjectTopicId: "" } : {}),
+                    })
                   }
                 />
               </label>
             ))}
           </div>
+          <AcademicFilters filters={filters} onChange={setFilters} />
           <div className={s.actions}>
             <button className={s.primary} disabled={remote.loading}>
               Buscar grupos
@@ -105,7 +107,7 @@ export function GroupDirectory({
               className={s.secondary}
               type="button"
               onClick={() => {
-                setFilters({ subject: "", period: "", topic: "" });
+                setFilters(emptyFilters);
                 setQuery("");
                 setOffset(0);
               }}
@@ -179,7 +181,7 @@ export function GroupDirectory({
               <button
                 className={s.secondary}
                 onClick={() => {
-                  setFilters({ subject: "", period: "", topic: "" });
+                  setFilters(emptyFilters);
                   setQuery("");
                   setOffset(0);
                 }}

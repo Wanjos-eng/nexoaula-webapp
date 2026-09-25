@@ -7,6 +7,10 @@ export type CatalogItem = {
   institutionId?: string;
   subjectId?: string;
   academicTermId?: string;
+  fullName?: string;
+  teacherId?: string;
+  classSectionId?: string;
+  topicId?: string;
 };
 export type Profile = {
   userId: string;
@@ -23,6 +27,7 @@ export type GroupInput = {
   joinPolicy: "open" | "approval_required" | "invite_only";
   disciplineId: string;
   offeringId: string | null;
+  subjectTopicIds?: string[];
 };
 export type Group = GroupInput & {
   id: string;

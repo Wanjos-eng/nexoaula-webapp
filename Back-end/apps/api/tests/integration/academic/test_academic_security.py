@@ -28,6 +28,10 @@ def client(monkeypatch):
     [
         ("profile", "patch"),
         ("institutions", "post"),
+        ("teachers", "post"),
+        ("class-section-teachers", "post"),
+        ("topics", "post"),
+        ("subject-topics", "post"),
         ("courses", "post"),
         ("subjects", "post"),
         ("academic-terms", "post"),

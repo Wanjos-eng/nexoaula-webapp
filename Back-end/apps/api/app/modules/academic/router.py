@@ -15,7 +15,8 @@ from app.modules.academic.schemas import (
     AcademicTermCreate,
     AcademicTermResponse,
     ClassSectionCreate,
-    ClassSectionResponse,
+    ClassSectionResponse, TeacherCreate, TeacherResponse, ClassSectionTeacherCreate,
+    ClassSectionTeacherResponse, TopicCreate, TopicResponse, SubjectTopicCreate, SubjectTopicResponse,
 )
 from app.modules.auth.dependencies import active_subject
 
@@ -171,3 +172,67 @@ def list_class_sections(
     return service.list_catalog(
         "class-sections", institution_id, subject_id, limit, offset
     )
+
+
+@router.post("/teachers", response_model=TeacherResponse, status_code=201, openapi_extra=MUTATION_SECURITY)
+def create_teachers(payload: TeacherCreate, user_id: UserId, service: Service):
+    return service.create("teachers", payload, user_id)
+
+
+@router.get("/teachers", response_model=list[TeacherResponse])
+def list_teachers(
+    user_id: UserId, service: Service,
+    institution_id: Annotated[UUID | None, Query(alias="institutionId")] = None,
+    subject_id: Annotated[UUID | None, Query(alias="subjectId")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+):
+    return service.list_catalog("teachers", institution_id, subject_id, limit, offset)
+
+
+@router.post("/class-section-teachers", response_model=ClassSectionTeacherResponse, status_code=201, openapi_extra=MUTATION_SECURITY)
+def create_class_section_teachers(payload: ClassSectionTeacherCreate, user_id: UserId, service: Service):
+    return service.create("class-section-teachers", payload, user_id)
+
+
+@router.get("/class-section-teachers", response_model=list[ClassSectionTeacherResponse])
+def list_class_section_teachers(
+    user_id: UserId, service: Service,
+    institution_id: Annotated[UUID | None, Query(alias="institutionId")] = None,
+    subject_id: Annotated[UUID | None, Query(alias="subjectId")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+):
+    return service.list_catalog("class-section-teachers", institution_id, subject_id, limit, offset)
+
+
+@router.post("/topics", response_model=TopicResponse, status_code=201, openapi_extra=MUTATION_SECURITY)
+def create_topics(payload: TopicCreate, user_id: UserId, service: Service):
+    return service.create("topics", payload, user_id)
+
+
+@router.get("/topics", response_model=list[TopicResponse])
+def list_topics(
+    user_id: UserId, service: Service,
+    institution_id: Annotated[UUID | None, Query(alias="institutionId")] = None,
+    subject_id: Annotated[UUID | None, Query(alias="subjectId")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+):
+    return service.list_catalog("topics", institution_id, subject_id, limit, offset)
+
+
+@router.post("/subject-topics", response_model=SubjectTopicResponse, status_code=201, openapi_extra=MUTATION_SECURITY)
+def create_subject_topics(payload: SubjectTopicCreate, user_id: UserId, service: Service):
+    return service.create("subject-topics", payload, user_id)
+
+
+@router.get("/subject-topics", response_model=list[SubjectTopicResponse])
+def list_subject_topics(
+    user_id: UserId, service: Service,
+    institution_id: Annotated[UUID | None, Query(alias="institutionId")] = None,
+    subject_id: Annotated[UUID | None, Query(alias="subjectId")] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+):
+    return service.list_catalog("subject-topics", institution_id, subject_id, limit, offset)

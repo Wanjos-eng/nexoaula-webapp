@@ -33,3 +33,24 @@ executa o fluxo com dois usuários, API e PostgreSQL reais na CI: criar, salvar,
 recarregar, editar, publicar, aprovar, consultar calendário, detalhar, separar
 grupos da mesma turma e remover participação. Também verifica a recusa de
 mutação pelo membro (403). Não há mudança de esquema ou migração neste PR.
+
+## Filtros acadêmicos (#121)
+
+A descoberta mantém `subject`, `period` e `topic` textuais e acrescenta seleções
+por `subjectId`, `classSectionId`, `teacherId` e `subjectTopicId`. As opções vêm dos
+catálogos autenticados, percorrendo todas as páginas. Professor é filtrado pelos
+vínculos reais com turmas, incluindo vínculos históricos para períodos anteriores.
+Selecionar disciplina, turma ou assunto limpa combinações incompatíveis; não há
+opções fictícias quando o catálogo está vazio ou falha.
+
+Criar/configurar grupo permite selecionar os assuntos da disciplina. A criação
+ou alteração envia `subjectTopicIds` na mesma transação dos demais campos; na
+edição o campo é omitido enquanto a seleção não for alterada. A recarga recupera
+`GET /groups/{id}/topics`. Assuntos personalizados são preservados. A API rejeita
+remoção de assuntos em uso por aulas, canais, encontros ou progresso e mantém o
+formulário disponível para corrigir a seleção.
+
+`discovery.test.tsx` cobre filtros dependentes, configuração e falhas de API.
+`discovery-real.spec.ts` verifica a integração com a API e PostgreSQL reais,
+incluindo recarga, dois usuários, grupo privado, resposta vazia e recuperação
+após uma falha de transporte simulada. Este incremento usa a migração `0013`.
