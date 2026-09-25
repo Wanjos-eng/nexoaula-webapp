@@ -635,6 +635,64 @@ class Channel(Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class ChannelMessage(Base):
+    __tablename__ = "channel_messages"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["channel_id"],
+            ["channels.id"],
+            name="fk_channel_messages_channel",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["author_id"],
+            ["users.id"],
+            name="fk_channel_messages_author",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["reply_to_message_id"],
+            ["channel_messages.id"],
+            name="fk_channel_messages_reply_target",
+            ondelete="SET NULL",
+        ),
+        ForeignKeyConstraint(
+            ["reply_to_message_id", "channel_id"],
+            ["channel_messages.id", "channel_messages.channel_id"],
+            name="fk_channel_messages_reply_same_channel",
+            ondelete="NO ACTION",
+        ),
+        UniqueConstraint(
+            "id", "channel_id", name="uq_channel_messages_id_channel_id"
+        ),
+        CheckConstraint(
+            "reply_to_message_id IS NULL OR reply_to_message_id <> id",
+            name="chk_channel_messages_not_self_reply",
+        ),
+        Index(
+            "ix_channel_messages_channel_created_at", "channel_id", "created_at"
+        ),
+        Index(
+            "ix_channel_messages_author_created_at", "author_id", "created_at"
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    channel_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    author_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    reply_to_message_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Meeting(Base):
     __tablename__ = "meetings"
     __table_args__ = (

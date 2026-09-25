@@ -9,6 +9,9 @@ from app.modules.community.dependencies import get_community_service
 from app.modules.community.schemas import (
     AttendanceAdjustmentResponse,
     ChannelCreate,
+    ChannelMessageCreate,
+    ChannelMessageResponse,
+    ChannelMessageUpdate,
     ChannelResponse,
     ChannelUpdate,
     GroupCreate,
@@ -370,4 +373,37 @@ def update_channel(group_id: UUID, channel_id: UUID, payload: ChannelUpdate, use
 def archive_channel(group_id: UUID, channel_id: UUID, user_id: UserId,
                     service: Service) -> ChannelResponse:
     return service.archive_channel(group_id, channel_id, user_id)
+
+
+@router.get("/{group_id}/channels/{channel_id}/messages", response_model=list[ChannelMessageResponse],
+            summary="Listar mensagens do canal")
+def list_channel_messages(group_id: UUID, channel_id: UUID, user_id: UserId, service: Service,
+                          offset: int = Query(default=0, ge=0),
+                          limit: int = Query(default=50, ge=1, le=100)) -> list[ChannelMessageResponse]:
+    return service.list_channel_messages(group_id, channel_id, user_id, offset, limit)
+
+
+@router.post("/{group_id}/channels/{channel_id}/messages", response_model=ChannelMessageResponse,
+             status_code=status.HTTP_201_CREATED, summary="Enviar mensagem no canal",
+             openapi_extra=MUTATION_SECURITY)
+def create_channel_message(group_id: UUID, channel_id: UUID, payload: ChannelMessageCreate,
+                           user_id: UserId, service: Service) -> ChannelMessageResponse:
+    return service.create_channel_message(group_id, channel_id, user_id, payload)
+
+
+@router.patch("/{group_id}/channels/{channel_id}/messages/{message_id}",
+              response_model=ChannelMessageResponse, summary="Editar mensagem própria",
+              openapi_extra=MUTATION_SECURITY)
+def update_channel_message(group_id: UUID, channel_id: UUID, message_id: UUID,
+                           payload: ChannelMessageUpdate, user_id: UserId,
+                           service: Service) -> ChannelMessageResponse:
+    return service.update_channel_message(group_id, channel_id, message_id, user_id, payload)
+
+
+@router.delete("/{group_id}/channels/{channel_id}/messages/{message_id}",
+               response_model=ChannelMessageResponse, summary="Remover mensagem própria",
+               openapi_extra=MUTATION_SECURITY)
+def delete_channel_message(group_id: UUID, channel_id: UUID, message_id: UUID,
+                           user_id: UserId, service: Service) -> ChannelMessageResponse:
+    return service.delete_channel_message(group_id, channel_id, message_id, user_id)
 

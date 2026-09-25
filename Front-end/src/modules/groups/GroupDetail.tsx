@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Hash,
   LockKey,
   UsersThree,
 } from "@phosphor-icons/react";
@@ -29,7 +28,7 @@ import { GroupForm } from "./GroupForm";
 import { GroupSchedule } from "./GroupSchedule";
 import { invalidateGroups } from "./schedule";
 import { ChannelManager } from "./ChannelManager";
-import { useChannels } from "./useChannels";
+import { ChannelChat } from "./ChannelChat";
 import styles from "./CommunityDetail.module.css";
 
 export function GroupDetail({ groupId }: { groupId: string }) {
@@ -281,7 +280,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
       ) : null}
 
       {isMember ? (
-        <ChannelView
+        <ChannelChat
           key={`${groupId}/${channelRevision}`}
           groupId={groupId}
         />
@@ -537,51 +536,6 @@ function MemberManagement({
           </Button>
         </div>
       ) : null}
-    </Card>
-  );
-}
-
-function ChannelView({ groupId }: { groupId: string }) {
-  const { channels, loading, error, reload } = useChannels(groupId);
-
-  return (
-    <Card className={styles.channelCard} id="canais">
-      <div>
-        <p className={styles.eyebrow}>Comunidade</p>
-        <h2>Canais por assunto</h2>
-        <p>Use os canais para organizar os temas e materiais da comunidade.</p>
-      </div>
-
-      {loading ? (
-        <div className={styles.channelList} role="status" aria-label="Carregando canais">
-          <Skeleton variant="row" />
-          <Skeleton variant="row" />
-        </div>
-      ) : error ? (
-        <Failure error={error} retry={reload} />
-      ) : !channels?.length ? (
-        <p className={styles.emptyText}>Nenhum canal criado nesta comunidade.</p>
-      ) : (
-        <div className={styles.channelList}>
-          {channels.map((channel) => (
-            <article className={styles.channelRow} key={channel.id}>
-              <div className={styles.channelIcon}>
-                <Hash aria-hidden size={18} />
-              </div>
-              <div>
-                <div className={styles.channelHeading}>
-                  <h3>{channel.name}</h3>
-                  {channel.status === "archived" ? (
-                    <Badge>Arquivado</Badge>
-                  ) : null}
-                </div>
-                <p>{channel.topicName || "Sem assunto específico"}</p>
-                {channel.description ? <small>{channel.description}</small> : null}
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
     </Card>
   );
 }

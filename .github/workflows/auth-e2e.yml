@@ -46,6 +46,21 @@ jobs:
           docker compose logs
           exit 1
 
+      - name: Run chat lint and frontend unit tests
+        working-directory: Front-end
+        run: |
+          npx eslint \
+            src/modules/groups/ChannelChat.tsx \
+            src/modules/groups/GroupDetail.tsx \
+            src/modules/groups/messages.api.ts \
+            src/modules/groups/useChannelMessages.ts \
+            src/modules/groups/chat.test.tsx \
+            src/modules/groups/channels.test.tsx \
+            tests/e2e/chat-real.spec.ts
+          npx vitest run \
+            src/modules/groups/chat.test.tsx \
+            src/modules/groups/channels.test.tsx
+
       - name: Run authentication E2E tests
         working-directory: Front-end
         run: npm run test:e2e
