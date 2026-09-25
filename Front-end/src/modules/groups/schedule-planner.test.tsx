@@ -1,3 +1,7 @@
+vi.mock("@/modules/auth", () => ({
+  useAuthSession: () => ({ user: { id: "owner" } }),
+}));
+
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 
