@@ -1,0 +1,320 @@
+.page {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.65fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.panel {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.panelHeader {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.panelHeader h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-section-title);
+}
+
+.panelHeader p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+}
+
+.fields {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+}
+
+.field select,
+.field textarea {
+  width: 100%;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: 0;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.field select {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+}
+
+.field textarea {
+  min-height: 124px;
+  padding: var(--space-3);
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--color-amber);
+  box-shadow: var(--shadow-focus);
+}
+
+.field small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  font-weight: 500;
+  text-align: right;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.helperCard {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--color-surface-subtle);
+  box-shadow: none;
+}
+
+.helperCard h2 {
+  font-size: var(--font-size-card-title);
+}
+
+.helperCard p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.55;
+}
+
+.helperCard a {
+  width: fit-content;
+  color: var(--color-green);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+}
+
+.stateCard {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-8);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.stateCard > div {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.stateCard h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-card-title);
+}
+
+.stateCard p {
+  max-width: 520px;
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+}
+
+.disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  color: var(--color-text-muted);
+  background: var(--color-info-soft);
+  border: 1px solid rgb(23 92 211 / 14%);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+}
+
+.disclaimer svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--color-info);
+}
+
+.progressGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.progressCard {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  animation: academic-card-in var(--motion-normal) var(--ease-standard);
+}
+
+.progressHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.progressHeading > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.progressHeading h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-card-title);
+  line-height: 1.3;
+}
+
+.progressHeading p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.progressValue {
+  color: var(--color-green);
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.track {
+  height: 8px;
+  overflow: hidden;
+  background: var(--color-surface-subtle);
+  border-radius: var(--radius-pill);
+}
+
+.track span {
+  display: block;
+  height: 100%;
+  background: var(--color-green);
+  border-radius: inherit;
+  transition: width var(--motion-slow) var(--ease-standard);
+}
+
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.topicList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.topicList h3 {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+}
+
+.topicRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topicRow:last-child {
+  border-bottom: 0;
+}
+
+.topicRow strong {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+  line-height: 1.4;
+}
+
+.topicRow select {
+  min-height: 36px;
+  padding: 0 var(--space-2);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  font-size: var(--font-size-caption);
+  font-weight: 650;
+}
+
+.topicRow select:focus {
+  border-color: var(--color-amber);
+  box-shadow: var(--shadow-focus);
+  outline: 0;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.cardFooter a {
+  color: var(--color-green);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+}
+
+@keyframes academic-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .columns,
+  .progressGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .panel,
+  .progressCard {
+    padding: var(--space-4);
+  }
+
+  .topicRow {
+    grid-template-columns: 1fr;
+  }
+
+  .topicRow select {
+    width: 100%;
+  }
+}
