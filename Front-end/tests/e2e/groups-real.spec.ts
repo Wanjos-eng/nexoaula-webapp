@@ -140,7 +140,7 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await registerAndLogin(member, memberUser);
       await member.goto("/calendario");
       await expect(member.getByTestId("calendar-empty-state")).toBeVisible();
-      await expect(member.getByRole("heading", { name: "Você ainda não participa de grupos" })).toBeVisible();
+      await expect(member.getByRole("heading", { name: "Sua agenda está vazia" })).toBeVisible();
       await member.goto("/grupos?view=discover");
       await member.getByRole("search").getByLabel("Assunto ou nome").fill(groupName);
       await member.getByRole("button", { name: "Buscar comunidades" }).click();
@@ -175,7 +175,7 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await expect(member.getByRole("heading", { name: "Aula publicada E2E" })).toBeVisible();
       await member.getByRole("button", { name: "Próximo mês" }).click();
       await member.getByRole("button", { name: /^Hoje/ }).click();
-      await member.getByRole("link", { name: "Detalhar aula no grupo" }).click();
+      await member.getByRole("link", { name: "Detalhar aula na comunidade" }).click();
       await expect(member).toHaveURL(new RegExp(`/grupos/${groupId}#aula-`));
       await expect(member.getByRole("heading", { name: "Aula publicada E2E" })).toBeVisible();
       await expect(member.getByRole("heading", { name: "Aula publicada E2E" })).toBeInViewport();
@@ -198,7 +198,7 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await postJson(owner, `groups/${second.id}/plans/${plan.id}/publish`, {});
       await postJson(member, `groups/${second.id}/join`, {});
       await member.goto("/calendario");
-      await expect(member.getByRole("link", { name: "Detalhar aula no grupo" })).toHaveCount(2);
+      await expect(member.getByRole("link", { name: "Detalhar aula na comunidade" })).toHaveCount(2);
       await member.goto("/disciplinas");
       await expect(member.locator(`a[href="/grupos/${groupId}#cronograma"]`)).toBeVisible();
       await expect(member.locator(`a[href="/grupos/${second.id}#cronograma"]`)).toBeVisible();
@@ -213,10 +213,10 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
         expect(removed.ok()).toBe(true);
         await member.getByRole("button", { name: "Atualizar calendário" }).click();
         await expect(member.locator(`a[href="/grupos/${id}#cronograma"]`)).toHaveCount(0);
-        if (id === groupId) await expect(member.getByRole("link", { name: "Detalhar aula no grupo" })).toHaveCount(1);
+        if (id === groupId) await expect(member.getByRole("link", { name: "Detalhar aula na comunidade" })).toHaveCount(1);
       }
       await expect(member.getByTestId("calendar-empty-state")).toBeVisible();
-      await expect(member.getByRole("heading", { name: "Você ainda não participa de grupos" })).toBeVisible();
+      await expect(member.getByRole("heading", { name: "Sua agenda está vazia" })).toBeVisible();
     } finally {
       await logout(ownerContext, owner).catch(() => undefined);
       await logout(memberContext, member).catch(() => undefined);
