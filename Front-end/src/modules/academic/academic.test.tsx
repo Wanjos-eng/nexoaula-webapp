@@ -154,8 +154,12 @@ describe("Módulo Acadêmico", () => {
       expect(screen.getByText("Cálculo II")).toBeDefined();
       expect(screen.getByRole("progressbar")).toBeDefined();
       expect(
-        screen.getByRole("combobox", { name: "Status de Integrais" }),
-      ).toHaveValue("reviewing");
+        (
+          screen.getByRole("combobox", {
+            name: "Status de Integrais",
+          }) as HTMLSelectElement
+        ).value,
+      ).toBe("reviewing");
     });
 
     it("usa estados reais de loading, erro e vazio sem props artificiais", () => {
