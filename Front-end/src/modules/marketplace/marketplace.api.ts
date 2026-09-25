@@ -14,7 +14,13 @@ export const marketplaceApi = {
   cancel: async (id: string) => (await apiClient.del<EnrollmentReceipt>(`${marketplacePath}/sessions/${id}/enroll`, { body: {} })).data,
   activate: async (headline: string, bio: string) => (await apiClient.post<TutorProfile>(`${marketplacePath}/tutor/activate`, { body: { headline, bio } })).data,
   pause: async () => (await apiClient.del<TutorProfile>(`${marketplacePath}/tutor/deactivate`, { body: {} })).data,
-  listMine: async (limit = 100, offset = 0) => (await apiClient.get<SessionOffer[]>(`${marketplacePath}/sessions/mine?limit=${limit}&offset=${offset}`)).data,
+  listMine: async (limit = 100, offset = 0, signal?: AbortSignal) =>
+    (
+      await apiClient.get<SessionOffer[]>(
+        `${marketplacePath}/sessions/mine?limit=${limit}&offset=${offset}`,
+        { signal },
+      )
+    ).data,
   create: async (body: unknown) => (await apiClient.post<SessionOffer>(`${marketplacePath}/sessions`, { body })).data,
   edit: async (id: string, body: unknown) => (await apiClient.patch<SessionOffer>(`${marketplacePath}/sessions/${id}`, { body })).data,
   publish: async (id: string) => (await apiClient.post<SessionOffer>(`${marketplacePath}/sessions/${id}/publish`, { body: {} })).data,
