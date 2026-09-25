@@ -146,7 +146,9 @@ test.describe("chat de canais com API e PostgreSQL reais", () => {
       const editDialog = owner.getByRole("dialog");
       await editDialog.getByLabel("Conteúdo").fill("Mensagem inicial editada");
       await editDialog.getByRole("button", { name: "Salvar edição" }).click();
-      await expect(owner.getByText("Mensagem inicial editada")).toBeVisible();
+      await expect(
+        owner.getByRole("log").getByText("Mensagem inicial editada"),
+      ).toBeVisible();
 
       await member.bringToFront();
       await expect(member.getByText("Mensagem inicial editada").first()).toBeVisible({
