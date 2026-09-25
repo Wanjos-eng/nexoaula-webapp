@@ -78,14 +78,16 @@ test.describe("autenticação real", () => {
     expect((await loginRequest).headers()["x-nexoaula-csrf"]).toBe("1");
     await page.waitForURL(/\/inicio$/);
 
-    const logoutResponse = await page.request.post("/api/v1/auth/logout", {
-      data: {},
-      headers: { Origin: new URL(page.url()).origin, "X-NexoAula-CSRF": "1" },
-    });
-    expect(logoutResponse.status()).toBe(204);
-    await page.goto("/login");
-    await expect(page).toHaveURL(/\/login$/);
-    expect((await context.cookies()).some((cookie) => cookie.name.includes("nexoaula_session"))).toBe(false);
+    const logoutRequest = page.waitForRequest("**/api/v1/auth/logout");
+    await page.getByRole("button", { name: "Sair" }).click();
+    const request = await logoutRequest;
+    expect(request.headers()["x-nexoaula-csrf"]).toBe("1");
+    await expect(page).toHaveURL(/\/login$/, { timeout: 5_000 });
+    expect(
+      (await context.cookies()).some((cookie) =>
+        cookie.name.includes("nexoaula_session"),
+      ),
+    ).toBe(false);
   });
 
   test("sessão ausente retorna 401 sem expor token", async ({ page }) => {
