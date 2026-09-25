@@ -203,6 +203,14 @@ export default function MyBookingsPage() {
                         <UsersThree aria-hidden size={16} />
                         {booking.session.tutor_name}
                       </span>
+                      <span>
+                        <Storefront aria-hidden size={16} />
+                        {booking.session.modality === "online"
+                          ? "Online"
+                          : booking.session.modality === "in_person"
+                            ? "Presencial"
+                            : "Híbrida"}
+                      </span>
                     </div>
                   </div>
 
