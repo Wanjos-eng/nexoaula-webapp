@@ -27,6 +27,7 @@ export type GroupTopic = {
   groupId: string;
   subjectTopicId: string | null;
   customTitle: string | null;
+  topicName?: string | null;
   createdAt: string;
 };
 

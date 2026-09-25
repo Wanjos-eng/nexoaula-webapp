@@ -1,3 +1,4 @@
+vi.mock("@/modules/auth", () => ({ useAuthSession: () => ({ user: { id: "owner" } }) }));
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GroupSchedule } from "./GroupSchedule";
@@ -70,6 +71,7 @@ function setupServer(options?: {
       const path = url.toString();
       const method = init?.method || "GET";
 
+      if (path.endsWith("/meetings")) return json([]);
       if (path.includes("/plans?")) return json([mockPlan]);
       if (path.includes("/topics")) return json([mockTopic]);
       if (path.includes("/occurrences")) {

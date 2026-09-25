@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import exists, func, or_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.modules.academic.models import AcademicTerm, ClassSection, Subject
 from app.modules.community.errors import CommunityError, CommunityPersistenceError
@@ -21,6 +22,10 @@ from app.modules.community.models import (
     JoinRequestStatus,
     LessonOccurrence,
     LessonOccurrenceStatus,
+    Meeting,
+    MeetingParticipant,
+    MeetingStatus,
+    MeetingTopic,
     MembershipRole,
     MembershipStatus,
     OccurrenceTopic,
@@ -32,11 +37,15 @@ from app.modules.community.models import (
     StudyGroup,
     SubjectTopic,
     TeachingPlan,
+    Topic,
     TopicProgressStatus,
 )
 from app.modules.community.schemas import (
     GroupCreate,
     GroupTopicCreate,
+    MeetingCreate,
+    MeetingParticipantStatus,
+    MeetingUpdate,
     LessonOccurrenceCreate,
     ParticipantResponse,
     ScheduledLessonCreate,
@@ -78,9 +87,20 @@ class CommunityRepository(Protocol):
     def check_offering_belongs_to_discipline(self, offering_id: UUID,
                                              discipline_id: UUID) -> bool: ...
 
+    def create_meeting(self, group_id: UUID, organizer_id: UUID, data: MeetingCreate) -> Meeting: ...
+    def list_group_meetings(self, group_id: UUID, start: datetime | None, end: datetime | None) -> list[Meeting]: ...
+    def list_user_meetings(self, user_id: UUID, start: datetime | None, end: datetime | None) -> list[Meeting]: ...
+    def find_meeting(self, meeting_id: UUID, lock: bool = False) -> Meeting | None: ...
+    def update_meeting(self, meeting: Meeting, data: MeetingUpdate) -> Meeting: ...
+    def cancel_meeting(self, meeting: Meeting) -> Meeting: ...
+    def upsert_meeting_participant(self, meeting_id: UUID, user_id: UUID, status: MeetingParticipantStatus) -> MeetingParticipant: ...
+    def set_meeting_topics(self, group_id: UUID, meeting_id: UUID, topic_ids: list[UUID]) -> None: ...
+    def list_meeting_topic_ids(self, meeting_ids: list[UUID]) -> dict[UUID, list[UUID]]: ...
+    def meeting_participant_summary(self, meeting_ids: list[UUID], user_id: UUID) -> dict[UUID, tuple[int, str | None]]: ...
+
     # --- TASK #112: Tópicos, Plano de Aulas e Cronograma ---
     def create_group_topic(self, group_id: UUID, data: GroupTopicCreate) -> GroupTopic: ...
-    def list_group_topics(self, group_id: UUID) -> list[GroupTopic]: ...
+    def list_group_topics(self, group_id: UUID) -> list[tuple[GroupTopic, str | None]]: ...
     def create_teaching_plan(self, group_id: UUID, creator_id: UUID, data: TeachingPlanCreate) -> TeachingPlan: ...
     def find_latest_teaching_plan(self, group_id: UUID) -> TeachingPlan | None: ...
     def find_teaching_plan_by_id(self, plan_id: UUID) -> TeachingPlan | None: ...
@@ -147,6 +167,122 @@ class SqlAlchemyCommunityRepository:
     def find_by_id(self, group_id: UUID) -> StudyGroup | None:
         group = self._session.get(StudyGroup, group_id)
         return group if group is not None and group.deleted_at is None else None
+
+    def create_meeting(self, group_id: UUID, organizer_id: UUID, data: MeetingCreate) -> Meeting:
+        values = data.model_dump(exclude={"group_id", "topic_ids"})
+        values["modality"] = data.modality.value
+        meeting = Meeting(group_id=group_id, organizer_id=organizer_id, **values)
+        self._session.add(meeting)
+        self._session.flush()
+        if data.topic_ids:
+            self.set_meeting_topics(group_id, meeting.id, data.topic_ids)
+        return meeting
+
+    def list_group_meetings(self, group_id: UUID, start: datetime | None, end: datetime | None) -> list[Meeting]:
+        stmt = select(Meeting).where(Meeting.group_id == group_id)
+        if start is not None:
+            stmt = stmt.where(Meeting.starts_at >= start)
+        if end is not None:
+            stmt = stmt.where(Meeting.starts_at < end)
+        return list(self._session.scalars(stmt.order_by(Meeting.starts_at, Meeting.id)))
+
+    def list_user_meetings(self, user_id: UUID, start: datetime | None, end: datetime | None) -> list[Meeting]:
+        stmt = (select(Meeting).join(GroupMember, GroupMember.group_id == Meeting.group_id)
+            .join(StudyGroup, StudyGroup.id == Meeting.group_id)
+            .where(GroupMember.user_id == user_id, GroupMember.status == MembershipStatus.ACTIVE,
+                   StudyGroup.status == GroupStatus.ACTIVE, StudyGroup.deleted_at.is_(None)))
+        if start is not None:
+            stmt = stmt.where(Meeting.starts_at >= start)
+        if end is not None:
+            stmt = stmt.where(Meeting.starts_at < end)
+        return list(self._session.scalars(stmt.order_by(Meeting.starts_at, Meeting.id)))
+
+    def find_meeting(self, meeting_id: UUID, lock: bool = False) -> Meeting | None:
+        stmt = select(Meeting).where(Meeting.id == meeting_id)
+        if lock:
+            stmt = stmt.with_for_update()
+        return self._session.scalar(stmt)
+
+    def update_meeting(self, meeting: Meeting, data: MeetingUpdate) -> Meeting:
+        updates = data.model_dump(exclude_unset=True, exclude={"topic_ids"})
+        for field, value in updates.items():
+            setattr(meeting, field, value.value if hasattr(value, "value") else value)
+        if "topic_ids" in data.model_fields_set:
+            self.set_meeting_topics(meeting.group_id, meeting.id, data.topic_ids or [])
+        meeting.updated_at = datetime.now(UTC)
+        self._session.flush()
+        return meeting
+
+    def set_meeting_topics(self, group_id: UUID, meeting_id: UUID, topic_ids: list[UUID]) -> None:
+        if len(topic_ids) != len(set(topic_ids)):
+            raise CommunityError("Não repita tópicos no encontro.", 422)
+        if topic_ids:
+            valid = set(self._session.scalars(select(GroupTopic.subject_topic_id).where(
+                GroupTopic.group_id == group_id,
+                GroupTopic.subject_topic_id.in_(topic_ids),
+            )))
+            if valid != set(topic_ids):
+                raise CommunityError("Selecione tópicos vinculados ao grupo.", 422)
+        for existing in self._session.scalars(select(MeetingTopic).where(MeetingTopic.meeting_id == meeting_id)):
+            self._session.delete(existing)
+        self._session.flush()
+        self._session.add_all(MeetingTopic(meeting_id=meeting_id, subject_topic_id=topic_id)
+                              for topic_id in topic_ids)
+        self._session.flush()
+
+    def list_meeting_topic_ids(self, meeting_ids: list[UUID]) -> dict[UUID, list[UUID]]:
+        result = {meeting_id: [] for meeting_id in meeting_ids}
+        if not meeting_ids:
+            return result
+        rows = self._session.execute(select(MeetingTopic.meeting_id, MeetingTopic.subject_topic_id)
+                                     .where(MeetingTopic.meeting_id.in_(meeting_ids))
+                                     .order_by(MeetingTopic.subject_topic_id))
+        for meeting_id, topic_id in rows:
+            result[meeting_id].append(topic_id)
+        return result
+
+    def meeting_participant_summary(self, meeting_ids: list[UUID], user_id: UUID) -> dict[UUID, tuple[int, str | None]]:
+        summary = {meeting_id: (0, None) for meeting_id in meeting_ids}
+        if not meeting_ids:
+            return summary
+        counts = dict(self._session.execute(
+            select(MeetingParticipant.meeting_id, func.count())
+            .where(MeetingParticipant.meeting_id.in_(meeting_ids), MeetingParticipant.status == "confirmed")
+            .group_by(MeetingParticipant.meeting_id)
+        ).all())
+        own_status = dict(self._session.execute(
+            select(MeetingParticipant.meeting_id, MeetingParticipant.status)
+            .where(MeetingParticipant.meeting_id.in_(meeting_ids), MeetingParticipant.user_id == user_id)
+        ).all())
+        return {meeting_id: (int(counts.get(meeting_id, 0)),
+                             getattr(own_status.get(meeting_id), "value", own_status.get(meeting_id)))
+                for meeting_id in meeting_ids}
+
+    def cancel_meeting(self, meeting: Meeting) -> Meeting:
+        meeting.status = MeetingStatus.CANCELLED
+        meeting.updated_at = datetime.now(UTC)
+        self._session.flush()
+        return meeting
+
+    def upsert_meeting_participant(self, meeting_id: UUID, user_id: UUID,
+                                   status: MeetingParticipantStatus) -> MeetingParticipant:
+        table = MeetingParticipant.__table__
+        statement = pg_insert(MeetingParticipant).values(
+            meeting_id=meeting_id, user_id=user_id, status=status.value,
+            updated_at=datetime.now(UTC),
+        )
+        statement = statement.on_conflict_do_update(
+            index_elements=[table.c.meeting_id, table.c.user_id],
+            set_={"status": statement.excluded.status, "updated_at": statement.excluded.updated_at},
+            where=table.c.status != statement.excluded.status,
+        ).returning(MeetingParticipant)
+        participant = self._session.scalars(statement).one_or_none()
+        if participant is not None:
+            return participant
+        existing = self._session.get(MeetingParticipant, (meeting_id, user_id))
+        if existing is None:
+            raise CommunityError("Não foi possível registrar a participação.", 409)
+        return existing
 
     def find_active_owner_id(self, group_id: UUID) -> UUID | None:
         stmt = select(GroupMember.user_id).where(
@@ -322,9 +458,13 @@ class SqlAlchemyCommunityRepository:
         self._session.flush()
         return topic
 
-    def list_group_topics(self, group_id: UUID) -> list[GroupTopic]:
-        stmt = select(GroupTopic).where(GroupTopic.group_id == group_id).order_by(GroupTopic.created_at)
-        return list(self._session.scalars(stmt))
+    def list_group_topics(self, group_id: UUID) -> list[tuple[GroupTopic, str | None]]:
+        stmt = (select(GroupTopic, Topic.name)
+                .outerjoin(SubjectTopic, SubjectTopic.id == GroupTopic.subject_topic_id)
+                .outerjoin(Topic, Topic.id == SubjectTopic.topic_id)
+                .where(GroupTopic.group_id == group_id)
+                .order_by(GroupTopic.created_at))
+        return [(topic, name) for topic, name in self._session.execute(stmt)]
 
     def create_teaching_plan(self, group_id: UUID, creator_id: UUID, data: TeachingPlanCreate) -> TeachingPlan:
         # Serialize version allocation, publication and lesson edits per group.
