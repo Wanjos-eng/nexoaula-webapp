@@ -13,14 +13,11 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [sidebarMode, setSidebarMode] = useState<"expanded" | "compact" | "hidden">("expanded");
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!isMenuOpen) {
-      return;
-    }
+    if (!isMenuOpen) return;
 
     const previousOverflow = document.body.style.overflow;
     const menuButton = menuButtonRef.current;
@@ -28,9 +25,7 @@ export function AppShell({ children }: AppShellProps) {
     closeButtonRef.current?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsMenuOpen(false);
-      }
+      if (event.key === "Escape") setIsMenuOpen(false);
     }
 
     document.addEventListener("keydown", handleKeyDown);
@@ -43,16 +38,14 @@ export function AppShell({ children }: AppShellProps) {
   }, [isMenuOpen]);
 
   return (
-    <div className={`${styles.shell} ${sidebarMode === "compact" ? styles.shellCompact : sidebarMode === "hidden" ? styles.shellHidden : ""}`}>
+    <div className={styles.shell}>
       <a className={styles.skipLink} href="#conteudo-principal">
         Pular para o conteúdo
       </a>
       <Sidebar
         closeButtonRef={closeButtonRef}
         isOpen={isMenuOpen}
-        mode={sidebarMode}
         onClose={() => setIsMenuOpen(false)}
-        onModeChange={setSidebarMode}
       />
       <div className={styles.workspace}>
         <Topbar

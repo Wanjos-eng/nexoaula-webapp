@@ -4,7 +4,6 @@ import {
   BookOpenText,
   CalendarDots,
   ChartLineUp,
-  GearSix,
   House,
   IdentificationCard,
   Storefront,
@@ -15,7 +14,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { RefObject } from "react";
-import { useState } from "react";
 
 import { useAuthSession } from "@/modules/auth/components/AuthSessionProvider";
 import styles from "./AppShell.module.css";
@@ -23,27 +21,39 @@ import styles from "./AppShell.module.css";
 type SidebarProps = {
   closeButtonRef: RefObject<HTMLButtonElement | null>;
   isOpen: boolean;
-  mode: "expanded" | "compact" | "hidden";
   onClose: () => void;
-  onModeChange: (mode: "expanded" | "compact" | "hidden") => void;
 };
 
-const navigation = [
+const primaryNavigation = [
   { href: "/inicio", icon: House, label: "Início" },
-  { href: "/disciplinas", icon: BookOpenText, label: "Disciplinas" },
+  { href: "/disciplinas", icon: BookOpenText, label: "Minhas Disciplinas" },
+  { href: "/grupos", icon: UsersThree, label: "Comunidades" },
   { href: "/calendario", icon: CalendarDots, label: "Calendário" },
-  { href: "/grupos", icon: UsersThree, label: "Grupos" },
-  { href: "/sessoes", icon: Storefront, label: "Sessões" },
-  { href: "/tutor", icon: IdentificationCard, label: "Área do tutor" },
-  { href: "/progresso", icon: ChartLineUp, label: "Meu progresso" },
+  { href: "/sessoes", icon: Storefront, label: "Tutorias" },
+  { href: "/progresso", icon: ChartLineUp, label: "Meu Progresso" },
 ];
 
-export function Sidebar({ closeButtonRef, isOpen, mode, onClose, onModeChange }: SidebarProps) {
+const tutorNavigation = {
+  href: "/tutor",
+  icon: IdentificationCard,
+  label: "Área do Tutor",
+};
+
+function isRouteActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function Sidebar({ closeButtonRef, isOpen, onClose }: SidebarProps) {
   const { user } = useAuthSession();
-  const name = user.fullName || "Meu perfil";
   const pathname = usePathname();
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isPeekOpen, setIsPeekOpen] = useState(false);
+  const name = user.fullName || "Meu perfil";
+  const initials = name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 
   return (
     <>
@@ -56,10 +66,8 @@ export function Sidebar({ closeButtonRef, isOpen, mode, onClose, onModeChange }:
       />
       <aside
         aria-label="Navegação principal"
-        className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ""} ${mode === "hidden" && isPeekOpen ? styles.sidebarPeekOpen : ""}`}
+        className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ""}`}
         id="navegacao-principal"
-        onMouseEnter={() => mode === "hidden" && setIsPeekOpen(true)}
-        onMouseLeave={() => mode === "hidden" && setIsPeekOpen(false)}
       >
         <div className={styles.sidebarHeader}>
           <Image
@@ -82,9 +90,8 @@ export function Sidebar({ closeButtonRef, isOpen, mode, onClose, onModeChange }:
         </div>
 
         <nav className={styles.navList}>
-          {navigation.map(({ href, icon: NavIcon, label }, index) => {
-            const isActive = index === 0 ? pathname === "/inicio" : pathname === href || pathname.startsWith(`${href}/`);
-
+          {primaryNavigation.map(({ href, icon: NavIcon, label }) => {
+            const isActive = isRouteActive(pathname, href);
             return (
               <Link
                 aria-current={isActive ? "page" : undefined}
@@ -93,27 +100,43 @@ export function Sidebar({ closeButtonRef, isOpen, mode, onClose, onModeChange }:
                 key={href}
                 onClick={onClose}
               >
-                <NavIcon aria-hidden size={22} weight={isActive ? "fill" : "regular"} />
+                <NavIcon aria-hidden size={21} weight={isActive ? "fill" : "regular"} />
                 <span>{label}</span>
               </Link>
             );
           })}
+
+          <div aria-hidden className={styles.navDivider} />
+
+          <Link
+            aria-current={isRouteActive(pathname, tutorNavigation.href) ? "page" : undefined}
+            className={`${styles.navItem} ${styles.tutorNavItem} ${
+              isRouteActive(pathname, tutorNavigation.href) ? styles.navItemActive : ""
+            }`}
+            href={tutorNavigation.href}
+            onClick={onClose}
+          >
+            <tutorNavigation.icon
+              aria-hidden
+              size={21}
+              weight={isRouteActive(pathname, tutorNavigation.href) ? "fill" : "regular"}
+            />
+            <span>{tutorNavigation.label}</span>
+          </Link>
         </nav>
 
         <div className={styles.profile}>
           <Link className={styles.profileLink} href="/perfil" onClick={onClose}>
             <div aria-hidden className={styles.avatarFallback}>
-              {name.split(" ").slice(0, 2).map(part => part[0]).join("").toUpperCase()}
+              {initials}
             </div>
-            <span className={styles.profileName}>{name}</span>
+            <div className={styles.profileCopy}>
+              <span className={styles.profileName}>{name}</span>
+              <small>Meu Perfil</small>
+            </div>
           </Link>
-          <button aria-controls="sidebar-settings" aria-expanded={isSettingsOpen} aria-label="Abrir configurações da barra lateral" className={styles.iconButton} onClick={() => setIsSettingsOpen((open) => !open)} type="button">
-            <GearSix aria-hidden size={21} />
-          </button>
-          {isSettingsOpen ? <div className={styles.sidebarSettings} id="sidebar-settings"><strong id="sidebar-settings-title">Barra lateral</strong><button aria-pressed={mode === "expanded"} onClick={() => { onModeChange("expanded"); setIsSettingsOpen(false); }} type="button">Ampla <span>288 px</span></button><button aria-pressed={mode === "compact"} onClick={() => { onModeChange("compact"); setIsSettingsOpen(false); }} type="button">Compacta <span>220 px</span></button><button aria-pressed={mode === "hidden"} onClick={() => { onModeChange("hidden"); setIsSettingsOpen(false); }} type="button">Oculta <span>aparece ao passar o mouse</span></button></div> : null}
         </div>
       </aside>
-      {mode === "hidden" ? <button aria-label="Mostrar menu lateral" className={styles.sidebarRevealHandle} onMouseEnter={() => setIsPeekOpen(true)} onFocus={() => setIsPeekOpen(true)} type="button"><span /></button> : null}
     </>
   );
 }
