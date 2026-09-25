@@ -4,6 +4,7 @@ import { GroupDetail } from "./GroupDetail";
 import { ChannelManager } from "./ChannelManager";
 import type { Channel } from "./api";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ back: vi.fn(), push: vi.fn() }) }));
 vi.mock("@/modules/auth", () => ({ useAuthSession: () => ({ user: { id:"owner" } }) }));
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type":"application/json" } });
 afterEach(() => vi.unstubAllGlobals());
