@@ -195,16 +195,14 @@ export function AcademicProgressView() {
                 </strong>
               </div>
 
-              <div
+              <progress
                 aria-label={`Progresso em ${summary.group.subject}: ${summary.percentage}%`}
-                aria-valuemax={100}
-                aria-valuemin={0}
-                aria-valuenow={summary.percentage}
                 className={styles.track}
-                role="progressbar"
+                max={100}
+                value={summary.percentage}
               >
-                <span style={{ width: `${summary.percentage}%` }} />
-              </div>
+                {summary.percentage}%
+              </progress>
 
               <div className={styles.metrics}>
                 <Badge variant="success">{summary.mastered} dominados</Badge>
