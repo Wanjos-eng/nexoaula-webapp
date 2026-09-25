@@ -1,5 +1,14 @@
 "use client";
 
+import {
+  BookOpenText,
+  CalendarBlank,
+  CheckCircle,
+  Clock,
+  NotePencil,
+  Plus,
+  Trash,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError } from "@/lib/api";
@@ -336,38 +345,105 @@ export function GroupSchedule({ groupId, canManage, personal = false }: { groupI
     && occ.actualEndedAt && Date.parse(occ.actualEndedAt) <= Date.parse(nowIso)
     && !myAttendance.some((record) => record.lessonOccurrenceId === occ.id)).length;
 
+  const attendanceSummary = (
+    <div className={`${s.personalPanel} ${s.attendanceSummary}`} id="frequencia">
+      <div className={s.attendanceSummaryHeader}>
+        <div>
+          <span className={s.subsectionEyebrow}>Acompanhamento pessoal</span>
+          <h3>Minha frequência</h3>
+        </div>
+        {!extraLoading && !extraError ? (
+          <div className={s.attendanceStats} aria-label="Resumo da frequência">
+            <span><strong>{myAttendance.filter((item) => item.status === "present").length}</strong> presenças</span>
+            <span><strong>{myAttendance.filter((item) => item.status === "absent").length}</strong> faltas</span>
+            <span><strong>{unrecordedCount}</strong> sem registro</span>
+          </div>
+        ) : null}
+      </div>
+      <p>Seu controle privado de presenças e faltas. Não substitui a frequência oficial.</p>
+      {extraLoading ? <p role="status">Carregando seus registros…</p> : null}
+      <p>Após o organizador confirmar que a aula foi realizada e encerrada, marque Presença ou Falta na aula correspondente.</p>
+    </div>
+  );
+
   return (
     <>
     {!personal && <GroupMeetings groupId={groupId} canManage={canManage} />}
-    <section className={s.panel} id="cronograma" aria-label="Plano e cronograma">
-      <div className={s.header}>
-        <h2>{personal ? "Minhas aulas e registros" : "Plano e cronograma"}</h2>
-        <Link className={s.secondary} href="/calendario">Abrir calendário</Link>
+    <section className={`${s.panel} ${s.schedulePanel}`} id="cronograma" aria-label="Plano e cronograma">
+      <div className={s.plannerHeader}>
+        <div className={s.plannerTitleBlock}>
+          <span className={s.plannerEyebrow}>
+            {personal ? "Acompanhamento acadêmico" : "Planejamento acadêmico"}
+          </span>
+          <h2>{personal ? "Minhas aulas e registros" : "Plano e cronograma"}</h2>
+          <p>
+            {personal
+              ? "Acompanhe as aulas publicadas, seus registros e o progresso ao longo da disciplina."
+              : "Organize o conteúdo da disciplina em uma sequência clara de tópicos, aulas e ocorrências."}
+          </p>
+        </div>
+        <div className={s.plannerHeaderActions}>
+          {!personal && (
+            <span className={published ? s.planStatusPublished : draft ? s.planStatusDraft : s.planStatusEmpty}>
+              {published ? (
+                <>
+                  <CheckCircle aria-hidden size={16} weight="fill" />
+                  Publicado · v{published.version}
+                </>
+              ) : draft ? (
+                <>
+                  <NotePencil aria-hidden size={16} />
+                  Rascunho · v{draft.version}
+                </>
+              ) : (
+                <>
+                  <Clock aria-hidden size={16} />
+                  Não publicado
+                </>
+              )}
+            </span>
+          )}
+          <Link className={s.secondary} href="/calendario">
+            <CalendarBlank aria-hidden size={17} />
+            Abrir calendário
+          </Link>
+        </div>
       </div>
-      {canManage && <div className={s.personalPanel}>
-        <h3>Prepare o plano da comunidade</h3>
-        <p>1. Cadastre os tópicos da ementa. 2. Crie as aulas com data e horário. 3. Publique o cronograma para todos os membros.</p>
-        <p>Depois de cada aula, use Registrar ocorrência para liberar os registros pessoais de presença e falta.</p>
-      </div>}
+
+      {canManage && !personal && (
+        <div className={s.plannerWorkflow} aria-label="Etapas do planejamento">
+          <div className={s.workflowStep}>
+            <span className={s.workflowIndex}>1</span>
+            <BookOpenText aria-hidden size={22} />
+            <div>
+              <strong>Estruture a ementa</strong>
+              <p>Cadastre os tópicos que vão orientar as aulas da comunidade.</p>
+            </div>
+          </div>
+          <div className={s.workflowConnector} aria-hidden />
+          <div className={s.workflowStep}>
+            <span className={s.workflowIndex}>2</span>
+            <CalendarBlank aria-hidden size={22} />
+            <div>
+              <strong>Monte as aulas</strong>
+              <p>Defina títulos, datas, horários e os tópicos de cada encontro.</p>
+            </div>
+          </div>
+          <div className={s.workflowConnector} aria-hidden />
+          <div className={s.workflowStep}>
+            <span className={s.workflowIndex}>3</span>
+            <CheckCircle aria-hidden size={22} />
+            <div>
+              <strong>Publique para o grupo</strong>
+              <p>Revise o rascunho e disponibilize o cronograma aos membros.</p>
+            </div>
+          </div>
+        </div>
+      )}
       {feedback && <p role="status" className={s.success}>{feedback}</p>}
       {error ? <Failure error={error} /> : null}
       {extraError && !remote.error && !remote.loading ? <Failure error={extraError} retry={() => void loadExtraData()} /> : null}
-      <div className={s.personalPanel} id="frequencia">
-        <h3>Minha frequência</h3>
-        <p>Seu controle privado de presenças e faltas. Não substitui a frequência oficial.</p>
-        {extraLoading ? <p role="status">Carregando seus registros…</p> : !extraError ? <p>
-          <strong>{myAttendance.filter((item) => item.status === "present").length}</strong> presenças · <strong>{myAttendance.filter((item) => item.status === "absent").length}</strong> faltas · <strong>{unrecordedCount}</strong> sem registro
-        </p> : null}
-        <p>Após o organizador confirmar que a aula foi realizada e encerrada, marque Presença ou Falta na aula abaixo.</p>
-      </div>
-      {!personal && <GroupPlanningCorrections
-        groupId={groupId}
-        canManage={canManage}
-        lessons={published?.lessons ?? []}
-        occurrences={occurrences}
-        topics={topics}
-        onApplied={() => { remote.reload(); void loadExtraData(); }}
-      />}
+      {personal ? attendanceSummary : null}
 
       {/* Adjustment Notices Banner */}
       {adjustments.length > 0 && (
@@ -392,14 +468,40 @@ export function GroupSchedule({ groupId, canManage, personal = false }: { groupI
       )}
 
       {/* Shared syllabus, editable by organizers. */}
-      <div id="ementa" className={s.panel}>
-        <h3>Ementa e tópicos de estudo</h3>
-        <p className={s.formHint}>Conteúdo compartilhado da comunidade, organizado em tópicos e vinculado às aulas do cronograma.</p>
-        {topics.length ? <div className={s.topicBadges}>{topics.map((topic) => <span className={s.badge} key={topic.id}>{topic.customTitle || topic.topicName || "Tópico sem título"}</span>)}</div> : <p>Nenhum tópico publicado pelo organizador.</p>}
+      <div id="ementa" className={`${s.panel} ${s.syllabusCard}`}>
+        <div className={s.subsectionHeader}>
+          <div className={s.subsectionIcon}>
+            <BookOpenText aria-hidden size={20} />
+          </div>
+          <div>
+            <span className={s.subsectionEyebrow}>Base do planejamento</span>
+            <h3>Ementa e tópicos de estudo</h3>
+            <p className={s.formHint}>Conteúdo compartilhado da comunidade, organizado em tópicos e vinculado às aulas do cronograma.</p>
+          </div>
+        </div>
+        {topics.length ? (
+          <div className={s.topicBadges}>
+            {topics.map((topic) => (
+              <span className={s.badge} key={topic.id}>
+                {topic.customTitle || topic.topicName || "Tópico sem título"}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div className={s.inlineEmptyState}>
+            <p>Nenhum tópico publicado pelo organizador.</p>
+          </div>
+        )}
       </div>
       {canManage && (
-        <div className={`${s.panel} ${s.topicManager}`} aria-label="Gestão de tópicos da comunidade">
-          <h3 className={s.subsectionTitle}>Tópicos de estudo da comunidade</h3>
+        <div className={`${s.panel} ${s.topicManager} ${s.topicManagerPro}`} aria-label="Gestão de tópicos da comunidade">
+          <div className={s.managerSectionHeader}>
+            <span className={s.managerStep}>Etapa 1</span>
+            <div>
+              <h3 className={s.subsectionTitle}>Tópicos de estudo da comunidade</h3>
+              <p className={s.formHint}>Organize a ementa antes de montar o cronograma. Os tópicos poderão ser vinculados a cada aula.</p>
+            </div>
+          </div>
           {topics.length > 0 ? (
             <div className={s.topicBadges}>
               {topics.map((top) => (
@@ -425,6 +527,7 @@ export function GroupSchedule({ groupId, canManage, personal = false }: { groupI
               />
             </label>
             <button type="submit" className={s.secondary} disabled={!newTopicTitle.trim() || topicBusy}>
+              <Plus aria-hidden size={16} />
               {topicBusy ? "Adicionando…" : "Adicionar tópico"}
             </button>
           </form>
@@ -434,8 +537,23 @@ export function GroupSchedule({ groupId, canManage, personal = false }: { groupI
       {remote.loading ? <Loading /> : remote.error ? <Failure error={remote.error} retry={() => { remote.reload(); void loadExtraData(); }} /> : (
         <>
           {published ? (
-            <div>
-              <p>Plano publicado · versão {published.version}</p>
+            <div className={s.publishedPlan}>
+              <div className={s.publishedPlanHeader}>
+                <div className={s.publishedPlanIdentity}>
+                  <span className={s.publishedPlanIcon}>
+                    <CheckCircle aria-hidden size={22} weight="fill" />
+                  </span>
+                  <div>
+                    <span className={s.subsectionEyebrow}>Cronograma atual</span>
+                    <h3>Plano publicado</h3>
+                    <p>Versão {published.version} · {published.lessons.length} {published.lessons.length === 1 ? "aula" : "aulas"} no planejamento</p>
+                  </div>
+                </div>
+                <span className={s.planStatusPublished}>
+                  <CheckCircle aria-hidden size={16} weight="fill" />
+                  Visível para o grupo
+                </span>
+              </div>
               {published.lessons.length ? (
                 <div aria-label="Aulas publicadas" className={s.lessonList}>
                   {published.lessons.map((lesson) => {
@@ -615,16 +733,49 @@ export function GroupSchedule({ groupId, canManage, personal = false }: { groupI
                     );
                   })}
                 </div>
-              ) : <p>O plano publicado ainda não contém aulas.</p>}
+              ) : (
+                <div className={s.inlineEmptyState}>
+                  <p>O plano publicado ainda não contém aulas.</p>
+                </div>
+              )}
             </div>
-          ) : <p>O organizador ainda não publicou o cronograma desta comunidade.</p>}
+          ) : (
+            <div className={s.emptyPublishedPlan}>
+              <span className={s.emptyPublishedIcon}>
+                <CalendarBlank aria-hidden size={24} />
+              </span>
+              <div>
+                <strong>Nenhum cronograma publicado ainda</strong>
+                <p>
+                  {canManage
+                    ? "Crie um rascunho, organize as aulas e publique quando o planejamento estiver pronto."
+                    : "O organizador ainda está preparando o planejamento desta comunidade."}
+                </p>
+              </div>
+            </div>
+          )}
 
           {canManage && !editing && (
-            <div className={`${s.actions} ${s.scheduleActions}`}>
+            <div className={s.scheduleActions}>
+              <div className={s.scheduleActionContext}>
+                <span className={s.managerStep}>Etapa 2</span>
+                <div>
+                  <strong>
+                    {draft ? "Continue o rascunho em andamento" : published ? "Planeje a próxima versão" : "Monte o primeiro cronograma"}
+                  </strong>
+                  <p>
+                    {draft
+                      ? `Versão ${draft.version} ainda não publicada.`
+                      : published
+                        ? "Crie uma nova versão sem alterar o cronograma que os membros já consultam."
+                        : "Adicione as aulas e salve o progresso antes de publicar."}
+                  </p>
+                </div>
+              </div>
               <button className={s.primary} onClick={() => edit(draft ?? published)}>
+                <NotePencil aria-hidden size={17} />
                 {draft ? "Editar rascunho" : published ? "Criar nova versão" : "Criar rascunho"}
               </button>
-              {draft && <span>Rascunho · versão {draft.version}</span>}
             </div>
           )}
         </>
@@ -711,66 +862,175 @@ export function GroupSchedule({ groupId, canManage, personal = false }: { groupI
 
       {/* Lesson Plan Editor */}
       {canManage && editing && !accessDenied && (
-        <form aria-label="Editar cronograma" onSubmit={submit}>
-          <p>Defina as aulas no seu horário local. A publicação disponibiliza esta versão aos membros.</p>
+        <form aria-label="Editar cronograma" className={s.plannerEditor} onSubmit={submit}>
+          <div className={s.plannerEditorHeader}>
+            <div className={s.plannerEditorIdentity}>
+              <span className={s.plannerEditorIcon}>
+                <NotePencil aria-hidden size={22} />
+              </span>
+              <div>
+                <span className={s.managerStep}>Etapa 2</span>
+                <h3>Montar cronograma</h3>
+                <p>Defina as aulas no seu horário local. Você pode salvar o rascunho e publicar somente quando estiver pronto.</p>
+              </div>
+            </div>
+            <span className={s.planStatusDraft}>
+              <NotePencil aria-hidden size={16} />
+              {editing.planId ? "Rascunho salvo" : "Novo rascunho"}
+            </span>
+          </div>
+
           <fieldset disabled={busy} className={s.scheduleFields}>
-            {editing.lessons.map((lesson, index) => (
-              <fieldset key={index} className={s.panel}>
-                <legend>Aula {index + 1}</legend>
-                <label className={s.field}>Título da aula {index + 1}
-                  <input required maxLength={255} value={lesson.title} onChange={(e) => update(index, "title", e.target.value)} />
-                </label>
-                <label className={s.field}>Data e horário da aula {index + 1}
-                  <input required type="datetime-local" value={lesson.date} onChange={(e) => update(index, "date", e.target.value)} />
-                </label>
-                <label className={s.field}>Descrição da aula {index + 1}
-                  <textarea value={lesson.description} onChange={(e) => update(index, "description", e.target.value)} />
-                </label>
+            {!editing.lessons.length ? (
+              <div className={s.plannerEmptyLessons}>
+                <span>
+                  <CalendarBlank aria-hidden size={28} />
+                </span>
+                <div>
+                  <strong>Seu cronograma ainda está vazio</strong>
+                  <p>Adicione a primeira aula para começar a estruturar o planejamento da disciplina.</p>
+                </div>
+              </div>
+            ) : null}
 
-                {/* Topic selection for each lesson */}
-                {topics.length > 0 && (
-                  <div className={s.field}>
-                    <span className={s.fieldLabel}>Tópicos desta aula</span>
-                    <div className={s.topicCheckboxes}>
-                      {topics.map((t) => {
-                        const checked = lesson.topicIds.includes(t.id);
-                        return (
-                          <label className={s.topicCheckbox} key={t.id}>
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) => {
-                                const next = e.target.checked
-                                  ? [...lesson.topicIds, t.id]
-                                  : lesson.topicIds.filter((id) => id !== t.id);
-                                updateTopics(index, next);
-                              }}
-                            />
-                            {t.customTitle || t.topicName || "Tópico sem título"}
-                          </label>
-                        );
-                      })}
-                    </div>
+            <div className={s.lessonEditorList}>
+              {editing.lessons.map((lesson, index) => (
+                <fieldset key={index} className={s.lessonEditorCard}>
+                  <legend className={s.lessonEditorLegend}>
+                    <span className={s.lessonEditorNumber}>{String(index + 1).padStart(2, "0")}</span>
+                    <span>
+                      <strong>Aula {index + 1}</strong>
+                      <small>{lesson.title.trim() || "Nova aula do cronograma"}</small>
+                    </span>
+                  </legend>
+
+                  <div className={s.lessonEditorGrid}>
+                    <label className={s.field}>Título da aula {index + 1}
+                      <input
+                        required
+                        maxLength={255}
+                        placeholder="Ex: Introdução a derivadas"
+                        value={lesson.title}
+                        onChange={(e) => update(index, "title", e.target.value)}
+                      />
+                    </label>
+                    <label className={s.field}>Data e horário da aula {index + 1}
+                      <input
+                        required
+                        type="datetime-local"
+                        value={lesson.date}
+                        onChange={(e) => update(index, "date", e.target.value)}
+                      />
+                    </label>
                   </div>
-                )}
 
-                <button type="button" className={s.danger} onClick={() => setEditing({
-                  ...editing, lessons: editing.lessons.filter((_, i) => i !== index),
-                })}>Remover aula {index + 1}</button>
-              </fieldset>
-            ))}
-            <div className={s.actions}>
-              <button type="button" className={s.secondary} onClick={() => setEditing({
-                ...editing, lessons: [...editing.lessons, { title: "", description: "", date: "", topicIds: [] }],
-              })}>Adicionar aula</button>
-              <button type="submit" value="save" className={s.secondary}>Salvar rascunho</button>
-              <button type="submit" value="publish" className={s.primary} disabled={!editing.lessons.length}>Publicar cronograma</button>
-              <button type="button" className={s.secondary} onClick={() => setEditing(undefined)}>Cancelar edição</button>
+                  <label className={s.field}>Descrição da aula {index + 1}
+                    <textarea
+                      placeholder="Objetivos, conteúdo previsto ou orientações para esta aula."
+                      value={lesson.description}
+                      onChange={(e) => update(index, "description", e.target.value)}
+                    />
+                  </label>
+
+                  {topics.length > 0 && (
+                    <div className={s.lessonTopicSection}>
+                      <div>
+                        <span className={s.fieldLabel}>Tópicos desta aula</span>
+                        <small>Selecione os conteúdos da ementa relacionados a este encontro.</small>
+                      </div>
+                      <div className={s.topicCheckboxes}>
+                        {topics.map((t) => {
+                          const checked = lesson.topicIds.includes(t.id);
+                          return (
+                            <label className={s.topicCheckbox} key={t.id}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  const next = e.target.checked
+                                    ? [...lesson.topicIds, t.id]
+                                    : lesson.topicIds.filter((id) => id !== t.id);
+                                  updateTopics(index, next);
+                                }}
+                              />
+                              {t.customTitle || t.topicName || "Tópico sem título"}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={s.lessonEditorFooter}>
+                    <span>
+                      <Clock aria-hidden size={15} />
+                      {lesson.date
+                        ? new Date(lesson.date).toLocaleString("pt-BR")
+                        : "Data e horário ainda não definidos"}
+                    </span>
+                    <button type="button" className={s.danger} onClick={() => setEditing({
+                      ...editing, lessons: editing.lessons.filter((_, i) => i !== index),
+                    })}>
+                      <Trash aria-hidden size={15} />
+                      Remover aula {index + 1}
+                    </button>
+                  </div>
+                </fieldset>
+              ))}
+            </div>
+
+            <button type="button" className={s.addLessonButton} onClick={() => setEditing({
+              ...editing, lessons: [...editing.lessons, { title: "", description: "", date: "", topicIds: [] }],
+            })}>
+              <span><Plus aria-hidden size={20} /></span>
+              <div>
+                <strong>Adicionar aula</strong>
+                <small>Inclua mais um encontro no cronograma.</small>
+              </div>
+            </button>
+
+            <div className={s.plannerActionBar}>
+              <div className={s.plannerActionSummary}>
+                <strong>{editing.lessons.length} {editing.lessons.length === 1 ? "aula" : "aulas"} no rascunho</strong>
+                <span>As alterações só ficam visíveis aos membros depois da publicação.</span>
+              </div>
+              <div className={s.plannerActionButtons}>
+                <button type="button" className={s.secondary} onClick={() => setEditing(undefined)}>
+                  Cancelar edição
+                </button>
+                <button type="submit" value="save" className={s.secondary}>
+                  <NotePencil aria-hidden size={16} />
+                  Salvar rascunho
+                </button>
+                <button type="submit" value="publish" className={s.primary} disabled={!editing.lessons.length}>
+                  <CheckCircle aria-hidden size={16} weight="fill" />
+                  Publicar cronograma
+                </button>
+              </div>
             </div>
           </fieldset>
-          {busy && <p role="status">Salvando cronograma…</p>}
+          {busy && <p role="status" className={s.plannerSaving}>Salvando cronograma…</p>}
         </form>
       )}
+
+      {!personal ? (
+        <div className={s.scheduleFollowUp}>
+          <div className={s.followUpHeader}>
+            <span className={s.subsectionEyebrow}>Depois do planejamento</span>
+            <h3>Acompanhamento da disciplina</h3>
+            <p>Registre ocorrências, acompanhe sua frequência pessoal e trate ajustes sem misturar essas ações com a montagem do cronograma.</p>
+          </div>
+          <GroupPlanningCorrections
+            groupId={groupId}
+            canManage={canManage}
+            lessons={published?.lessons ?? []}
+            occurrences={occurrences}
+            topics={topics}
+            onApplied={() => { remote.reload(); void loadExtraData(); }}
+          />
+          {attendanceSummary}
+        </div>
+      ) : null}
     </section>
     </>
   );

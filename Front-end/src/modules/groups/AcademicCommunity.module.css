@@ -630,3 +630,830 @@
     flex: 1;
   }
 }
+
+
+/* Professional schedule planner */
+.schedulePanel {
+  gap: var(--space-5);
+  padding: 0;
+  overflow: hidden;
+}
+
+.schedulePanel > :not(.plannerHeader):not(.plannerWorkflow) {
+  margin-inline: var(--space-5);
+}
+
+.schedulePanel > :last-child {
+  margin-bottom: var(--space-5);
+}
+
+.plannerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  background:
+    radial-gradient(circle at 92% 10%, rgb(2 122 66 / 10%), transparent 28%),
+    linear-gradient(135deg, var(--color-surface) 0%, var(--color-background) 100%);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.plannerTitleBlock {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.plannerEyebrow,
+.subsectionEyebrow {
+  color: var(--color-green);
+  font-size: var(--font-size-caption);
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.plannerTitleBlock h2 {
+  font-size: clamp(1.35rem, 2vw, 1.7rem);
+  letter-spacing: -0.025em;
+}
+
+.plannerTitleBlock > p {
+  max-width: 720px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.6;
+}
+
+.plannerHeaderActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.plannerHeaderActions > a,
+.planStatusPublished,
+.planStatusDraft,
+.planStatusEmpty {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.planStatusPublished,
+.planStatusDraft,
+.planStatusEmpty {
+  width: fit-content;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-caption);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.planStatusPublished {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border: 1px solid rgb(2 122 66 / 16%);
+}
+
+.planStatusDraft {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+  border: 1px solid rgb(23 92 211 / 16%);
+}
+
+.planStatusEmpty {
+  color: var(--color-text-muted);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+}
+
+.plannerWorkflow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr) 36px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 var(--space-5);
+  padding: var(--space-4);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.workflowStep {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.workflowStep > svg {
+  color: var(--color-green);
+}
+
+.workflowStep > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.workflowStep strong {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+}
+
+.workflowStep p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  line-height: 1.45;
+}
+
+.workflowIndex {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border: 1px solid rgb(2 122 66 / 14%);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.workflowConnector {
+  height: 1px;
+  background: linear-gradient(90deg, var(--color-border), rgb(2 122 66 / 35%), var(--color-border));
+}
+
+.syllabusCard {
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-background);
+  box-shadow: none;
+}
+
+.subsectionHeader,
+.publishedPlanIdentity,
+.plannerEditorIdentity,
+.managerSectionHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.subsectionIcon,
+.publishedPlanIcon,
+.plannerEditorIcon,
+.emptyPublishedIcon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border-radius: var(--radius-sm);
+}
+
+.subsectionHeader > div:last-child,
+.publishedPlanIdentity > div,
+.plannerEditorIdentity > div,
+.managerSectionHeader > div:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.inlineEmptyState {
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+}
+
+.topicManagerPro {
+  border-left: 3px solid rgb(2 122 66 / 28%);
+}
+
+.managerStep {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px var(--space-2);
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.topicManagerPro .managerStep {
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.topicForm > button,
+.scheduleActions > button,
+.plannerActionButtons > button,
+.lessonEditorFooter > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.publishedPlan {
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.publishedPlanHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: linear-gradient(90deg, var(--color-success-soft), var(--color-surface) 72%);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.publishedPlanIdentity p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.publishedPlan .lessonList {
+  counter-reset: published-lesson;
+  gap: 0;
+  margin: 0;
+  padding: 0 var(--space-4);
+}
+
+.publishedPlan .lessonCard {
+  counter-increment: published-lesson;
+  position: relative;
+  margin-left: 22px;
+  padding: var(--space-5) 0 var(--space-5) 48px;
+  border-top: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.publishedPlan .lessonCard:last-child {
+  border-bottom: 0;
+}
+
+.publishedPlan .lessonCard::before {
+  content: counter(published-lesson, decimal-leading-zero);
+  position: absolute;
+  top: var(--space-5);
+  left: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border: 1px solid rgb(2 122 66 / 16%);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 900;
+  z-index: 1;
+}
+
+.publishedPlan .lessonCard::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--space-5) + 32px);
+  bottom: -1px;
+  left: 15px;
+  width: 1px;
+  background: var(--color-border);
+}
+
+.publishedPlan .lessonCard:last-child::after {
+  display: none;
+}
+
+.emptyPublishedPlan {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.emptyPublishedPlan > div {
+  display: grid;
+  gap: 3px;
+}
+
+.emptyPublishedPlan strong {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+}
+
+.emptyPublishedPlan p {
+  font-size: var(--font-size-caption);
+  line-height: 1.5;
+}
+
+.scheduleActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.scheduleActionContext {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.scheduleActionContext > div {
+  display: grid;
+  gap: 2px;
+}
+
+.scheduleActionContext strong {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+}
+
+.scheduleActionContext p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.plannerEditor {
+  overflow: hidden;
+  background: var(--color-background);
+  border: 1px solid rgb(2 122 66 / 22%);
+  border-radius: var(--radius-md);
+  box-shadow: 0 14px 38px rgb(31 38 48 / 7%);
+}
+
+.plannerEditorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background:
+    radial-gradient(circle at 100% 0%, rgb(23 92 211 / 8%), transparent 30%),
+    var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.plannerEditorIdentity h3 {
+  font-size: var(--font-size-card-title);
+}
+
+.plannerEditorIdentity p {
+  max-width: 700px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.55;
+}
+
+.plannerEditor .scheduleFields {
+  margin: 0;
+  padding: var(--space-5);
+}
+
+.plannerEmptyLessons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+}
+
+.plannerEmptyLessons > span {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 48px;
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border-radius: 50%;
+}
+
+.plannerEmptyLessons > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.plannerEmptyLessons strong {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+}
+
+.plannerEmptyLessons p {
+  font-size: var(--font-size-caption);
+  line-height: 1.5;
+}
+
+.lessonEditorList {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.lessonEditorCard {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 3px 10px rgb(31 38 48 / 4%);
+}
+
+.lessonEditorCard:focus-within {
+  border-color: rgb(2 122 66 / 35%);
+  box-shadow: 0 0 0 3px rgb(2 122 66 / 7%);
+}
+
+.lessonEditorLegend {
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  color: var(--color-text);
+}
+
+.lessonEditorLegend > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.lessonEditorLegend strong {
+  font-size: var(--font-size-small);
+}
+
+.lessonEditorLegend small {
+  max-width: 420px;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lessonEditorNumber {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.lessonEditorGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(220px, 0.75fr);
+  gap: var(--space-4);
+}
+
+.lessonEditorCard textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.lessonTopicSection {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.lessonTopicSection > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.lessonTopicSection small {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.lessonEditorFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.lessonEditorFooter > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.addLessonButton {
+  width: 100%;
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  text-align: left;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
+}
+
+.addLessonButton:hover:not(:disabled) {
+  background: var(--color-success-soft);
+  border-color: rgb(2 122 66 / 34%);
+}
+
+.addLessonButton > span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border-radius: 50%;
+}
+
+.addLessonButton > div {
+  display: grid;
+  gap: 2px;
+}
+
+.addLessonButton strong {
+  font-size: var(--font-size-small);
+}
+
+.addLessonButton small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.plannerActionBar {
+  position: sticky;
+  bottom: var(--space-3);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 28px rgb(31 38 48 / 12%);
+  backdrop-filter: blur(12px);
+}
+
+.plannerActionSummary {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.plannerActionSummary strong {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+}
+
+.plannerActionSummary span {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.plannerActionButtons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.plannerSaving {
+  margin: 0 var(--space-5) var(--space-5);
+  color: var(--color-green);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+}
+
+@media (max-width: 980px) {
+  .plannerWorkflow {
+    grid-template-columns: 1fr;
+  }
+
+  .workflowConnector {
+    width: 1px;
+    height: 18px;
+    margin-left: 12px;
+    background: var(--color-border);
+  }
+
+  .lessonEditorGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .plannerActionBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .plannerActionButtons {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 700px) {
+  .schedulePanel > :not(.plannerHeader):not(.plannerWorkflow) {
+    margin-inline: var(--space-4);
+  }
+
+  .plannerHeader,
+  .plannerEditorHeader,
+  .publishedPlanHeader,
+  .scheduleActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .plannerHeaderActions,
+  .plannerHeaderActions > a,
+  .scheduleActions > button {
+    width: 100%;
+  }
+
+  .plannerHeaderActions > a,
+  .scheduleActions > button {
+    justify-content: center;
+  }
+
+  .plannerWorkflow {
+    margin-inline: var(--space-4);
+  }
+
+  .plannerEditor .scheduleFields {
+    padding: var(--space-4);
+  }
+
+  .lessonEditorFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lessonEditorFooter > button {
+    width: 100%;
+  }
+
+  .plannerActionBar {
+    position: static;
+  }
+
+  .plannerActionButtons {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .plannerActionButtons button {
+    width: 100%;
+  }
+
+  .publishedPlan .lessonCard {
+    margin-left: 0;
+    padding-left: 44px;
+  }
+}
+
+
+.attendanceSummary {
+  margin-top: 0;
+  background: linear-gradient(135deg, var(--color-info-soft), var(--color-surface));
+}
+
+.attendanceSummaryHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.attendanceSummaryHeader > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.attendanceStats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.attendanceStats > span {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0 var(--space-3);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid rgb(23 92 211 / 12%);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-caption);
+}
+
+.attendanceStats strong {
+  color: var(--color-info);
+  font-size: var(--font-size-small);
+}
+
+.scheduleFollowUp {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.followUpHeader {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.followUpHeader h3 {
+  font-size: var(--font-size-card-title);
+}
+
+.followUpHeader p {
+  max-width: 760px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.55;
+}
+
+@media (max-width: 700px) {
+  .attendanceSummaryHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .attendanceStats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .attendanceStats > span {
+    justify-content: center;
+    padding-inline: var(--space-2);
+  }
+}
+
+@media (max-width: 440px) {
+  .attendanceStats {
+    grid-template-columns: 1fr;
+  }
+}
