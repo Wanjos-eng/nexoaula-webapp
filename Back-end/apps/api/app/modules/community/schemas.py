@@ -534,3 +534,76 @@ class AttendanceAdjustmentResponse(BaseModel):
     created_at: datetime = Field(serialization_alias="createdAt")
     notice_seen_at: datetime | None = Field(default=None, serialization_alias="noticeSeenAt")
 
+
+
+# --- TASK #120: Schemas de Canais ---
+
+
+class ChannelCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    name: str = Field(min_length=1, max_length=80)
+    description: str | None = Field(default=None, max_length=500)
+    group_topic_id: UUID | None = Field(default=None, alias="groupTopicId")
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        normalized = " ".join(value.split())
+        if not normalized:
+            raise ValueError("O nome do canal não pode ser vazio.")
+        return normalized
+
+    @field_validator("description")
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class ChannelUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    description: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def require_at_least_one(self) -> "ChannelUpdate":
+        if not self.model_fields_set:
+            raise ValueError("Informe pelo menos um campo para atualizar.")
+        return self
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str | None) -> str | None:
+        if value is None:
+            raise ValueError("O nome do canal não aceita valor nulo.")
+        normalized = " ".join(value.split())
+        if not normalized:
+            raise ValueError("O nome do canal não pode ser vazio.")
+        return normalized
+
+    @field_validator("description")
+    @classmethod
+    def normalize_description(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class ChannelResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True, from_attributes=True)
+
+    id: UUID
+    group_id: UUID = Field(serialization_alias="groupId")
+    group_topic_id: UUID | None = Field(default=None, serialization_alias="groupTopicId")
+    topic_name: str | None = Field(default=None, serialization_alias="topicName")
+    name: str
+    description: str | None = None
+    created_by: UUID = Field(serialization_alias="createdBy")
+    status: str
+    created_at: datetime = Field(serialization_alias="createdAt")
+    archived_at: datetime | None = Field(default=None, serialization_alias="archivedAt")

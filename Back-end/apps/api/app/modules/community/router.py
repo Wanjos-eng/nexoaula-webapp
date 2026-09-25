@@ -8,6 +8,9 @@ from app.modules.auth.dependencies import active_subject
 from app.modules.community.dependencies import get_community_service
 from app.modules.community.schemas import (
     AttendanceAdjustmentResponse,
+    ChannelCreate,
+    ChannelResponse,
+    ChannelUpdate,
     GroupCreate,
     GroupDiscoveryResponse,
     GroupResponse,
@@ -289,4 +292,34 @@ def list_adjustments(user_id: UserId, service: Service,
 def mark_adjustment_seen(adjustment_id: UUID, user_id: UserId,
                          service: Service) -> AttendanceAdjustmentResponse:
     return service.mark_adjustment_seen(user_id, adjustment_id)
+
+
+# --- TASK #120: Canais ---
+
+@router.get("/{group_id}/channels", response_model=list[ChannelResponse],
+            summary="Listar canais do grupo")
+def list_channels(group_id: UUID, user_id: UserId, service: Service) -> list[ChannelResponse]:
+    return service.list_channels(group_id, user_id)
+
+
+@router.post("/{group_id}/channels", response_model=ChannelResponse,
+             status_code=status.HTTP_201_CREATED,
+             summary="Criar canal no grupo", openapi_extra=MUTATION_SECURITY)
+def create_channel(group_id: UUID, payload: ChannelCreate, user_id: UserId,
+                   service: Service) -> ChannelResponse:
+    return service.create_channel(group_id, user_id, payload)
+
+
+@router.patch("/{group_id}/channels/{channel_id}", response_model=ChannelResponse,
+              summary="Renomear canal", openapi_extra=MUTATION_SECURITY)
+def update_channel(group_id: UUID, channel_id: UUID, payload: ChannelUpdate, user_id: UserId,
+                   service: Service) -> ChannelResponse:
+    return service.update_channel(group_id, channel_id, user_id, payload)
+
+
+@router.post("/{group_id}/channels/{channel_id}/archive", response_model=ChannelResponse,
+             summary="Arquivar canal", openapi_extra=MUTATION_SECURITY)
+def archive_channel(group_id: UUID, channel_id: UUID, user_id: UserId,
+                    service: Service) -> ChannelResponse:
+    return service.archive_channel(group_id, channel_id, user_id)
 

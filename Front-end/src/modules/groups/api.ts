@@ -95,3 +95,41 @@ export function errorMessage(error: unknown): string {
   }
   return "Não foi possível concluir. Confira sua conexão e tente novamente.";
 }
+
+// --- TASK #120: Canais ---
+export type ChannelStatus = "active" | "archived";
+
+export type Channel = {
+  id: string;
+  groupId: string;
+  groupTopicId: string | null;
+  topicName: string | null;
+  name: string;
+  description: string | null;
+  createdBy: string;
+  status: ChannelStatus;
+  createdAt: string;
+  archivedAt: string | null;
+};
+
+export type ChannelInput = {
+  name: string;
+  description: string | null;
+  groupTopicId?: string | null;
+};
+
+export async function listChannels(groupId: string, signal?: AbortSignal): Promise<Channel[]> {
+  return read<Channel[]>(`groups/${groupId}/channels`, signal);
+}
+
+export async function createChannel(groupId: string, payload: ChannelInput, signal?: AbortSignal): Promise<Channel> {
+  return (await apiClient.post<Channel>(`/v1/groups/${groupId}/channels`, { body: payload, signal })).data;
+}
+
+export async function updateChannel(groupId: string, channelId: string, payload: Partial<Pick<ChannelInput, "name" | "description">>, signal?: AbortSignal): Promise<Channel> {
+  return (await apiClient.patch<Channel>(`/v1/groups/${groupId}/channels/${channelId}`, { body: payload, signal })).data;
+}
+
+export async function archiveChannel(groupId: string, channelId: string, signal?: AbortSignal): Promise<Channel> {
+  return (await apiClient.post<Channel>(`/v1/groups/${groupId}/channels/${channelId}/archive`, { body: {}, signal })).data;
+}

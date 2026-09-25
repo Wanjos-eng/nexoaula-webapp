@@ -778,9 +778,12 @@ Table group_topics {
   id uuid [pk, default: `gen_random_uuid()`]
   group_id uuid [not null]
   subject_id uuid [not null]
-  subject_topic_id uuid [not null]
+  subject_topic_id uuid
+  custom_title varchar(255)
+  created_at timestamptz [not null, default: `now()`]
 
   indexes {
+    (id, group_id) [unique]
     (group_id, subject_topic_id) [unique]
     (subject_topic_id)
   }
@@ -789,7 +792,7 @@ Table group_topics {
 Table channels {
   id uuid [pk, default: `gen_random_uuid()`]
   group_id uuid [not null]
-  subject_topic_id uuid
+  group_topic_id uuid
   name varchar(80) [not null]
   description text
   created_by uuid [not null]
@@ -797,12 +800,12 @@ Table channels {
   created_at timestamptz [not null, default: `now()`]
   archived_at timestamptz
 
-  Note: 'Canal de texto dentro do grupo. O conteudo academico e opcional para permitir canais gerais.'
+  Note: 'Canal por assunto do grupo, sem chat na entrega #120. Assunto opcional reutiliza group_topics, inclusive assuntos personalizados.'
 
   indexes {
     (group_id, name) [unique]
     (id, group_id) [unique]
-    (subject_topic_id)
+    (group_topic_id)
   }
 
   checks {
@@ -1183,7 +1186,7 @@ Ref: group_join_requests.resolved_by > users.id [delete: restrict]
 Ref: group_topics.(group_id, subject_id) > study_groups.(id, subject_id) [delete: cascade]
 Ref: group_topics.(subject_topic_id, subject_id) > subject_topics.(id, subject_id) [delete: restrict]
 Ref: channels.group_id > study_groups.id [delete: cascade]
-Ref: channels.subject_topic_id > subject_topics.id [delete: restrict]
+Ref: channels.(group_topic_id, group_id) > group_topics.(id, group_id) [delete: restrict]
 Ref: channels.created_by > users.id [delete: restrict]
 Ref: channel_messages.channel_id > channels.id [delete: cascade]
 Ref: channel_messages.author_id > users.id [delete: restrict]
