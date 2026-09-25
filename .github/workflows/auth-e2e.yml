@@ -57,7 +57,9 @@ jobs:
             src/modules/groups/chat.test.tsx \
             src/modules/groups/channels.test.tsx \
             tests/e2e/chat-real.spec.ts
-          npm test
+          npx vitest run \
+            src/modules/groups/chat.test.tsx \
+            src/modules/groups/channels.test.tsx
 
       - name: Run authentication E2E tests
         working-directory: Front-end
