@@ -78,7 +78,7 @@
   grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.65fr);
   gap: var(--space-5);
   align-items: start;
-  scroll-margin-top: 84px;
+  scroll-margin-top: var(--layout-anchor-offset);
 }
 
 .aboutCard,
@@ -197,7 +197,7 @@
 .channelCard {
   display: grid;
   gap: var(--space-5);
-  scroll-margin-top: 84px;
+  scroll-margin-top: var(--layout-anchor-offset);
 }
 
 .managementHeading {
@@ -216,7 +216,7 @@
 .managementTabs {
   display: inline-flex;
   gap: var(--space-1);
-  padding: 4px;
+  padding: var(--space-1);
   background: var(--color-surface-subtle);
   border-radius: var(--radius-sm);
 }

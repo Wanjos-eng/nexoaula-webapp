@@ -61,6 +61,8 @@
   --motion-normal: 180ms;
   --motion-slow: 240ms;
   --ease-standard: cubic-bezier(.2, .8, .2, 1);
+
+  --layout-anchor-offset: 84px;
 }
 
 * {

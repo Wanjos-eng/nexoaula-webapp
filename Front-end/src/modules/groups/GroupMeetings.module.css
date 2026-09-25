@@ -7,7 +7,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
-  scroll-margin-top: 84px;
+  scroll-margin-top: var(--layout-anchor-offset);
 }
 
 .header,

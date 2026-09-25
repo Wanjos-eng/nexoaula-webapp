@@ -220,7 +220,7 @@
   color: var(--color-text-muted);
   background: var(--color-info-soft);
   border-radius: var(--radius-sm);
-  font-size: var(--font-size-caption) !important;
+  font-size: var(--font-size-caption);
 }
 
 .successLinks {
