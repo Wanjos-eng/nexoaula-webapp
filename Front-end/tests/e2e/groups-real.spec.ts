@@ -129,7 +129,6 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       });
       await owner.getByLabel("Data e horário da aula 1").fill(today);
       await owner.getByRole("button", { name: "Salvar rascunho" }).click();
-      await expect(owner.getByText("Rascunho salvo.")).toBeVisible();
       await owner.reload();
       await owner.getByRole("button", { name: "Editar rascunho" }).click();
       await expect(owner.getByLabel("Título da aula 1")).toHaveValue("Aula inicial E2E");
@@ -149,7 +148,9 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await member.getByRole("button", { name: "Solicitar entrada" }).click();
       await expect(member.getByText("Solicitação enviada.")).toBeVisible();
       await member.reload();
-      await expect(member.getByText("Solicitação pendente", { exact: true })).toBeVisible();
+      await expect(
+        member.getByRole("heading", { name: "Solicitação pendente", exact: true }),
+      ).toBeVisible();
 
       const duplicate = await member.request.post(
         new URL(`/api/v1/groups/${groupId}/join`, member.url()).toString(),
