@@ -430,8 +430,11 @@ export default function NewTutorSessionPage() {
               <Link className={styles.secondaryLink} href="/tutor">
                 Voltar ao painel
               </Link>
-              <Link className={styles.primaryLink} href="/sessoes">
-                Ver tutoria no marketplace
+              <Link
+                className={styles.primaryLink}
+                href={offerId ? `/sessoes/${offerId}` : "/sessoes"}
+              >
+                Ver tutoria
               </Link>
             </div>
           )}
