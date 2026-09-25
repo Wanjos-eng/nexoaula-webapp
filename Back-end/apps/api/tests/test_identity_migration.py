@@ -40,6 +40,8 @@ def test_only_released_tables_exist(database_engine):
         "group_members",
         "group_join_requests",
         "class_sections",
+        "teachers",
+        "class_section_teachers",
         "institutions",
         "study_groups",
         "courses",

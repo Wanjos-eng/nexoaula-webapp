@@ -33,13 +33,13 @@ export function AcademicFilters({ filters, onChange }: {
   const topics = data.subjectTopics.filter((topic) => !filters.subjectId || topic.subjectId === filters.subjectId);
   return <div className={s.grid}>
     <label className={s.field}>Disciplina do catálogo
-      <select value={filters.subjectId} onChange={(event) => onChange({ ...filters, subject: "", subjectId: event.target.value, classSectionId: "", teacherId: "", subjectTopicId: "" })}>
+      <select aria-label="Disciplina do catálogo" value={filters.subjectId} onChange={(event) => onChange({ ...filters, subject: "", subjectId: event.target.value, classSectionId: "", teacherId: "", subjectTopicId: "" })}>
         <option value="">Todas as disciplinas</option>
         {data.subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.name}</option>)}
       </select>
     </label>
     <label className={s.field}>Turma
-      <select value={filters.classSectionId} onChange={(event) => {
+      <select aria-label="Turma" value={filters.classSectionId} onChange={(event) => {
         const section = data.sections.find((item) => item.id === event.target.value);
         onChange({ ...filters, subject: "", classSectionId: event.target.value, subjectId: section?.subjectId ?? filters.subjectId, teacherId: "", subjectTopicId: "" });
       }}>
@@ -48,13 +48,13 @@ export function AcademicFilters({ filters, onChange }: {
       </select>
     </label>
     <label className={s.field}>Professor
-      <select value={filters.teacherId} onChange={(event) => onChange({ ...filters, teacherId: event.target.value })}>
+      <select aria-label="Professor" value={filters.teacherId} onChange={(event) => onChange({ ...filters, teacherId: event.target.value })}>
         <option value="">{teachers.length ? "Todos os professores" : "Nenhum professor vinculado neste contexto"}</option>
         {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>)}
       </select>
     </label>
     <label className={s.field}>Assunto da disciplina
-      <select value={filters.subjectTopicId} onChange={(event) => {
+      <select aria-label="Assunto da disciplina" value={filters.subjectTopicId} onChange={(event) => {
         const topic = data.subjectTopics.find((item) => item.id === event.target.value);
         onChange({ ...filters, topic: "", subject: "", subjectTopicId: event.target.value,
           subjectId: topic?.subjectId ?? filters.subjectId,

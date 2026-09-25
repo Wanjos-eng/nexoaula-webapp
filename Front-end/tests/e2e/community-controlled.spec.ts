@@ -73,6 +73,44 @@ for (const width of [1440, 390]) {
         ];
       else if (path.endsWith("/academic/academic-terms"))
         body = [{ id: "term", label: "2026.2" }];
+      else if (path.endsWith("/academic/teachers"))
+        body = [
+          {
+            id: "teacher",
+            institutionId: "institution",
+            fullName: "Professora Ada",
+          },
+        ];
+      else if (path.endsWith("/academic/class-section-teachers"))
+        body = [
+          {
+            id: "assignment",
+            institutionId: "institution",
+            classSectionId: "section",
+            teacherId: "teacher",
+            role: "lead",
+            startsOn: "2026-08-01",
+            endsOn: null,
+          },
+        ];
+      else if (path.endsWith("/academic/topics"))
+        body = [
+          {
+            id: "topic",
+            slug: "limites",
+            name: "Limites",
+            description: null,
+          },
+        ];
+      else if (path.endsWith("/academic/subject-topics"))
+        body = [
+          {
+            id: "subject-topic",
+            subjectId: "subject",
+            topicId: "topic",
+            displayOrder: 0,
+          },
+        ];
       else if (path.endsWith("/join")) {
         expect(request.headers()["content-type"]).toContain("application/json");
         expect(request.headers()["x-nexoaula-csrf"]).toBe("1");
