@@ -19,7 +19,7 @@ const benefits = [
   },
   {
     icon: UsersThree,
-    text: "Participe de grupos e encontros de estudo.",
+    text: "Participe de comunidades e encontros de estudo.",
   },
 ];
 
@@ -27,7 +27,7 @@ export default function CadastroPage() {
   return (
     <AuthShell
       benefits={benefits}
-      description="Crie sua conta para acompanhar disciplinas, aulas, registros e grupos de estudo."
+      description="Crie sua conta para acompanhar disciplinas, aulas, registros, comunidades e tutorias."
       panelPosition="start"
       title="Comece a organizar sua vida acadêmica"
       titleSize="large"

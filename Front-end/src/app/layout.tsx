@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     template: "%s | nexoAula",
   },
   description:
-    "WebApp acadêmico para organizar disciplinas, grupos de estudo, encontros e progresso.",
+    "WebApp acadêmico para organizar disciplinas, comunidades, encontros, tutorias e progresso.",
   icons: {
     icon: "/favicon.ico",
     apple: "/brand/nexoaula-app-icon-192.png",
