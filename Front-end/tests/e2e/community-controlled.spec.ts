@@ -206,7 +206,7 @@ for (const width of [1440, 390]) {
     ).toBeVisible();
     await page.reload();
     await expect(
-      page.getByText("Solicitação pendente", { exact: true }),
+      page.getByRole("heading", { name: "Solicitação pendente", exact: true }),
     ).toBeVisible();
     await capture("pending");
     await page.goto("/grupos/novo");
