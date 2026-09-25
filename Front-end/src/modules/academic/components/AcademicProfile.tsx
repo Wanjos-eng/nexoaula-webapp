@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { apiClient } from "@/lib/api";
+import { useAuthSession } from "@/modules/auth";
 import {
   catalog,
   read,
@@ -20,6 +21,7 @@ import { useRemote } from "@/modules/groups/useRemote";
 import styles from "./AcademicWorkspace.module.css";
 
 export function AcademicProfile() {
+  const { user } = useAuthSession();
   const fetcher = useCallback(async (signal: AbortSignal) => {
     const [profile, institutions, courses] = await Promise.all([
       read<Profile>("academic/profile", signal),
@@ -57,7 +59,7 @@ export function AcademicProfile() {
           </Button>
         </Card>
       ) : remote.data ? (
-        <ProfileForm {...remote.data} />
+        <ProfileForm {...remote.data} email={user.email} />
       ) : null}
     </div>
   );
@@ -67,10 +69,12 @@ function ProfileForm({
   profile,
   institutions,
   courses,
+  email,
 }: {
   profile: Profile;
   institutions: CatalogItem[];
   courses: CatalogItem[];
+  email: string;
 }) {
   const [draft, setDraft] = useState(profile);
   const [busy, setBusy] = useState(false);
@@ -114,6 +118,7 @@ function ProfileForm({
       <Card className={styles.panel}>
         <div className={styles.panelHeader}>
           <h2>{draft.displayName}</h2>
+          <p>{email}</p>
           <p>Contexto acadêmico</p>
         </div>
 
