@@ -282,9 +282,33 @@ export default function NewTutorSessionPage() {
         </div>
       ) : null}
 
-      {state === "editing" ? (
+      {loadingEdit ? (
+        <Card className={styles.formCard} aria-label="Carregando rascunho" role="status">
+          <span className="sr-only">Carregando rascunho...</span>
+          <div className={styles.editLoading}>
+            <div />
+            <div />
+            <div />
+          </div>
+        </Card>
+      ) : editLoadError ? (
+        <Card className={styles.editError} role="alert">
+          <WarningCircle aria-hidden size={34} weight="fill" />
+          <div>
+            <h2>Não foi possível editar esta tutoria</h2>
+            <p>{editLoadError}</p>
+          </div>
+          <Link className={styles.secondaryLink} href="/tutor">
+            Voltar ao painel
+          </Link>
+        </Card>
+      ) : state === "editing" ? (
         <Card className={styles.formCard}>
-          <form className={styles.form} onSubmit={handleSubmit}>
+          <form
+            className={styles.form}
+            key={offerId ?? "new-offer"}
+            onSubmit={handleSubmit}
+          >
             <section className={styles.formSection}>
               <div>
                 <h2>Informações principais</h2>
@@ -533,4 +557,26 @@ function toLocalDateTimeInput(value: string): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
     date.getDate(),
   )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+
+function sessionOfferToDraft(offer: SessionOffer): SessionDraft {
+  return {
+    title: offer.title,
+    subject: offer.subject_id,
+    description: offer.description ?? "",
+    startsAt: toDateTimeLocal(offer.starts_at),
+    endsAt: toDateTimeLocal(offer.ends_at),
+    location: offer.location ?? "",
+    externalUrl: offer.external_url ?? "",
+    modality: offer.modality,
+    capacity: offer.capacity,
+    priceCents: offer.price_cents,
+  };
+}
+
+function toDateTimeLocal(iso: string): string {
+  const date = new Date(iso);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
 }
