@@ -1,4 +1,5 @@
 vi.mock("@/modules/auth", () => ({ useAuthSession: () => ({ user: { id: "owner" } }) }));
+vi.mock("@/components/ui/Toast", () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 import {
   act,
   fireEvent,
@@ -85,7 +86,7 @@ describe("fluxos integrados com o cliente HTTP e respostas controladas", () => {
       target: { value: "Álgebra e cálculo" },
     });
     fireEvent.click(screen.getByText("Salvar alterações"));
-    await screen.findByText("Perfil atualizado com sucesso.");
+    await waitFor(() => expect(profile.bio).toBe("Álgebra e cálculo"));
     view.unmount();
     render(<AcademicProfile />);
     await screen.findByText("Ana");
@@ -181,18 +182,18 @@ describe("fluxos integrados com o cliente HTTP e respostas controladas", () => {
       );
     });
     render(<GroupDirectory initialView="discover" />);
-    await screen.findByText("Grupos para descobrir");
+    await screen.findByText("Comunidades para descobrir");
     fireEvent.click(screen.getByText("Próxima"));
-    await screen.findByText("Nenhum grupo encontrado");
+    await screen.findByText("Nenhuma comunidade encontrada");
     expect(urls.at(-1)).toContain("offset=12");
     fireEvent.change(screen.getByLabelText("Disciplina"), {
       target: { value: "Cálculo" },
     });
     fireEvent.submit(screen.getByRole("search"));
     await waitFor(() => expect(urls.at(-1)).toContain("subject=C%C3%A1lculo"));
-    await screen.findByText("Nenhum grupo encontrado");
+    await screen.findByText("Nenhuma comunidade encontrada");
     expect(
-      screen.getByRole("button", { name: "Remover filtros" }),
+      screen.getByRole("button", { name: "Limpar filtros" }),
     ).toBeTruthy();
   });
 

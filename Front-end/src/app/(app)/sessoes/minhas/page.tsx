@@ -124,7 +124,7 @@ export default function MyBookingsPage() {
           ))}
         </div>
       ) : error ? (
-        <Card className={styles.stateCard}>
+        <Card className={styles.stateCard} role="alert">
           <Storefront aria-hidden size={32} />
           <div>
             <h2>Não foi possível carregar suas tutorias</h2>
