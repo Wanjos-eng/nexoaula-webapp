@@ -329,6 +329,22 @@ export default function TutorPage() {
                   <div className={styles.offerAside}>
                     <strong>{formatCents(offer.price_cents)}</strong>
                     <div className={styles.offerActions}>
+                      {offer.status === "scheduled" ? (
+                        <Link
+                          className={styles.offerLink}
+                          href={`/sessoes/${offer.id}`}
+                        >
+                          Ver
+                        </Link>
+                      ) : null}
+                      {offer.status === "draft" && activeProfile ? (
+                        <Link
+                          className={styles.offerLink}
+                          href={`/tutor/nova-sessao?edit=${offer.id}`}
+                        >
+                          Editar
+                        </Link>
+                      ) : null}
                       {offer.status === "draft" && activeProfile ? (
                         <Button
                           disabled={busy}
