@@ -1,3 +1,4 @@
+vi.mock("@/modules/auth", () => ({ useAuthSession: () => ({ user: { id: "owner" } }) }));
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GroupDetail } from "./GroupDetail";
@@ -16,7 +17,7 @@ const plan: TeachingPlan = { id: "plan-one", groupId: group.id, version: 1, stat
   publishedAt: new Date().toISOString(), lessons: [lesson] };
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
 function server(handler: (url: string, options: RequestInit) => Response | Promise<Response>) {
-  return vi.stubGlobal("fetch", vi.fn((url: string, options: RequestInit) => handler(url, options)));
+  return vi.stubGlobal("fetch", vi.fn((url: string, options: RequestInit) => (url.includes("/meetings") || url.includes("marketplace/bookings/mine") || url.includes("/topics")) ? json([]) : handler(url, options)));
 }
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 

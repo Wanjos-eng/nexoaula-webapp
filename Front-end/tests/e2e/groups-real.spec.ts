@@ -139,6 +139,7 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
 
       await registerAndLogin(member, memberUser);
       await member.goto("/calendario");
+      await expect(member.getByTestId("calendar-empty-state")).toBeVisible();
       await expect(member.getByRole("heading", { name: "Você ainda não participa de grupos" })).toBeVisible();
       await member.goto("/grupos?view=discover");
       await member.getByRole("search").getByLabel("Assunto ou nome").fill(groupName);
@@ -214,6 +215,7 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
         await expect(member.locator(`a[href="/grupos/${id}#cronograma"]`)).toHaveCount(0);
         if (id === groupId) await expect(member.getByRole("link", { name: "Detalhar aula no grupo" })).toHaveCount(1);
       }
+      await expect(member.getByTestId("calendar-empty-state")).toBeVisible();
       await expect(member.getByRole("heading", { name: "Você ainda não participa de grupos" })).toBeVisible();
     } finally {
       await logout(ownerContext, owner).catch(() => undefined);

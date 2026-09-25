@@ -15,7 +15,8 @@ class AuthSecurityMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or not scope["path"].startswith(
-            ("/api/v1/auth/", "/api/v1/academic/", "/api/v1/groups", "/api/v1/marketplace")
+            ("/api/v1/auth/", "/api/v1/academic/", "/api/v1/groups", "/api/v1/marketplace",
+             "/api/v1/meetings/", "/api/v1/me/meetings")
         ):
             await self.app(scope, receive, send)
             return

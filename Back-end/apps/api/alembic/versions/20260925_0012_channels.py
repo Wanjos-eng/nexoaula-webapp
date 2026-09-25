@@ -1,15 +1,15 @@
 """create channels table
 
-Revision ID: 0010_channels
-Revises: 0009_lesson_occurrences_attendance_progress
+Revision ID: 0012_channels
+Revises: 0011_meeting_postponed
 Create Date: 2026-09-24
 """
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '0010_channels'
-down_revision = '0009_occurrences_attendance'
+revision = '0012_channels'
+down_revision = '0011_meeting_postponed'
 branch_labels = None
 depends_on = None
 

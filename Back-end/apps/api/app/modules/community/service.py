@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from app.modules.community.errors import CommunityError
@@ -10,6 +10,8 @@ from app.modules.community.models import (
     GroupVisibility as ModelGroupVisibility,
     JoinRequestStatus,
     LessonOccurrence,
+    Meeting,
+    MeetingStatus as ModelMeetingStatus,
     MembershipRole,
     MembershipStatus,
     ScheduledLesson,
@@ -29,6 +31,12 @@ from app.modules.community.schemas import (
     GroupTopicCreate,
     GroupTopicResponse,
     GroupUpdate,
+    MeetingCreate,
+    MeetingOutcomeUpdate,
+    MeetingParticipantResponse,
+    MeetingParticipantStatus,
+    MeetingResponse,
+    MeetingUpdate,
     GroupVisibility,
     JoinPolicy,
     LessonOccurrenceCreate,
@@ -56,6 +64,208 @@ CommunityUnitOfWorkFactory = Callable[[], CommunityUnitOfWork]
 class CommunityService:
     def __init__(self, unit_of_work_factory: CommunityUnitOfWorkFactory) -> None:
         self._uow_factory = unit_of_work_factory
+
+    def create_meeting(self, group_id: UUID, user_id: UUID, data: MeetingCreate) -> MeetingResponse:
+        if data.group_id != group_id:
+            raise CommunityError("O grupo do encontro não corresponde à URL.", 422)
+        with self._uow_factory() as uow:
+            group = uow.community.find_by_id(group_id)
+            if group is None:
+                raise CommunityError("Grupo não encontrado.", 404)
+            if self._value(group.status) != ModelGroupStatus.ACTIVE.value:
+                raise CommunityError("Não é possível agendar encontros em um grupo inativo.", 409)
+            if not uow.community.is_active_organizer(group_id, user_id):
+                raise CommunityError("Apenas organizadores ativos podem criar encontros.", 403)
+            if data.starts_at <= datetime.now(UTC):
+                raise CommunityError("O início do encontro deve estar no futuro.", 422)
+            meeting = uow.community.create_meeting(group_id, user_id, data)
+            uow.commit()
+            return self._meeting_response(uow, meeting, user_id)
+
+    def list_group_meetings(self, group_id: UUID, user_id: UUID,
+                            start: datetime | None, end: datetime | None) -> list[MeetingResponse]:
+        self._validate_meeting_window(start, end)
+        with self._uow_factory() as uow:
+            group = uow.community.find_by_id(group_id)
+            if group is None:
+                raise CommunityError("Grupo não encontrado.", 404)
+            if self._value(group.status) != ModelGroupStatus.ACTIVE.value:
+                raise CommunityError("Grupo inativo.", 409)
+            if not uow.community.is_active_member(group_id, user_id):
+                raise CommunityError("Apenas membros ativos podem consultar os encontros.", 403)
+            return self._meeting_responses(
+                uow, uow.community.list_group_meetings(group_id, start, end), user_id
+            )
+
+    def user_meeting_calendar(self, user_id: UUID, start: datetime | None,
+                              end: datetime | None) -> list[MeetingResponse]:
+        self._validate_meeting_window(start, end)
+        with self._uow_factory() as uow:
+            return self._meeting_responses(
+                uow, uow.community.list_user_meetings(user_id, start, end), user_id
+            )
+
+    def get_meeting(self, meeting_id: UUID, user_id: UUID) -> MeetingResponse:
+        with self._uow_factory() as uow:
+            meeting = uow.community.find_meeting(meeting_id)
+            if meeting is None:
+                raise CommunityError("Encontro não encontrado.", 404)
+            group = uow.community.find_by_id(meeting.group_id)
+            if group is None or self._value(group.status) != ModelGroupStatus.ACTIVE.value:
+                raise CommunityError("Encontro não encontrado.", 404)
+            if not uow.community.is_active_member(meeting.group_id, user_id):
+                raise CommunityError("Apenas membros ativos podem consultar este encontro.", 403)
+            return self._meeting_response(uow, meeting, user_id)
+
+    def update_meeting(self, meeting_id: UUID, user_id: UUID, data: MeetingUpdate) -> MeetingResponse:
+        with self._uow_factory() as uow:
+            meeting = uow.community.find_meeting(meeting_id, lock=True)
+            if meeting is None:
+                raise CommunityError("Encontro não encontrado.", 404)
+            group = uow.community.find_by_id(meeting.group_id)
+            if group is None:
+                raise CommunityError("Encontro não encontrado.", 404)
+            if not uow.community.is_active_organizer(meeting.group_id, user_id):
+                raise CommunityError("Apenas o organizador ou moderador ativo pode editar o encontro.", 403)
+            self._require_active_meeting_group(uow, meeting)
+            self._ensure_meeting_mutable(meeting)
+            updates = data.model_dump(exclude_unset=True)
+            starts_at = updates.get("starts_at", meeting.starts_at)
+            ends_at = updates.get("ends_at", meeting.ends_at)
+            if starts_at != meeting.starts_at and starts_at <= datetime.now(UTC):
+                raise CommunityError("O novo início deve estar no futuro.", 422)
+            if ends_at is not None and starts_at >= ends_at:
+                raise CommunityError("O início deve ser anterior ao fim do encontro.", 422)
+            modality = self._value(updates.get("modality", meeting.modality))
+            location = updates.get("location", meeting.location)
+            external_url = updates.get("external_url", meeting.external_url)
+            self._validate_meeting_modality(modality, location, external_url)
+            if updates:
+                meeting = uow.community.update_meeting(meeting, data)
+                uow.commit()
+            return self._meeting_response(uow, meeting, user_id)
+
+    def cancel_meeting(self, meeting_id: UUID, user_id: UUID) -> MeetingResponse:
+        with self._uow_factory() as uow:
+            meeting = uow.community.find_meeting(meeting_id, lock=True)
+            if meeting is None:
+                raise CommunityError("Encontro não encontrado.", 404)
+            if not uow.community.is_active_organizer(meeting.group_id, user_id):
+                raise CommunityError("Apenas o organizador ou moderador ativo pode cancelar o encontro.", 403)
+            self._require_active_meeting_group(uow, meeting)
+            status_value = self._value(meeting.status)
+            if status_value == ModelMeetingStatus.CANCELLED.value:
+                return self._meeting_response(uow, meeting, user_id)
+            if status_value == ModelMeetingStatus.COMPLETED.value:
+                raise CommunityError("Encontros encerrados não podem ser cancelados.", 409)
+            meeting = uow.community.cancel_meeting(meeting)
+            uow.commit()
+            return self._meeting_response(uow, meeting, user_id)
+
+    def report_meeting_outcome(self, meeting_id: UUID, user_id: UUID,
+                               data: MeetingOutcomeUpdate) -> MeetingResponse:
+        now = datetime.now(UTC)
+        with self._uow_factory() as uow:
+            meeting = uow.community.find_meeting(meeting_id, lock=True)
+            if meeting is None:
+                raise CommunityError("Encontro não encontrado.", 404)
+            if (meeting.organizer_id != user_id
+                    or not uow.community.is_active_organizer(meeting.group_id, user_id)):
+                raise CommunityError("Somente o criador com papel de organizador ativo pode registrar o resultado.", 403)
+            self._require_active_meeting_group(uow, meeting)
+            status_value = self._value(meeting.status)
+            if status_value not in (ModelMeetingStatus.SCHEDULED.value, ModelMeetingStatus.POSTPONED.value):
+                raise CommunityError("O resultado deste encontro já foi registrado.", 409)
+
+            if data.status == "completed":
+                end_time = meeting.ends_at or meeting.starts_at
+                if now < end_time:
+                    raise CommunityError("O encontro só pode ser marcado como realizado após o horário de término.", 409)
+                meeting.status = ModelMeetingStatus.COMPLETED
+            elif data.status == "postponed":
+                if data.starts_at <= now:
+                    raise CommunityError("O novo início deve estar no futuro.", 422)
+                meeting.starts_at = data.starts_at
+                meeting.ends_at = data.ends_at
+                meeting.status = ModelMeetingStatus.POSTPONED
+            else:
+                meeting.status = ModelMeetingStatus.CANCELLED
+            meeting.updated_at = now
+            uow.commit()
+            return self._meeting_response(uow, meeting, user_id)
+
+    def put_meeting_participant(self, meeting_id: UUID, user_id: UUID,
+                                participant_status: MeetingParticipantStatus) -> MeetingParticipantResponse:
+        with self._uow_factory() as uow:
+            meeting = uow.community.find_meeting(meeting_id, lock=True)
+            if meeting is None:
+                raise CommunityError("Encontro não encontrado.", 404)
+            group = uow.community.find_by_id(meeting.group_id)
+            if not uow.community.is_active_member(meeting.group_id, user_id):
+                raise CommunityError("É necessário ser membro ativo do grupo para participar.", 403)
+            if group is None or self._value(group.status) != ModelGroupStatus.ACTIVE.value:
+                raise CommunityError("O grupo do encontro não está ativo.", 409)
+            if participant_status == MeetingParticipantStatus.ATTENDED:
+                if self._value(meeting.status) == ModelMeetingStatus.CANCELLED.value:
+                    raise CommunityError("Não é possível registrar presença em encontro cancelado.", 409)
+                if datetime.now(UTC) < meeting.starts_at:
+                    raise CommunityError("A presença só pode ser registrada após o início do encontro.", 409)
+            else:
+                self._ensure_meeting_mutable(meeting)
+            participant = uow.community.upsert_meeting_participant(meeting_id, user_id, participant_status)
+            uow.commit()
+            return MeetingParticipantResponse.model_validate(participant)
+
+    @staticmethod
+    def _require_active_meeting_group(uow: CommunityUnitOfWork, meeting: Meeting) -> None:
+        group = uow.community.find_by_id(meeting.group_id)
+        if group is None or CommunityService._value(group.status) != ModelGroupStatus.ACTIVE.value:
+            raise CommunityError("O grupo do encontro não está ativo.", 409)
+
+    @staticmethod
+    def _validate_meeting_window(start: datetime | None, end: datetime | None) -> None:
+        if start is not None and end is not None and end <= start:
+            raise CommunityError("O fim do intervalo deve ser posterior ao início.", 422)
+
+    @staticmethod
+    def _meeting_responses(uow, meetings: list[Meeting], user_id: UUID) -> list[MeetingResponse]:
+        if not meetings:
+            return []
+        meeting_ids = [meeting.id for meeting in meetings]
+        topics = uow.community.list_meeting_topic_ids(meeting_ids)
+        summaries = uow.community.meeting_participant_summary(meeting_ids, user_id)
+        return [
+            MeetingResponse.model_validate(meeting).model_copy(update={
+                "topic_ids": topics[meeting.id],
+                "confirmed_count": summaries[meeting.id][0],
+                "participant_status": (MeetingParticipantStatus(summaries[meeting.id][1])
+                                       if summaries[meeting.id][1] else None),
+            })
+            for meeting in meetings
+        ]
+
+    @classmethod
+    def _meeting_response(cls, uow, meeting: Meeting, user_id: UUID) -> MeetingResponse:
+        return cls._meeting_responses(uow, [meeting], user_id)[0]
+
+    @staticmethod
+    def _validate_meeting_modality(modality: str, location: str | None,
+                                   external_url: str | None) -> None:
+        valid = ((modality == "in_person" and bool(location)) or
+                 (modality == "online" and bool(external_url)) or
+                 (modality == "hybrid" and bool(location) and bool(external_url)))
+        if not valid:
+            raise CommunityError("Local e URL devem ser compatíveis com a modalidade do encontro.", 422)
+
+    @staticmethod
+    def _ensure_meeting_mutable(meeting: Meeting) -> None:
+        if CommunityService._value(meeting.status) not in (
+            ModelMeetingStatus.SCHEDULED.value, ModelMeetingStatus.POSTPONED.value
+        ):
+            raise CommunityError("Encontros cancelados ou encerrados não podem ser alterados.", 409)
+        end_time = meeting.ends_at or meeting.starts_at
+        if datetime.now(UTC) >= end_time:
+            raise CommunityError("O prazo para alterar a participação deste encontro terminou.", 409)
 
     def list_mine(self, user_id: UUID, offset: int, limit: int) -> list[GroupResponse]:
         with self._uow_factory() as uow:
@@ -218,7 +428,8 @@ class CommunityService:
             if not uow.community.is_active_member(group_id, user_id):
                 raise CommunityError("Apenas membros do grupo podem ver os tópicos.", 403)
             topics = uow.community.list_group_topics(group_id)
-            return [GroupTopicResponse.model_validate(t) for t in topics]
+            return [GroupTopicResponse.model_validate(topic).model_copy(update={"topic_name": name})
+                    for topic, name in topics]
 
     def create_teaching_plan(self, group_id: UUID, user_id: UUID, data: TeachingPlanCreate) -> TeachingPlanResponse:
         self.get_group(group_id, user_id)
