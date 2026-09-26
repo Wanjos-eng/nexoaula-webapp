@@ -6,11 +6,15 @@
     "nodejs_compat"
   ],
   "main": "worker.ts",
-  "services": [{ "binding": "API", "service": "nexoaula-api" }],
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true
+  },
   "assets": {
     "directory": "dist/client",
     "not_found_handling": "none",
     "binding": "ASSETS"
+  },
+  "vars": {
+    "API_BASE_URL": "https://nexoaula-api.onrender.com"
   }
 }
