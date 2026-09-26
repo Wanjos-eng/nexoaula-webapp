@@ -8,7 +8,7 @@ on:
       - '.github/workflows/cloudflare-vinext-check.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   compatibility:
@@ -35,22 +35,16 @@ jobs:
         shell: bash
         run: |
           set +e
-          mkdir -p ../docs/deployment
-          npx --yes vinext@latest check 2>&1 | tee ../docs/deployment/vinext-check.txt
+          mkdir -p ../vinext-report
+          npx --yes vinext@latest check 2>&1 | tee ../vinext-report/vinext-check.txt
           status=${PIPESTATUS[0]}
-          printf '\nvinext_check_exit_code=%s\n' "$status" >> ../docs/deployment/vinext-check.txt
+          printf '\nvinext_check_exit_code=%s\n' "$status" >> ../vinext-report/vinext-check.txt
           exit 0
 
-      - name: Publish compatibility report
-        working-directory: .
-        shell: bash
-        run: |
-          if [ -z "$(git status --porcelain -- docs/deployment/vinext-check.txt)" ]; then
-            echo "Compatibility report unchanged."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/deployment/vinext-check.txt
-          git commit -m "chore: record vinext compatibility report"
-          git push
+      - name: Upload compatibility report
+        uses: actions/upload-artifact@v4
+        with:
+          name: vinext-compatibility-report
+          path: vinext-report/vinext-check.txt
+          if-no-files-found: error
+          retention-days: 7
