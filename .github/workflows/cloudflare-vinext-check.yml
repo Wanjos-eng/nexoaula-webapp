@@ -1,0 +1,57 @@
+name: Cloudflare vinext compatibility
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Front-end/**'
+      - '.github/workflows/cloudflare-vinext-check.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Front-end
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Front-end/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Check vinext compatibility
+        id: vinext
+        shell: bash
+        run: |
+          set +e
+          mkdir -p ../docs/deployment
+          npx --yes vinext@latest check 2>&1 | tee ../docs/deployment/vinext-check.txt
+          status=${PIPESTATUS[0]}
+          printf '\nvinext_check_exit_code=%s\n' "$status" >> ../docs/deployment/vinext-check.txt
+          exit 0
+
+      - name: Publish compatibility report
+        working-directory: .
+        shell: bash
+        run: |
+          if git diff --quiet -- docs/deployment/vinext-check.txt; then
+            echo "Compatibility report unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/deployment/vinext-check.txt
+          git commit -m "chore: record vinext compatibility report"
+          git push
