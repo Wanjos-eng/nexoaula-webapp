@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   model:
@@ -35,6 +35,19 @@ jobs:
         run: npm ci --prefix tools/data-model --ignore-scripts
       - name: Generate reviewed diagrams
         run: node scripts/render-data-model.cjs
+      - name: Commit generated diagrams on the review branch
+        if: github.event_name == 'pull_request' && github.head_ref == 'feat/group-access-lifecycle'
+        run: |
+          if git diff --quiet -- docs/diagrams/generated; then
+            echo "Generated diagrams already match."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/diagrams/generated
+          git commit -m "docs(data): regenerate model diagrams"
+          git push origin HEAD:feat/group-access-lifecycle
+
       - name: Upload generated diagrams for review sync
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
