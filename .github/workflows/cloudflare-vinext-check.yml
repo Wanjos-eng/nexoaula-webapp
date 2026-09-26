@@ -49,18 +49,6 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Pin React Server Components runtime
-        run: |
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          pkg.overrides = {
-            ...(pkg.overrides ?? {}),
-            'react-server-dom-webpack': '19.2.8'
-          };
-          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          NODE
-
       - name: Generate Cloudflare configuration
         shell: bash
         run: |
@@ -69,9 +57,6 @@ jobs:
           CI=1 npx --yes vinext@latest init \
             --platform=cloudflare \
             --skip-check \
-            --cdn-cache=none \
-            --data-cache=none \
-            --image-optimization=none \
             2>&1 | tee ../vinext-report/vinext-init.txt
           status=${PIPESTATUS[0]}
           printf '\nvinext_init_exit_code=%s\n' "$status" >> ../vinext-report/vinext-init.txt
