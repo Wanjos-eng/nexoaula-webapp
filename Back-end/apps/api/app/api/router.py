@@ -17,5 +17,6 @@ router.include_router(marketplace_router)
 
 
 @router.get("/health", tags=["Health"])
+@router.get("/api/health", tags=["Health"], include_in_schema=False)
 def health_check():
     return {"status": "ok", "message": "API is running"}
