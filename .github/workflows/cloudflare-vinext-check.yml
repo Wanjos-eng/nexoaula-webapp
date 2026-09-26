@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
     paths:
-      - 'Front-end/**'
       - '.github/workflows/cloudflare-vinext-check.yml'
 
 permissions:
@@ -13,9 +12,6 @@ permissions:
 jobs:
   compatibility:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: Front-end
 
     steps:
       - name: Checkout
@@ -28,61 +24,109 @@ jobs:
           cache: npm
           cache-dependency-path: Front-end/package-lock.json
 
-      - name: Install frontend dependencies
+      - name: Install current frontend
+        working-directory: Front-end
         run: npm ci
 
       - name: Check vinext compatibility
+        working-directory: Front-end
+        run: npx --yes vinext@1.0.0-beta.12 check
+
+      - name: Generate manual Cloudflare setup
         shell: bash
         run: |
-          set +e
-          mkdir -p ../vinext-report
-          npx --yes vinext@latest check 2>&1 | tee ../vinext-report/vinext-check.txt
-          status=${PIPESTATUS[0]}
-          printf '\nvinext_check_exit_code=%s\n' "$status" >> ../vinext-report/vinext-check.txt
-          exit 0
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const root = path.join(process.cwd(), 'Front-end');
+          const pkgPath = path.join(root, 'package.json');
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
-      - name: Upload compatibility report
-        uses: actions/upload-artifact@v4
-        with:
-          name: vinext-compatibility-report
-          path: vinext-report/vinext-check.txt
-          if-no-files-found: error
-          retention-days: 7
+          pkg.type = 'module';
+          pkg.scripts = {
+            ...pkg.scripts,
+            'dev:vinext': 'vinext dev --port 3001',
+            'build:vinext': 'vinext build',
+            'start:vinext': 'wrangler dev --config dist/server/wrangler.json',
+            'deploy:vinext': 'vinext-cloudflare deploy --config dist/server/wrangler.json'
+          };
+          pkg.dependencies = {
+            ...pkg.dependencies,
+            'vinext': '1.0.0-beta.12',
+            '@vinext/cloudflare': '1.0.0-beta.10',
+            'react-server-dom-webpack': '19.2.8'
+          };
+          pkg.devDependencies = {
+            ...pkg.devDependencies,
+            '@cloudflare/vite-plugin': '1.60.2',
+            '@vitejs/plugin-rsc': '0.5.35',
+            'vite': '8.3.1',
+            'wrangler': '4.141.0'
+          };
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 
-      - name: Generate Cloudflare configuration
+          const gitignorePath = path.join(root, '.gitignore');
+          let gitignore = fs.readFileSync(gitignorePath, 'utf8');
+          for (const entry of ['/dist/', '.vinext/', '.wrangler/']) {
+            if (!gitignore.split('\n').includes(entry)) gitignore += entry + '\n';
+          }
+          fs.writeFileSync(gitignorePath, gitignore);
+
+          fs.writeFileSync(path.join(root, 'vite.config.ts'), `import { cloudflare } from "@cloudflare/vite-plugin";
+          import vinext from "vinext";
+          import { defineConfig } from "vite";
+
+          export default defineConfig({
+            plugins: [
+              vinext(),
+              cloudflare({
+                viteEnvironment: {
+                  name: "rsc",
+                  childEnvironments: ["ssr"],
+                },
+              }),
+            ],
+          });
+          `.replace(/^ {10}/gm, ''));
+
+          fs.writeFileSync(path.join(root, 'wrangler.jsonc'), JSON.stringify({
+            "$schema": "node_modules/wrangler/config-schema.json",
+            "name": "nexoaula-web",
+            "compatibility_date": "2026-09-25",
+            "compatibility_flags": ["nodejs_compat"],
+            "main": "vinext/server/fetch-handler",
+            "assets": {
+              "directory": "dist/client",
+              "not_found_handling": "none",
+              "binding": "ASSETS"
+            }
+          }, null, 2) + '\n');
+          NODE
+
+      - name: Resolve Cloudflare dependencies and lockfile
+        working-directory: Front-end
+        run: npm install
+
+      - name: Build with vinext
+        working-directory: Front-end
+        env:
+          API_BASE_URL: http://127.0.0.1:8000
+        run: npm run build:vinext
+
+      - name: Collect validated setup
         shell: bash
         run: |
-          set +e
-          mkdir -p ../vinext-report
-          CI=1 npx --yes vinext@latest init \
-            --platform=cloudflare \
-            --skip-check \
-            2>&1 | tee ../vinext-report/vinext-init.txt
-          status=${PIPESTATUS[0]}
-          printf '\nvinext_init_exit_code=%s\n' "$status" >> ../vinext-report/vinext-init.txt
-          exit "$status"
+          mkdir -p cloudflare-setup
+          cp Front-end/package.json cloudflare-setup/
+          cp Front-end/package-lock.json cloudflare-setup/
+          cp Front-end/.gitignore cloudflare-setup/gitignore
+          cp Front-end/vite.config.ts cloudflare-setup/
+          cp Front-end/wrangler.jsonc cloudflare-setup/
 
-      - name: Upload init report
-        if: always()
+      - name: Upload validated setup
         uses: actions/upload-artifact@v4
         with:
-          name: vinext-init-report
-          path: vinext-report/vinext-init.txt
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Collect generated configuration
-        if: success()
-        shell: bash
-        run: |
-          mkdir -p ../vinext-generated
-          cp package.json package-lock.json vite.config.ts wrangler.jsonc ../vinext-generated/
-
-      - name: Upload generated configuration
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: vinext-generated-config
-          path: vinext-generated/
+          name: cloudflare-validated-setup
+          path: cloudflare-setup/
           if-no-files-found: error
           retention-days: 7
