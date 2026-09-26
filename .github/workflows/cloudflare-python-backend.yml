@@ -27,8 +27,11 @@ jobs:
         with:
           version: "latest"
 
+      - name: Install Python 3.13
+        run: uv python install 3.13
+
       - name: Resolve Python Worker dependencies
-        run: uv sync
+        run: uv sync --python 3.13
 
       - name: Bundle Worker without deploying
         run: |
