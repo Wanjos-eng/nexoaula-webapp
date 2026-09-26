@@ -10,7 +10,7 @@
  */
 
 const DEFAULT_API_BASE_URL = process.env.NODE_ENV === "production"
-  ? "https://nexoaula-api.nexoaula-wanjos.workers.dev"
+  ? "https://nexoaula-api.onrender.com"
   : "http://localhost:8000";
 
 /**
