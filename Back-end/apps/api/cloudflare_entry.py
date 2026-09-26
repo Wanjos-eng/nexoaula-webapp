@@ -2,9 +2,11 @@ import os
 from urllib.parse import quote_plus
 
 from workers import WorkerEntrypoint
+from app.main import app
+from app.core.config import Settings, settings
 
 
-_app = None
+_configured = False
 
 
 def _configure_cloudflare_environment(env) -> None:
@@ -32,14 +34,18 @@ def _configure_cloudflare_environment(env) -> None:
 
 class Default(WorkerEntrypoint):
     async def fetch(self, request):
-        global _app
+        global _configured
 
         _configure_cloudflare_environment(self.env)
 
-        if _app is None:
-            from app.main import app as fastapi_app
-            _app = fastapi_app
+        if not _configured:
+            # Keep imports in the deployment snapshot, while applying runtime
+            # secrets to the shared settings object before serving requests.
+            configured = Settings()
+            for name in type(configured).model_fields:
+                setattr(settings, name, getattr(configured, name))
+            _configured = True
 
         import asgi
 
-        return await asgi.fetch(_app, request.js_object, self.env)
+        return await asgi.fetch(app, request.js_object, self.env)
