@@ -50,15 +50,39 @@ jobs:
           retention-days: 7
 
       - name: Generate Cloudflare configuration
-        run: npx --yes vinext@latest init --platform=cloudflare --skip-check
+        shell: bash
+        run: |
+          set +e
+          mkdir -p ../vinext-report
+          CI=1 npx --yes vinext@latest init \
+            --platform=cloudflare \
+            --skip-check \
+            --cdn-cache=none \
+            --data-cache=none \
+            --image-optimization=none \
+            2>&1 | tee ../vinext-report/vinext-init.txt
+          status=${PIPESTATUS[0]}
+          printf '\nvinext_init_exit_code=%s\n' "$status" >> ../vinext-report/vinext-init.txt
+          exit "$status"
+
+      - name: Upload init report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vinext-init-report
+          path: vinext-report/vinext-init.txt
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Collect generated configuration
+        if: success()
         shell: bash
         run: |
           mkdir -p ../vinext-generated
           cp package.json package-lock.json vite.config.ts wrangler.jsonc ../vinext-generated/
 
       - name: Upload generated configuration
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: vinext-generated-config
