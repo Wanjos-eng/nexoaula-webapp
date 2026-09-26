@@ -33,6 +33,15 @@ jobs:
           node-version: '24'
       - name: Install isolated locked tooling
         run: npm ci --prefix tools/data-model --ignore-scripts
+      - name: Generate reviewed diagrams
+        run: node scripts/render-data-model.cjs
+      - name: Upload generated diagrams for review sync
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: generated-data-model-diagrams
+          path: docs/diagrams/generated/
+          if-no-files-found: error
+          retention-days: 1
       - name: Validate DBML in disposable PostgreSQL
         run: node scripts/validate-data-model.cjs tools/data-model > data-model-validation.json
       - name: Verify generated diagrams
