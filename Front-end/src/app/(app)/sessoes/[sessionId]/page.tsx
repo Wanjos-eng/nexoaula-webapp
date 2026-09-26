@@ -196,7 +196,9 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
               com <strong>{session.tutor_name}</strong>
             </p>
             {session.description ? (
-              <p className={styles.description}>{session.description}</p>
+              <p className={styles.description} style={{ overflowWrap: "anywhere" }}>
+                {session.description}
+              </p>
             ) : null}
           </div>
 
@@ -328,7 +330,9 @@ function SessionDetail({ sessionId }: { sessionId: string }) {
                   total demonstrativo do estudante.
                 </p>
                 {receipt?.notice ? (
-                  <p className={styles.receiptNotice}>{receipt.notice}</p>
+                  <p className={styles.receiptNotice} style={{ overflowWrap: "anywhere" }}>
+                    {receipt.notice}
+                  </p>
                 ) : null}
                 <div className={styles.successLinks}>
                   <Link className={styles.secondaryLink} href="/sessoes/minhas">

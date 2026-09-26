@@ -152,6 +152,7 @@ export default function NewTutorSessionPage() {
       capacity,
       priceCents,
     };
+    
     setError("");
     setDraft(nextDraft);
     setBusy(true);
@@ -211,7 +212,11 @@ export default function NewTutorSessionPage() {
         title={editSessionId ? "Editar tutoria" : "Criar tutoria"}
       />
 
-      <ol className={styles.stepper} aria-label="Etapas de criação da tutoria">
+      <ol 
+        className={styles.stepper} 
+        aria-label="Etapas de criação da tutoria"
+        style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }} // Previne overflow no stepper
+      >
         {steps.map((step, index) => (
           <li
             className={
@@ -229,17 +234,17 @@ export default function NewTutorSessionPage() {
         ))}
       </ol>
 
-      <div className={styles.notice} role="note">
-        <Storefront aria-hidden size={18} />
-        <span>
+      <div className={styles.notice} role="note" style={{ flexWrap: "wrap" }}>
+        <Storefront aria-hidden size={18} style={{ flexShrink: 0 }} />
+        <span style={{ wordBreak: "break-word" }}>
           Ambiente demonstrativo. Nenhuma cobrança ou repasse real será realizado.
         </span>
       </div>
 
       {error ? (
-        <div className={styles.error} role="alert">
-          <WarningCircle aria-hidden size={18} weight="fill" />
-          <span>{error}</span>
+        <div className={styles.error} role="alert" style={{ flexWrap: "wrap" }}>
+          <WarningCircle aria-hidden size={18} weight="fill" style={{ flexShrink: 0 }} />
+          <span style={{ wordBreak: "break-word" }}>{error}</span>
         </div>
       ) : null}
 
@@ -257,7 +262,7 @@ export default function NewTutorSessionPage() {
           <WarningCircle aria-hidden size={34} weight="fill" />
           <div>
             <h2>Não foi possível editar esta tutoria</h2>
-            <p>{editLoadError}</p>
+            <p style={{ wordBreak: "break-word" }}>{editLoadError}</p>
           </div>
           <Link className={styles.secondaryLink} href="/tutor">
             Voltar ao painel
@@ -276,23 +281,25 @@ export default function NewTutorSessionPage() {
                 <p>Explique com clareza o que o estudante encontrará nesta tutoria.</p>
               </div>
 
-              <label>
+              <label style={{ display: "block", width: "100%" }}>
                 <span>Título da tutoria</span>
                 <input
                   defaultValue={draft?.title}
                   name="title"
                   placeholder="Revisão para prova de Cálculo II"
                   required
+                  style={{ width: "100%" }}
                 />
               </label>
 
-              <label>
+              <label style={{ display: "block", width: "100%" }}>
                 <span>Disciplina</span>
                 <select
                   defaultValue={draft?.subject ?? ""}
                   disabled={subjects.loading}
                   name="subject"
                   required
+                  style={{ width: "100%", maxWidth: "100%" }} // Prevents select overflow
                 >
                   <option value="">Selecione uma disciplina</option>
                   {subjects.data?.map((subject) => (
@@ -304,13 +311,14 @@ export default function NewTutorSessionPage() {
                 {subjects.error ? <small role="alert">{subjects.error}</small> : null}
               </label>
 
-              <label>
+              <label style={{ display: "block", width: "100%" }}>
                 <span>Descrição (opcional)</span>
                 <textarea
                   defaultValue={draft?.description}
                   name="description"
                   placeholder="Conte o que será revisado, para quem a tutoria é indicada e como será o encontro."
                   rows={4}
+                  style={{ width: "100%", resize: "vertical" }}
                 />
               </label>
             </section>
@@ -321,32 +329,36 @@ export default function NewTutorSessionPage() {
                 <p>Informe quando e como o encontro acontecerá.</p>
               </div>
 
-              <div className={styles.row}>
-                <label>
+              {/* flexWrap evita overflow de duas colunas em telas de 390px */}
+              <div className={styles.row} style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+                <label style={{ flex: "1 1 100%", minWidth: "150px" }}>
                   <span>Data e horário</span>
                   <input
                     defaultValue={draft?.startsAt}
                     name="startsAt"
                     required
                     type="datetime-local"
+                    style={{ width: "100%" }}
                   />
                 </label>
-                <label>
+                <label style={{ flex: "1 1 100%", minWidth: "150px" }}>
                   <span>Término</span>
                   <input
                     defaultValue={draft?.endsAt}
                     name="endsAt"
                     required
                     type="datetime-local"
+                    style={{ width: "100%" }}
                   />
                 </label>
               </div>
 
-              <label>
+              <label style={{ display: "block", width: "100%" }}>
                 <span>Modalidade</span>
                 <select
                   defaultValue={draft?.modality ?? "online"}
                   name="modality"
+                  style={{ width: "100%" }}
                 >
                   <option value="online">Online</option>
                   <option value="in_person">Presencial</option>
@@ -354,22 +366,24 @@ export default function NewTutorSessionPage() {
                 </select>
               </label>
 
-              <div className={styles.row}>
-                <label>
+              <div className={styles.row} style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+                <label style={{ flex: "1 1 100%", minWidth: "150px" }}>
                   <span>Local (presencial ou híbrida)</span>
                   <input
                     defaultValue={draft?.location}
                     name="location"
                     placeholder="Sala, bloco ou local do encontro"
+                    style={{ width: "100%" }}
                   />
                 </label>
-                <label>
+                <label style={{ flex: "1 1 100%", minWidth: "150px" }}>
                   <span>Link do encontro (online ou híbrida)</span>
                   <input
                     defaultValue={draft?.externalUrl}
                     name="externalUrl"
                     placeholder="https://..."
                     type="url"
+                    style={{ width: "100%" }}
                   />
                 </label>
               </div>
@@ -381,8 +395,8 @@ export default function NewTutorSessionPage() {
                 <p>Defina a capacidade do encontro e o valor demonstrativo.</p>
               </div>
 
-              <div className={styles.rowCompact}>
-                <label>
+              <div className={styles.rowCompact} style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+                <label style={{ flex: "1 1 100%", minWidth: "100px" }}>
                   <span>Capacidade</span>
                   <input
                     defaultValue={draft?.capacity}
@@ -390,9 +404,10 @@ export default function NewTutorSessionPage() {
                     name="capacity"
                     required
                     type="number"
+                    style={{ width: "100%" }}
                   />
                 </label>
-                <label>
+                <label style={{ flex: "1 1 100%", minWidth: "100px" }}>
                   <span>Valor (R$)</span>
                   <input
                     defaultValue={draft ? draft.priceCents / 100 : undefined}
@@ -401,12 +416,13 @@ export default function NewTutorSessionPage() {
                     required
                     step="0.01"
                     type="number"
+                    style={{ width: "100%" }}
                   />
                 </label>
               </div>
             </section>
 
-            <div className={styles.formActions}>
+            <div className={styles.formActions} style={{ flexWrap: "wrap" }}>
               <Button
                 disabled={subjects.loading}
                 loading={busy}
@@ -432,31 +448,31 @@ export default function NewTutorSessionPage() {
               </div>
             </div>
           ) : (
-            <div className={styles.reviewHeader}>
-              <div>
+            <div className={styles.reviewHeader} style={{ flexWrap: "wrap" }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <p className={styles.reviewEyebrow}>Prévia da publicação</p>
-                <h2>Revise sua tutoria</h2>
+                <h2 style={{ wordBreak: "break-word" }}>Revise sua tutoria</h2>
                 <p>Confira como as principais informações serão apresentadas.</p>
               </div>
               <Badge>Rascunho</Badge>
             </div>
           )}
 
-          <div className={styles.preview}>
+          <div className={styles.preview} style={{ overflowWrap: "anywhere" }}>
             <Badge variant="success">
               {subjects.data?.find((subject) => subject.id === draft.subject)?.name ??
                 "Disciplina"}
             </Badge>
-            <h3>{draft.title}</h3>
-            {draft.description ? <p>{draft.description}</p> : null}
-            <dl>
+            <h3 style={{ wordBreak: "break-word", marginTop: "0.5rem" }}>{draft.title}</h3>
+            {draft.description ? <p style={{ wordBreak: "break-word" }}>{draft.description}</p> : null}
+            <dl style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "1fr" }}>
               <div>
-                <dt>Quando</dt>
-                <dd>{new Date(draft.startsAt).toLocaleString("pt-BR")}</dd>
+                <dt style={{ fontWeight: 600 }}>Quando</dt>
+                <dd style={{ margin: 0 }}>{new Date(draft.startsAt).toLocaleString("pt-BR")}</dd>
               </div>
               <div>
-                <dt>Modalidade</dt>
-                <dd>
+                <dt style={{ fontWeight: 600 }}>Modalidade</dt>
+                <dd style={{ margin: 0 }}>
                   {draft.modality === "online"
                     ? "Online"
                     : draft.modality === "in_person"
@@ -465,23 +481,24 @@ export default function NewTutorSessionPage() {
                 </dd>
               </div>
               <div>
-                <dt>Vagas</dt>
-                <dd>{draft.capacity}</dd>
+                <dt style={{ fontWeight: 600 }}>Vagas</dt>
+                <dd style={{ margin: 0 }}>{draft.capacity}</dd>
               </div>
               <div>
-                <dt>Valor</dt>
-                <dd>{formatCents(draft.priceCents)}</dd>
+                <dt style={{ fontWeight: 600 }}>Valor</dt>
+                <dd style={{ margin: 0 }}>{formatCents(draft.priceCents)}</dd>
               </div>
             </dl>
           </div>
 
           {state === "review" ? (
-            <div className={styles.actions}>
+            <div className={styles.actions} style={{ flexWrap: "wrap", gap: "0.5rem" }}>
               <Button
                 disabled={busy}
                 onClick={() => setState("editing")}
                 type="button"
                 variant="secondary"
+                style={{ flex: "1 1 auto" }}
               >
                 Voltar e editar
               </Button>
@@ -489,18 +506,20 @@ export default function NewTutorSessionPage() {
                 loading={busy}
                 onClick={handlePublish}
                 type="button"
+                style={{ flex: "1 1 auto" }}
               >
                 Publicar tutoria
               </Button>
             </div>
           ) : (
-            <div className={styles.successActions}>
-              <Link className={styles.secondaryLink} href="/tutor">
+            <div className={styles.successActions} style={{ flexWrap: "wrap", gap: "0.5rem" }}>
+              <Link className={styles.secondaryLink} href="/tutor" style={{ flex: "1 1 auto", textAlign: "center" }}>
                 Voltar ao painel
               </Link>
               <Link
                 className={styles.primaryLink}
                 href={offerId ? `/sessoes/${offerId}` : "/sessoes"}
+                style={{ flex: "1 1 auto", textAlign: "center" }}
               >
                 Ver tutoria
               </Link>

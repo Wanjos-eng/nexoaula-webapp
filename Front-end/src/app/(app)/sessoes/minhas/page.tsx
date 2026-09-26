@@ -179,14 +179,17 @@ export default function MyBookingsPage() {
             return (
               <li key={booking.booking_id}>
                 <Card className={styles.bookingCard}>
-                  <div className={styles.bookingMain}>
+                  {/* minWidth: 0 previne overflow de flex items em telas pequenas */}
+                  <div className={styles.bookingMain} style={{ minWidth: 0 }}>
                     <div className={styles.bookingHeading}>
                       <Badge variant={badgeVariant}>{displayStatus}</Badge>
-                      <h2>{booking.session.title}</h2>
+                      {/* wordBreak evita que títulos longos estrapolem a tela */}
+                      <h2 style={{ wordBreak: "break-word" }}>{booking.session.title}</h2>
                     </div>
 
-                    <div className={styles.meta}>
-                      <span>
+                    {/* flexWrap permite que os dados caiam para a linha de baixo no mobile */}
+                    <div className={styles.meta} style={{ flexWrap: "wrap" }}>
+                      <span style={{ whiteSpace: "nowrap" }}>
                         <CalendarBlank aria-hidden size={16} />
                         {starts.toLocaleDateString("pt-BR", {
                           day: "2-digit",
@@ -199,11 +202,12 @@ export default function MyBookingsPage() {
                           minute: "2-digit",
                         })}
                       </span>
-                      <span>
+                      {/* hidden + ellipsis para nomes de tutores muito grandes */}
+                      <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                         <UsersThree aria-hidden size={16} />
                         {booking.session.tutor_name}
                       </span>
-                      <span>
+                      <span style={{ whiteSpace: "nowrap" }}>
                         <Storefront aria-hidden size={16} />
                         {booking.session.modality === "online"
                           ? "Online"
@@ -212,19 +216,39 @@ export default function MyBookingsPage() {
                             : "Híbrida"}
                       </span>
                     </div>
+
+                    {/* Incorporação do aviso (notice) que veio da branch da feature */}
+                    {booking.notice && (
+                      <p style={{ marginTop: "0.5rem", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+                        {booking.notice}
+                      </p>
+                    )}
                   </div>
 
                   <div className={styles.bookingAside}>
-                    <strong>
-                      {formatCents(
-                        booking.transaction.amount_cents,
-                        booking.transaction.currency,
+                    {/* Informações financeiras da simulação agrupadas */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", textAlign: "right" }}>
+                      <strong>
+                        {formatCents(
+                          booking.transaction.amount_cents,
+                          booking.transaction.currency,
+                        )}
+                        <small style={{ fontWeight: "normal", display: "block", fontSize: "0.75rem" }}>
+                          valor simulado
+                        </small>
+                      </strong>
+                      {booking.transaction.commission_cents !== undefined && (
+                         <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: 0 }}>
+                           Comissão (15%): {formatCents(booking.transaction.commission_cents)}
+                         </p>
                       )}
-                    </strong>
+                    </div>
+                    
                     <div className={styles.bookingActions}>
                       <Link href={`/sessoes/${booking.session_id}`}>Ver detalhes</Link>
                       {view === "upcoming" && booking.status === "confirmed" ? (
                         <Button
+                          // Corrigido: usando o Modal em vez de uma função `cancel()` inexistente
                           onClick={() => setCancelTarget(booking)}
                           size="sm"
                           type="button"

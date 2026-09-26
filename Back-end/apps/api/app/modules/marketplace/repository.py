@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Protocol, Self
 from uuid import UUID
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -19,6 +19,8 @@ from app.modules.marketplace.models import (
     TutorSession,
     TutorSubject,
 )
+from app.modules.academic.models import Subject
+from app.modules.users.infrastructure.models import UserProfile
 
 
 class MarketplaceRepository(Protocol):
@@ -33,6 +35,13 @@ class MarketplaceRepository(Protocol):
         self, user_id: UUID, limit: int, offset: int
     ) -> list[TutorSession]: ...
     def cancel_bookings(self, session_id: UUID, now: datetime) -> None: ...
+    def public_sessions(self, subject_id, starts_after, limit, offset): ...
+    def public_session(self, session_id): ...
+    def booking(self, session_id, user_id, *, lock=False): ...
+    def list_bookings(self, user_id): ...
+    def add_booking(self, row: SessionBooking) -> None: ...
+    def add_transaction(self, row: SimulatedTransaction) -> None: ...
+    def count_confirmed(self, session_id: UUID) -> int: ...
 
     def search(self, now: datetime, subject_id: UUID | None, topic: str | None,
                starts_after: datetime | None, limit: int, offset: int): ...
@@ -98,6 +107,71 @@ class SqlAlchemyMarketplaceRepository:
                 .offset(offset)
             )
         )
+
+    @staticmethod
+    def _view_query():
+        counts = (
+            select(SessionBooking.session_id, func.count(SessionBooking.id).label("enrolled_count"))
+            .where(SessionBooking.status == "confirmed")
+            .group_by(SessionBooking.session_id)
+            .subquery()
+        )
+        return (
+            select(TutorSession, UserProfile.display_name, Subject.name,
+                   func.coalesce(counts.c.enrolled_count, 0))
+            .join(UserProfile, UserProfile.user_id == TutorSession.tutor_user_id)
+            .join(Subject, Subject.id == TutorSession.subject_id)
+            .outerjoin(counts, counts.c.session_id == TutorSession.id)
+        )
+
+    def public_sessions(self, subject_id, starts_after, limit, offset):
+        stmt = self._view_query().where(
+            TutorSession.status == "scheduled", TutorSession.starts_at > starts_after
+        )
+        if subject_id is not None:
+            stmt = stmt.where(TutorSession.subject_id == subject_id)
+        return list(self._session.execute(
+            stmt.order_by(TutorSession.starts_at, TutorSession.id).offset(offset).limit(limit)
+        ).all())
+
+    def public_session(self, session_id):
+        return self._session.execute(
+            self._view_query().where(TutorSession.id == session_id)
+        ).first()
+
+    def booking(self, session_id, user_id, *, lock=False):
+        stmt = select(SessionBooking).where(
+            SessionBooking.session_id == session_id,
+            SessionBooking.user_id == user_id,
+            SessionBooking.status == "confirmed",
+        )
+        if lock:
+            stmt = stmt.with_for_update()
+        return self._session.scalar(stmt)
+
+    def list_bookings(self, user_id):
+        return list(self._session.execute(
+            select(SessionBooking, SimulatedTransaction)
+            .outerjoin(SimulatedTransaction, SimulatedTransaction.session_booking_id == SessionBooking.id)
+            .where(SessionBooking.user_id == user_id)
+            .order_by(SessionBooking.booked_at.desc(), SessionBooking.id)
+        ).all())
+
+    def add_booking(self, row):
+        self._session.add(row)
+        self._session.flush()
+
+    def add_transaction(self, row):
+        self._session.add(row)
+        self._session.flush()
+
+    def count_confirmed(self, session_id):
+        return int(self._session.scalar(
+            select(func.count(SessionBooking.id)).where(
+                SessionBooking.session_id == session_id,
+                SessionBooking.status == "confirmed",
+            )
+        ))
 
     def cancel_bookings(self, session_id, now):
         self._session.execute(

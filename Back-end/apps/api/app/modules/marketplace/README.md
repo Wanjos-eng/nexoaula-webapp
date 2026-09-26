@@ -1,4 +1,4 @@
-# Tutoria simulada — ofertas e inscrições (#39 / #40)
+# Tutoria simulada — perfil, ofertas e inscrições (#39/#40)
 
 Implementa US21/US23/US24/US27/US28 sobre a migration #38 e a ADR-0004. O núcleo acadêmico
 continua gratuito. Nenhuma cobrança, credenciamento real ou coleta financeira.

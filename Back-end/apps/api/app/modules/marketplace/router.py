@@ -1,8 +1,8 @@
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import AwareDatetime
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query, Response, status
 
 from app.modules.auth.dependencies import active_subject
 from app.modules.marketplace.dependencies import get_marketplace_service
@@ -13,6 +13,8 @@ from app.modules.marketplace.schemas import (
     SessionUpdate,
     TutorActivation,
     TutorResponse,
+    BookingResponse,
+    EnrollmentReceipt,
 )
 from app.modules.marketplace.service import MarketplaceService
 
@@ -94,6 +96,38 @@ def mine(
     offset: int = Query(0, ge=0),
 ):
     return service.list_mine(user_id, limit, offset)
+
+
+@router.get("/sessions", response_model=list[SessionResponse], summary="Buscar sessões publicadas")
+def discover(
+    service: Service,
+    subject_id: UUID | None = None,
+    starts_after: datetime | None = None,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    return service.list_public(subject_id, starts_after, limit, offset)
+
+
+@router.get("/sessions/{session_id}", response_model=SessionResponse, summary="Detalhar sessão publicada")
+def detail(session_id: UUID, service: Service):
+    return service.get_public(session_id)
+
+
+@router.post("/sessions/{session_id}/enroll", response_model=EnrollmentReceipt, status_code=201, openapi_extra=MUTATION_SECURITY)
+def enroll(session_id: UUID, user_id: UserId, service: Service):
+    return service.enroll(user_id, session_id)
+
+
+@router.delete("/sessions/{session_id}/enroll", status_code=status.HTTP_204_NO_CONTENT, openapi_extra=MUTATION_SECURITY)
+def cancel_enrollment(session_id: UUID, user_id: UserId, service: Service):
+    service.cancel_enrollment(user_id, session_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/bookings/mine", response_model=list[BookingResponse], summary="Listar minhas inscrições")
+def bookings(user_id: UserId, service: Service):
+    return service.list_bookings(user_id)
 
 
 @router.patch(
