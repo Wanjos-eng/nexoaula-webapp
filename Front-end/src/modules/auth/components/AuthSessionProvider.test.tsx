@@ -32,7 +32,10 @@ function SessionConsumer() {
 }
 
 describe("AuthSessionProvider", () => {
-  beforeEach(() => replace.mockReset());
+  beforeEach(() => {
+    replace.mockReset();
+    window.history.replaceState({}, "", "/");
+  });
   afterEach(() => vi.restoreAllMocks());
 
   it("mantém a área interna bloqueada até restaurar o usuário público", async () => {
@@ -65,6 +68,22 @@ describe("AuthSessionProvider", () => {
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
     expect(screen.queryByText("Área interna")).toBeNull();
+  });
+
+  it("preserva o convite ao redirecionar uma sessão ausente para o login", async () => {
+    window.history.replaceState({}, "", "/convites/token-seguro?origem=link");
+    vi.spyOn(authService, "me").mockRejectedValueOnce(
+      new ApiError(401, "Unauthorized", {}),
+    );
+
+    render(<AuthSessionProvider><p>Convite protegido</p></AuthSessionProvider>);
+
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith(
+        "/login?next=%2Fconvites%2Ftoken-seguro%3Forigem%3Dlink",
+      ),
+    );
+    expect(screen.queryByText("Convite protegido")).toBeNull();
   });
 
   it("oferece nova tentativa após uma falha recuperável", async () => {

@@ -158,6 +158,16 @@ async def test_invite_only_flow_is_targeted_single_use_and_persistent(lifecycle_
     wrong_user = await client.get(f"{PREFIX}/invites/{token}")
     assert wrong_user.status_code == 404
 
+    wrong_accept = await client.post(f"{PREFIX}/invites/{token}/accept", json={})
+    assert wrong_accept.status_code == 404
+    assert connection.scalar(
+        text(
+            "SELECT count(*) FROM group_members "
+            "WHERE group_id=:group AND user_id=:other_user AND status='active'"
+        ),
+        ids,
+    ) == 0
+
     app.dependency_overrides[active_subject] = lambda: ids["other_user"]
     details = await client.get(f"{PREFIX}/invites/{token}")
     assert details.status_code == 200
