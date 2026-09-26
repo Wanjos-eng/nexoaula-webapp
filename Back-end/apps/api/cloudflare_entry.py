@@ -1,10 +1,13 @@
 import os
 from urllib.parse import quote_plus
 
-from workers import asgi, env
+from workers import WorkerEntrypoint
 
 
-def _configure_cloudflare_environment() -> None:
+_app = None
+
+
+def _configure_cloudflare_environment(env) -> None:
     for name in (
         "ENVIRONMENT",
         "AUTH_JWT_SECRET",
@@ -27,8 +30,16 @@ def _configure_cloudflare_environment() -> None:
         )
 
 
-_configure_cloudflare_environment()
+class Default(WorkerEntrypoint):
+    async def fetch(self, request):
+        global _app
 
-from app.main import app  # noqa: E402
+        _configure_cloudflare_environment(self.env)
 
-Default = asgi.entrypoint(app)
+        if _app is None:
+            from app.main import app as fastapi_app
+            _app = fastapi_app
+
+        import asgi
+
+        return await asgi.fetch(_app, request.js_object, self.env)
