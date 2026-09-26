@@ -1,5 +1,7 @@
 from fastapi import APIRouter
+from sqlalchemy import text
 
+from app.db.session import create_database_engine
 from app.modules.academic.router import router as academic_router
 from app.modules.auth.router import router as auth_router
 from app.modules.community.router import me_router, router as community_router
@@ -20,3 +22,14 @@ router.include_router(marketplace_router)
 @router.get("/api/health", tags=["Health"], include_in_schema=False)
 def health_check():
     return {"status": "ok", "message": "API is running"}
+
+
+@router.get("/health/db", tags=["Health"])
+def database_health_check():
+    engine = create_database_engine()
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "reachable"}
+    finally:
+        engine.dispose()
