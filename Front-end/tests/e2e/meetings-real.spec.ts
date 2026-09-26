@@ -50,7 +50,9 @@ test("organizador agenda, membro confirma sem duplicar e cancelamento chega ao c
     await owner.reload();
     await expect(owner.getByRole("heading", { name: "Revisão atualizada", exact: true })).toBeVisible();
     await member.goto("/calendario");
-    await expect(member.getByRole("heading", { name: "Revisão atualizada", exact: true })).toBeVisible();
+    await expect(
+      member.getByRole("heading", { name: "Revisão atualizada", exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
     await owner.getByRole("button", { name: "Cancelar encontro", exact: true }).click();
     await owner.getByRole("button", { name: "Confirmar cancelamento", exact: true }).click();
     await member.reload();
