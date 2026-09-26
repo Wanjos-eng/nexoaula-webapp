@@ -48,3 +48,20 @@ jobs:
           path: vinext-report/vinext-check.txt
           if-no-files-found: error
           retention-days: 7
+
+      - name: Generate Cloudflare configuration
+        run: npx --yes vinext@latest init --platform=cloudflare --skip-check
+
+      - name: Collect generated configuration
+        shell: bash
+        run: |
+          mkdir -p ../vinext-generated
+          cp package.json package-lock.json vite.config.ts wrangler.jsonc ../vinext-generated/
+
+      - name: Upload generated configuration
+        uses: actions/upload-artifact@v4
+        with:
+          name: vinext-generated-config
+          path: vinext-generated/
+          if-no-files-found: error
+          retention-days: 7
