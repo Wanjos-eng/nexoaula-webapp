@@ -14,10 +14,10 @@ dependencies = [
   "SQLAlchemy==2.0.48",
   "starlette==0.52.1",
   "tzdata==2025.2",
+  "workers-runtime-sdk>=1.7.0",
 ]
 
 [dependency-groups]
 dev = [
-  "workers-py",
-  "workers-runtime-sdk",
+  "workers-py>=1.16.7",
 ]
