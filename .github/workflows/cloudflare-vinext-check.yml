@@ -32,7 +32,6 @@ jobs:
         run: npm ci
 
       - name: Check vinext compatibility
-        id: vinext
         shell: bash
         run: |
           set +e
@@ -46,7 +45,7 @@ jobs:
         working-directory: .
         shell: bash
         run: |
-          if git diff --quiet -- docs/deployment/vinext-check.txt; then
+          if [ -z "$(git status --porcelain -- docs/deployment/vinext-check.txt)" ]; then
             echo "Compatibility report unchanged."
             exit 0
           fi
