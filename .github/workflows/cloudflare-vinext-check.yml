@@ -7,7 +7,7 @@ on:
       - '.github/workflows/cloudflare-vinext-check.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   compatibility:
@@ -113,20 +113,11 @@ jobs:
           API_BASE_URL: http://127.0.0.1:8000
         run: npm run build:vinext
 
-      - name: Collect validated setup
+      - name: Commit validated setup to handoff branch
         shell: bash
         run: |
-          mkdir -p cloudflare-setup
-          cp Front-end/package.json cloudflare-setup/
-          cp Front-end/package-lock.json cloudflare-setup/
-          cp Front-end/.gitignore cloudflare-setup/gitignore
-          cp Front-end/vite.config.ts cloudflare-setup/
-          cp Front-end/wrangler.jsonc cloudflare-setup/
-
-      - name: Upload validated setup
-        uses: actions/upload-artifact@v4
-        with:
-          name: cloudflare-validated-setup
-          path: cloudflare-setup/
-          if-no-files-found: error
-          retention-days: 7
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Front-end/package.json Front-end/package-lock.json Front-end/.gitignore Front-end/vite.config.ts Front-end/wrangler.jsonc
+          git commit -m "chore: prepare frontend for Cloudflare Workers"
+          git push --force origin HEAD:refs/heads/automation/cloudflare-validated
