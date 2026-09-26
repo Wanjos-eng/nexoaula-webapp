@@ -5,15 +5,19 @@ import {
   UsersThree,
 } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 import { BackButton } from "@/components/ui/BackButton";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Dialog } from "@/components/ui/Dialog";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { apiClient } from "@/lib/api";
 import {
+  cancelJoinRequest,
+  leaveGroup,
   read,
   entryLabels,
   visibilityLabels,
@@ -29,9 +33,11 @@ import { GroupSchedule } from "./GroupSchedule";
 import { invalidateGroups } from "./schedule";
 import { ChannelManager } from "./ChannelManager";
 import { ChannelChat } from "./ChannelChat";
+import { InvitationManager } from "./InvitationManager";
 import styles from "./CommunityDetail.module.css";
 
 export function GroupDetail({ groupId }: { groupId: string }) {
+  const router = useRouter();
   const fetcher = useCallback(
     async (signal: AbortSignal) => {
       const [group, participation] = await Promise.all([
@@ -50,6 +56,9 @@ export function GroupDetail({ groupId }: { groupId: string }) {
   const [error, setError] = useState<unknown>();
   const [feedback, setFeedback] = useState("");
   const [editing, setEditing] = useState(false);
+  const [participationConfirmation, setParticipationConfirmation] = useState<
+    "leave" | "cancel-request" | null
+  >(null);
 
   async function join() {
     if (lock.current) return;
@@ -73,6 +82,36 @@ export function GroupDetail({ groupId }: { groupId: string }) {
     } finally {
       invalidateGroups();
       remote.reload();
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+
+  async function updateParticipation(action: "leave" | "cancel-request") {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError(undefined);
+    setFeedback("");
+
+    try {
+      if (action === "leave") {
+        await leaveGroup(groupId);
+        invalidateGroups();
+        setParticipationConfirmation(null);
+        router.replace("/grupos");
+        router.refresh();
+        return;
+      }
+
+      await cancelJoinRequest(groupId);
+      setFeedback("Solicitação cancelada. Você pode pedir entrada novamente quando quiser.");
+      setParticipationConfirmation(null);
+      invalidateGroups();
+      remote.reload();
+    } catch (cause) {
+      setError(cause);
+    } finally {
       lock.current = false;
       setBusy(false);
     }
@@ -148,6 +187,7 @@ export function GroupDetail({ groupId }: { groupId: string }) {
             <a href="#cronograma">Cronograma</a>
             <Link href={`/disciplinas/${group.offeringId || group.id}?group=${group.id}`}>Meus registros</Link>
             <a href="#canais">Canais</a>
+            {participation.canManage ? <a href="#convites">Convites</a> : null}
             {participation.canManage ? <a href="#membros">Membros</a> : null}
             {participation.canManage ? <a href="#gestao">Gestão</a> : null}
           </nav>
@@ -196,9 +236,16 @@ export function GroupDetail({ groupId }: { groupId: string }) {
           </div>
 
           {isMember ? (
-            <p>Você faz parte desta comunidade e pode acessar o conteúdo compartilhado.</p>
+            <>
+              <p>Você faz parte desta comunidade e pode acessar o conteúdo compartilhado.</p>
+              {participation.role === "owner" ? (
+                <p className={styles.participationHint}>
+                  Como proprietário, transfira a propriedade antes de sair da comunidade.
+                </p>
+              ) : null}
+            </>
           ) : participation.status === "pending" ? (
-            <p>Seu pedido está com os organizadores. Volte aqui para acompanhar a resposta.</p>
+            <p>Seu pedido está com os organizadores. Você pode cancelar a solicitação enquanto ela não for analisada.</p>
           ) : group.status !== "active" ? (
             <p>Esta comunidade não aceita novos participantes no momento.</p>
           ) : group.joinPolicy === "invite_only" ||
@@ -234,6 +281,28 @@ export function GroupDetail({ groupId }: { groupId: string }) {
             >
               Atualizar
             </Button>
+            {isMember && participation.role !== "owner" ? (
+              <Button
+                disabled={busy}
+                onClick={() => setParticipationConfirmation("leave")}
+                size="sm"
+                type="button"
+                variant="danger"
+              >
+                Sair da comunidade
+              </Button>
+            ) : null}
+            {participation.status === "pending" ? (
+              <Button
+                disabled={busy}
+                onClick={() => setParticipationConfirmation("cancel-request")}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                Cancelar solicitação
+              </Button>
+            ) : null}
             {participation.role === "owner" ? (
               <Button
                 aria-expanded={editing}
@@ -287,6 +356,13 @@ export function GroupDetail({ groupId }: { groupId: string }) {
       ) : null}
 
       {participation.canManage ? (
+        <InvitationManager
+          key={`invitation-management-${groupId}`}
+          groupId={groupId}
+        />
+      ) : null}
+
+      {participation.canManage ? (
         <MemberManagement
           key={`member-management-${groupId}`}
           groupId={groupId}
@@ -306,6 +382,52 @@ export function GroupDetail({ groupId }: { groupId: string }) {
             onUpdated={() => setChannelRevision((revision) => revision + 1)}
           />
         </div>
+      ) : null}
+
+      {participationConfirmation ? (
+        <Dialog
+          descriptionId="participation-action-description"
+          onClose={() => {
+            if (!busy) setParticipationConfirmation(null);
+          }}
+          titleId="participation-action-title"
+        >
+          <div className={styles.participationDialog}>
+            <div>
+              <p className={styles.eyebrow}>Participação</p>
+              <h2 id="participation-action-title">
+                {participationConfirmation === "leave"
+                  ? "Sair desta comunidade?"
+                  : "Cancelar solicitação de entrada?"}
+              </h2>
+              <p id="participation-action-description">
+                {participationConfirmation === "leave"
+                  ? "Você perderá o acesso às conversas e conteúdos exclusivos. Seu histórico pessoal será preservado."
+                  : "O pedido deixará de ser analisado pelos organizadores. Você poderá solicitar entrada novamente depois."}
+              </p>
+            </div>
+            <div className={styles.participationDialogActions}>
+              <Button
+                disabled={busy}
+                onClick={() => setParticipationConfirmation(null)}
+                type="button"
+                variant="secondary"
+              >
+                Voltar
+              </Button>
+              <Button
+                loading={busy}
+                onClick={() => void updateParticipation(participationConfirmation)}
+                type="button"
+                variant={participationConfirmation === "leave" ? "danger" : "primary"}
+              >
+                {participationConfirmation === "leave"
+                  ? "Confirmar saída"
+                  : "Cancelar solicitação"}
+              </Button>
+            </div>
+          </div>
+        </Dialog>
       ) : null}
     </div>
   );

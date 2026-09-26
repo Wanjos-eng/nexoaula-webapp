@@ -16,6 +16,9 @@ from app.modules.community.schemas import (
     ChannelUpdate,
     GroupCreate,
     GroupDiscoveryResponse,
+    GroupInvitationCreate,
+    GroupInvitationCreatedResponse,
+    GroupInvitationResponse,
     GroupResponse,
     GroupTopicCreate,
     GroupTopicResponse,
@@ -112,6 +115,18 @@ def user_calendar(user_id: UserId, service: Service,
     return service.user_calendar(user_id, start, end, period, offset, limit)
 
 
+@router.get("/invites/{token}", response_model=GroupInvitationResponse,
+            summary="Consultar convite recebido")
+def get_invitation(token: str, user_id: UserId, service: Service) -> GroupInvitationResponse:
+    return service.get_invitation(token, user_id)
+
+
+@router.post("/invites/{token}/accept", response_model=MembershipResponse,
+             summary="Aceitar convite de comunidade", openapi_extra=MUTATION_SECURITY)
+def accept_invitation(token: str, user_id: UserId, service: Service) -> MembershipResponse:
+    return service.accept_invitation(token, user_id)
+
+
 @router.get("/{group_id}", response_model=GroupResponse, summary="Obter dados do grupo")
 def get_group(group_id: UUID, user_id: UserId, service: Service) -> GroupResponse:
     return service.get_group(group_id, user_id)
@@ -129,6 +144,41 @@ def update_group(group_id: UUID, user_id: UserId, payload: GroupUpdate,
              openapi_extra=MUTATION_SECURITY)
 def join_group(group_id: UUID, user_id: UserId, service: Service) -> MembershipResponse:
     return service.join_group(group_id, user_id)
+
+
+@router.post("/{group_id}/leave", response_model=MembershipResponse,
+             summary="Sair da comunidade", openapi_extra=MUTATION_SECURITY)
+def leave_group(group_id: UUID, user_id: UserId, service: Service) -> MembershipResponse:
+    return service.leave_group(group_id, user_id)
+
+
+@router.delete("/{group_id}/join-request", response_model=MembershipResponse,
+               summary="Cancelar solicitação de entrada", openapi_extra=MUTATION_SECURITY)
+def cancel_join_request(group_id: UUID, user_id: UserId, service: Service) -> MembershipResponse:
+    return service.cancel_join_request(group_id, user_id)
+
+
+@router.post("/{group_id}/invitations", response_model=GroupInvitationCreatedResponse,
+             status_code=status.HTTP_201_CREATED, summary="Criar convite de comunidade",
+             openapi_extra=MUTATION_SECURITY)
+def create_invitation(group_id: UUID, payload: GroupInvitationCreate,
+                      user_id: UserId, service: Service) -> GroupInvitationCreatedResponse:
+    return service.create_invitation(group_id, user_id, payload)
+
+
+@router.get("/{group_id}/invitations", response_model=list[GroupInvitationResponse],
+            summary="Listar convites da comunidade")
+def list_invitations(group_id: UUID, user_id: UserId,
+                     service: Service) -> list[GroupInvitationResponse]:
+    return service.list_invitations(group_id, user_id)
+
+
+@router.delete("/{group_id}/invitations/{invitation_id}",
+               response_model=GroupInvitationResponse,
+               summary="Cancelar convite da comunidade", openapi_extra=MUTATION_SECURITY)
+def cancel_invitation(group_id: UUID, invitation_id: UUID,
+                      user_id: UserId, service: Service) -> GroupInvitationResponse:
+    return service.cancel_invitation(group_id, invitation_id, user_id)
 
 
 @router.patch("/{group_id}/members/{target_user_id}", response_model=MembershipResponse,
