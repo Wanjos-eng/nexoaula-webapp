@@ -35,8 +35,8 @@ async function main() {
   try {
     await db.exec(sql);
     const tables = (await db.query("select count(*)::int as n from information_schema.tables where table_schema='public' and table_type='BASE TABLE'")).rows[0].n;
-    assert.equal(tables, 45);
-    results.passed.push('DBML v2 exports and creates 45 PostgreSQL tables');
+    assert.equal(tables, 46);
+    results.passed.push('DBML v2 exports and creates 46 PostgreSQL tables');
     assert.equal((await db.query("select to_regclass('public.user_class_sections') as table_name")).rows[0].table_name, null);
     results.passed.push('standalone class-following table is absent');
     // All fixtures are synthetic; no external services or real credentials.
@@ -58,6 +58,7 @@ async function main() {
       INSERT INTO scheduled_lessons(id,teaching_plan_id,group_id,planned_start_at) VALUES (${q(62)},${q(60)},${q(70)},'2026-09-03T12:00:00Z'),(${q(63)},${q(61)},${q(71)},'2026-09-03T12:00:00Z');
       INSERT INTO lesson_occurrences(id,group_id,scheduled_lesson_id,status,actual_started_at,actual_ended_at,recorded_by) VALUES (${q(64)},${q(70)},${q(62)},'held',now()-interval '2 hours',now()-interval '1 hour',${q(1)});
       INSERT INTO group_join_requests(group_id,user_id) VALUES (${q(70)},${q(2)});
+      INSERT INTO group_invitations(id,group_id,invited_user_id,created_by,token_hash,expires_at) VALUES (${q(78)},${q(70)},${q(2)},${q(1)},'synthetic-invitation-hash',now()+interval '7 days');
       INSERT INTO channels(id,group_id,name,created_by) VALUES (${q(72)},${q(70)},'general',${q(1)}),(${q(73)},${q(71)},'general',${q(2)});
       INSERT INTO channel_messages(id,channel_id,author_id,content) VALUES (${q(74)},${q(72)},${q(1)},'Synthetic message');
       INSERT INTO files(id,owner_id,purpose,storage_key,mime_type,size_bytes) VALUES (${q(80)},${q(1)},'material_content','synthetic/material','application/pdf',1);
@@ -135,6 +136,9 @@ async function main() {
       ['ownership transfer permits a single new active owner', `UPDATE group_members SET role='member' WHERE group_id=${q(70)}; INSERT INTO group_members(group_id,user_id,role) VALUES (${q(70)},${q(2)},'owner')`],
       ['inactive owner history does not prevent transfer', `UPDATE group_members SET status='left',ended_at=now() WHERE group_id=${q(70)}; INSERT INTO group_members(group_id,user_id,role) VALUES (${q(70)},${q(2)},'owner')`],
       ['pending request can follow rejected or cancelled attempts', `UPDATE group_join_requests SET status='rejected',resolved_by=${q(1)},resolved_at=now() WHERE group_id=${q(70)}; INSERT INTO group_join_requests(group_id,user_id,status,resolved_by,resolved_at) VALUES (${q(70)},${q(2)},'cancelled',${q(2)},now()); INSERT INTO group_join_requests(group_id,user_id) VALUES (${q(70)},${q(2)})`],
+      ['duplicate pending group invitation rejected', `INSERT INTO group_invitations(group_id,invited_user_id,created_by,token_hash,expires_at) VALUES (${q(70)},${q(2)},${q(1)},'another-invitation-hash',now()+interval '7 days')`, '23505'],
+      ['accepted invitation requires acceptance timestamp', `UPDATE group_invitations SET status='accepted' WHERE id=${q(78)}`, '23514'],
+      ['group invitation cannot target its creator', `INSERT INTO group_invitations(group_id,invited_user_id,created_by,token_hash,expires_at) VALUES (${q(70)},${q(1)},${q(1)},'self-invitation-hash',now()+interval '7 days')`, '23514'],
       ['multiple failed payment simulations retain history', `INSERT INTO transactions(buyer_id,session_booking_id,amount_cents,status) VALUES (${q(2)},${q(83)},1000,'failed'),(${q(2)},${q(83)},1000,'failed')`],
       ['cancelled booking permits a new attempt without erasing history', `
         UPDATE session_bookings SET status='cancelled',cancelled_at=now() WHERE id=${q(83)};

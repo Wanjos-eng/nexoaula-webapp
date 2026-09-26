@@ -19,7 +19,7 @@ As setas representam referências de dados, **não dependências permitidas entr
 
 Cada detalhe mostra campos/tipos das tabelas do módulo e seus destinos externos de FK. Tabelas externas estão em cinza e mostram apenas campos referenciados. A seta parte da FK para o destino; o tooltip informa as colunas e a ação de exclusão. Referências recebidas aparecem no módulo de origem.
 
-Estes SVGs são um índice visual, não a especificação completa de cardinalidade, nulabilidade, índices, enums e CHECKs. Consulte o DBML para essas regras. O modelo tem 45 tabelas, 102 FKs e 57 CHECKs; ainda não é uma migration nem implementação da aplicação.
+Estes SVGs são um índice visual, não a especificação completa de cardinalidade, nulabilidade, índices, enums e CHECKs. Consulte o DBML para essas regras. O modelo tem 46 tabelas, 105 FKs e 60 CHECKs; ainda não é uma migration nem implementação da aplicação.
 
 ## Regenerar e verificar
 
