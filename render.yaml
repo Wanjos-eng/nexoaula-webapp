@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: nexoaula-api
+    runtime: python
+    plan: free
+    region: virginia
+    branch: main
+    rootDir: Back-end/apps/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: ENVIRONMENT
+        value: production
+      - key: AUTH_COOKIE_SECURE
+        value: "true"
+      - key: AUTH_ALLOWED_ORIGINS
+        value: '["https://nexoaula-web.nexoaula-wanjos.workers.dev"]'
+      - key: AUTH_JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
