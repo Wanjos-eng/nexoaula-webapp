@@ -119,7 +119,7 @@ test.describe("ciclo completo de acesso às comunidades", () => {
       await member.goto(inviteLink);
       await expect(member).toHaveURL(/\/login\?next=/);
       await member.getByLabel("E-mail").fill(memberUser.email);
-      await member.getByLabel("Senha").fill(password);
+      await member.getByLabel("Senha", { exact: true }).fill(password);
       await member.getByRole("button", { name: "Entrar" }).click();
 
       await expect(member).toHaveURL(/\/convites\//, { timeout: 10_000 });
