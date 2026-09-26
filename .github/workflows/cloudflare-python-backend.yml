@@ -35,6 +35,7 @@ jobs:
 
       - name: Bundle Worker without deploying
         run: |
+          mv requirements.txt requirements.docker.txt
           uv run --python 3.13 pywrangler deploy --dry-run --outdir ../../../cloudflare-python-dist --config wrangler.cloudflare.jsonc
 
       - name: Inspect bundle
