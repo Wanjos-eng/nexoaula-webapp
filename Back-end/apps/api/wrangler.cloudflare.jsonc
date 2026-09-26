@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "nexoaula-api",
+  "main": "cloudflare_entry.py",
+  "compatibility_date": "2026-09-26",
+  "compatibility_flags": ["python_workers"],
+  "vars": {
+    "ENVIRONMENT": "production",
+    "AUTH_COOKIE_SECURE": "true",
+    "AUTH_ALLOWED_ORIGINS": "[\"https://nexoaula-web.nexoaula-wanjos.workers.dev\"]"
+  }
+}
