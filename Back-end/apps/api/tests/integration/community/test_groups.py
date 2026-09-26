@@ -192,9 +192,20 @@ class MemoryCommunityRepository:
             member = GroupMember(group_id=group_id, user_id=user_id,
                                  role=MembershipRole.MEMBER.value)
             self.members[(group_id, user_id)] = member
+        member.role = MembershipRole.MEMBER.value
         member.status = MembershipStatus.ACTIVE.value
         member.joined_at = now
         member.ended_at = None
+        member.removed_by = None
+        return member
+
+    def cancel_pending_invitations(self, group_id: UUID, invited_user_id: UUID) -> None:
+        # This fake does not persist invitations; the SQL repository coverage exercises them.
+        return None
+
+    def leave_member(self, member: GroupMember) -> GroupMember:
+        member.status = MembershipStatus.LEFT.value
+        member.ended_at = datetime.now(UTC)
         member.removed_by = None
         return member
 
