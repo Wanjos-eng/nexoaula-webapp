@@ -28,6 +28,7 @@ describe("LoginForm", () => {
     vi.useFakeTimers();
     push.mockReset();
     replace.mockReset();
+    window.history.replaceState({}, "", "/login");
     loginSpy = vi.spyOn(authService, "login");
   });
 
@@ -85,6 +86,33 @@ describe("LoginForm", () => {
     });
 
     expect(replace).toHaveBeenCalledWith("/inicio");
+  });
+
+  it("retorna somente para um convite local após autenticar", async () => {
+    loginSpy.mockResolvedValueOnce(loginResponse);
+    window.history.replaceState(
+      {},
+      "",
+      "/login?next=%2Fconvites%2Ftoken-seguro%3Forigem%3Dlink",
+    );
+
+    render(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "lucas@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), {
+      target: { value: "senha-segura" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(replace).toHaveBeenCalledWith(
+      "/convites/token-seguro?origem=link",
+    );
   });
 
   it("simula falha genérica e permite recuperação na segunda tentativa", async () => {

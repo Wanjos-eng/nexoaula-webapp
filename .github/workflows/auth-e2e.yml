@@ -53,6 +53,7 @@ jobs:
             src/modules/auth/components/AuthSessionProvider.tsx \
             src/modules/auth/components/LoginForm.tsx \
             src/modules/auth/components/AuthSessionProvider.test.tsx \
+            src/__tests__/auth-form.test.tsx \
             src/modules/groups/ChannelChat.tsx \
             src/modules/groups/GroupDetail.tsx \
             src/modules/groups/GroupSchedule.tsx \
@@ -69,6 +70,7 @@ jobs:
             tests/e2e/community-access-real.spec.ts
           npx vitest run \
             src/modules/auth/components/AuthSessionProvider.test.tsx \
+            src/__tests__/auth-form.test.tsx \
             src/modules/groups/chat.test.tsx \
             src/modules/groups/channels.test.tsx \
             src/modules/groups/schedule-planner.test.tsx \

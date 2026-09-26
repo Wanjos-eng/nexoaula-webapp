@@ -67,9 +67,7 @@ export function LoginForm() {
 
       const requested = new URLSearchParams(window.location.search).get("next");
       const destination =
-        requested?.startsWith("/") && !requested.startsWith("//")
-          ? requested
-          : "/inicio";
+        requested?.startsWith("/convites/") ? requested : "/inicio";
       router.replace(destination);
     } catch (error) {
       if (!isMountedRef.current || error instanceof RequestAbortedError) return;
