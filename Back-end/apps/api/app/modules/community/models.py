@@ -300,6 +300,59 @@ class GroupJoinRequest(Base):
     resolution_note: Mapped[str | None] = mapped_column(Text)
 
 
+class GroupInvitation(Base):
+    __tablename__ = "group_invitations"
+    __table_args__ = (
+        ForeignKeyConstraint(["group_id"], ["study_groups.id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["invited_user_id"], ["users.id"], ondelete="RESTRICT"),
+        ForeignKeyConstraint(["created_by"], ["users.id"], ondelete="RESTRICT"),
+        UniqueConstraint("token_hash", name="uq_group_invitations_token_hash"),
+        CheckConstraint(
+            "status IN ('pending','accepted','cancelled','expired')",
+            name="chk_group_invitations_status",
+        ),
+        CheckConstraint(
+            "(status = 'pending' AND accepted_at IS NULL AND cancelled_at IS NULL) OR "
+            "(status = 'accepted' AND accepted_at IS NOT NULL AND cancelled_at IS NULL) OR "
+            "(status = 'cancelled' AND accepted_at IS NULL AND cancelled_at IS NOT NULL) OR "
+            "(status = 'expired' AND accepted_at IS NULL AND cancelled_at IS NULL)",
+            name="chk_group_invitations_lifecycle",
+        ),
+        CheckConstraint(
+            "invited_user_id <> created_by",
+            name="chk_group_invitations_distinct_users",
+        ),
+        Index(
+            "uq_group_invitations_pending_user",
+            "group_id",
+            "invited_user_id",
+            unique=True,
+            postgresql_where=text("status = 'pending'"),
+        ),
+        Index("ix_group_invitations_group_status", "group_id", "status"),
+        Index("ix_group_invitations_invited_status", "invited_user_id", "status"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    group_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    invited_user_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    created_by: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'pending'")
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Topic(Base):
     __tablename__ = "topics"
     __table_args__ = (Index("ix_topics_lower_name", func.lower(text("name"))),)
@@ -633,6 +686,64 @@ class Channel(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ChannelMessage(Base):
+    __tablename__ = "channel_messages"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["channel_id"],
+            ["channels.id"],
+            name="fk_channel_messages_channel",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["author_id"],
+            ["users.id"],
+            name="fk_channel_messages_author",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["reply_to_message_id"],
+            ["channel_messages.id"],
+            name="fk_channel_messages_reply_target",
+            ondelete="SET NULL",
+        ),
+        ForeignKeyConstraint(
+            ["reply_to_message_id", "channel_id"],
+            ["channel_messages.id", "channel_messages.channel_id"],
+            name="fk_channel_messages_reply_same_channel",
+            ondelete="NO ACTION",
+        ),
+        UniqueConstraint(
+            "id", "channel_id", name="uq_channel_messages_id_channel_id"
+        ),
+        CheckConstraint(
+            "reply_to_message_id IS NULL OR reply_to_message_id <> id",
+            name="chk_channel_messages_not_self_reply",
+        ),
+        Index(
+            "ix_channel_messages_channel_created_at", "channel_id", "created_at"
+        ),
+        Index(
+            "ix_channel_messages_author_created_at", "author_id", "created_at"
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PostgreSQLUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    channel_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    author_id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), nullable=False)
+    reply_to_message_id: Mapped[UUID | None] = mapped_column(PostgreSQLUUID(as_uuid=True))
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Meeting(Base):

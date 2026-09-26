@@ -253,6 +253,8 @@ class MembershipResultStatus(str, Enum):
     PENDING = "pending"
     REJECTED = "rejected"
     REMOVED = "removed"
+    CANCELLED = "cancelled"
+    LEFT = "left"
 
 
 class GroupCreate(BaseModel):
@@ -371,6 +373,40 @@ class MembershipResponse(BaseModel):
     requested_at: datetime | None = Field(default=None, serialization_alias="requestedAt")
     joined_at: datetime | None = Field(default=None, serialization_alias="joinedAt")
     resolved_at: datetime | None = Field(default=None, serialization_alias="resolvedAt")
+
+
+class GroupInvitationCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=3, max_length=320)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if "@" not in normalized:
+            raise ValueError("Informe o e-mail de uma conta NexoAula válida.")
+        return normalized
+
+
+class GroupInvitationResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+
+    id: UUID
+    group_id: UUID = Field(serialization_alias="groupId")
+    group_name: str = Field(serialization_alias="groupName")
+    invited_user_id: UUID = Field(serialization_alias="invitedUserId")
+    invited_email: str = Field(serialization_alias="invitedEmail")
+    invited_display_name: str = Field(serialization_alias="invitedDisplayName")
+    status: Literal["pending", "accepted", "cancelled", "expired"]
+    expires_at: AwareDatetime = Field(serialization_alias="expiresAt")
+    created_at: AwareDatetime = Field(serialization_alias="createdAt")
+    accepted_at: AwareDatetime | None = Field(default=None, serialization_alias="acceptedAt")
+    cancelled_at: AwareDatetime | None = Field(default=None, serialization_alias="cancelledAt")
+
+
+class GroupInvitationCreatedResponse(GroupInvitationResponse):
+    token: str
 
 
 class ParticipationResponse(BaseModel):
@@ -667,3 +703,56 @@ class ChannelResponse(BaseModel):
     status: str
     created_at: datetime = Field(serialization_alias="createdAt")
     archived_at: datetime | None = Field(default=None, serialization_alias="archivedAt")
+
+
+class ChannelMessageCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    content: str = Field(min_length=1, max_length=4000)
+    reply_to_message_id: UUID | None = Field(default=None, alias="replyToMessageId")
+
+    @field_validator("content")
+    @classmethod
+    def normalize_content(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("A mensagem não pode ser vazia.")
+        return normalized
+
+
+class ChannelMessageUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    content: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("content")
+    @classmethod
+    def normalize_content(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("A mensagem não pode ser vazia.")
+        return normalized
+
+
+class ChannelMessageReplyPreview(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+
+    id: UUID
+    author_name: str = Field(serialization_alias="authorName")
+    content: str | None
+    deleted: bool
+
+
+class ChannelMessageResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, serialize_by_alias=True)
+
+    id: UUID
+    channel_id: UUID = Field(serialization_alias="channelId")
+    author_id: UUID = Field(serialization_alias="authorId")
+    author_name: str = Field(serialization_alias="authorName")
+    reply_to_message_id: UUID | None = Field(default=None, serialization_alias="replyToMessageId")
+    reply_preview: ChannelMessageReplyPreview | None = Field(default=None, serialization_alias="replyPreview")
+    content: str | None
+    created_at: AwareDatetime = Field(serialization_alias="createdAt")
+    edited_at: AwareDatetime | None = Field(default=None, serialization_alias="editedAt")
+    deleted_at: AwareDatetime | None = Field(default=None, serialization_alias="deletedAt")

@@ -1,0 +1,54 @@
+name: Build Cloudflare frontend artifact
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Front-end/**'
+      - '.github/workflows/cloudflare-build-artifact.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Front-end
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Front-end/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build vinext
+        env:
+          API_BASE_URL: https://api.invalid.local
+        run: npm run build:vinext
+
+      - name: Inspect output
+        run: |
+          test -d dist
+          find dist -maxdepth 3 -type f | sort | head -200
+
+      - name: Upload Worker bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexoaula-cloudflare-frontend
+          path: |
+            Front-end/dist/
+            Front-end/wrangler.jsonc
+            Front-end/package.json
+          if-no-files-found: error
+          retention-days: 7

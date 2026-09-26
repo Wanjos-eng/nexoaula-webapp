@@ -9,10 +9,16 @@ from app.modules.community.dependencies import get_community_service
 from app.modules.community.schemas import (
     AttendanceAdjustmentResponse,
     ChannelCreate,
+    ChannelMessageCreate,
+    ChannelMessageResponse,
+    ChannelMessageUpdate,
     ChannelResponse,
     ChannelUpdate,
     GroupCreate,
     GroupDiscoveryResponse,
+    GroupInvitationCreate,
+    GroupInvitationCreatedResponse,
+    GroupInvitationResponse,
     GroupResponse,
     GroupTopicCreate,
     GroupTopicResponse,
@@ -109,6 +115,18 @@ def user_calendar(user_id: UserId, service: Service,
     return service.user_calendar(user_id, start, end, period, offset, limit)
 
 
+@router.get("/invites/{token}", response_model=GroupInvitationResponse,
+            summary="Consultar convite recebido")
+def get_invitation(token: str, user_id: UserId, service: Service) -> GroupInvitationResponse:
+    return service.get_invitation(token, user_id)
+
+
+@router.post("/invites/{token}/accept", response_model=MembershipResponse,
+             summary="Aceitar convite de comunidade", openapi_extra=MUTATION_SECURITY)
+def accept_invitation(token: str, user_id: UserId, service: Service) -> MembershipResponse:
+    return service.accept_invitation(token, user_id)
+
+
 @router.get("/{group_id}", response_model=GroupResponse, summary="Obter dados do grupo")
 def get_group(group_id: UUID, user_id: UserId, service: Service) -> GroupResponse:
     return service.get_group(group_id, user_id)
@@ -126,6 +144,41 @@ def update_group(group_id: UUID, user_id: UserId, payload: GroupUpdate,
              openapi_extra=MUTATION_SECURITY)
 def join_group(group_id: UUID, user_id: UserId, service: Service) -> MembershipResponse:
     return service.join_group(group_id, user_id)
+
+
+@router.post("/{group_id}/leave", response_model=MembershipResponse,
+             summary="Sair da comunidade", openapi_extra=MUTATION_SECURITY)
+def leave_group(group_id: UUID, user_id: UserId, service: Service) -> MembershipResponse:
+    return service.leave_group(group_id, user_id)
+
+
+@router.delete("/{group_id}/join-request", response_model=MembershipResponse,
+               summary="Cancelar solicitação de entrada", openapi_extra=MUTATION_SECURITY)
+def cancel_join_request(group_id: UUID, user_id: UserId, service: Service) -> MembershipResponse:
+    return service.cancel_join_request(group_id, user_id)
+
+
+@router.post("/{group_id}/invitations", response_model=GroupInvitationCreatedResponse,
+             status_code=status.HTTP_201_CREATED, summary="Criar convite de comunidade",
+             openapi_extra=MUTATION_SECURITY)
+def create_invitation(group_id: UUID, payload: GroupInvitationCreate,
+                      user_id: UserId, service: Service) -> GroupInvitationCreatedResponse:
+    return service.create_invitation(group_id, user_id, payload)
+
+
+@router.get("/{group_id}/invitations", response_model=list[GroupInvitationResponse],
+            summary="Listar convites da comunidade")
+def list_invitations(group_id: UUID, user_id: UserId,
+                     service: Service) -> list[GroupInvitationResponse]:
+    return service.list_invitations(group_id, user_id)
+
+
+@router.delete("/{group_id}/invitations/{invitation_id}",
+               response_model=GroupInvitationResponse,
+               summary="Cancelar convite da comunidade", openapi_extra=MUTATION_SECURITY)
+def cancel_invitation(group_id: UUID, invitation_id: UUID,
+                      user_id: UserId, service: Service) -> GroupInvitationResponse:
+    return service.cancel_invitation(group_id, invitation_id, user_id)
 
 
 @router.patch("/{group_id}/members/{target_user_id}", response_model=MembershipResponse,
@@ -370,4 +423,37 @@ def update_channel(group_id: UUID, channel_id: UUID, payload: ChannelUpdate, use
 def archive_channel(group_id: UUID, channel_id: UUID, user_id: UserId,
                     service: Service) -> ChannelResponse:
     return service.archive_channel(group_id, channel_id, user_id)
+
+
+@router.get("/{group_id}/channels/{channel_id}/messages", response_model=list[ChannelMessageResponse],
+            summary="Listar mensagens do canal")
+def list_channel_messages(group_id: UUID, channel_id: UUID, user_id: UserId, service: Service,
+                          offset: int = Query(default=0, ge=0),
+                          limit: int = Query(default=50, ge=1, le=100)) -> list[ChannelMessageResponse]:
+    return service.list_channel_messages(group_id, channel_id, user_id, offset, limit)
+
+
+@router.post("/{group_id}/channels/{channel_id}/messages", response_model=ChannelMessageResponse,
+             status_code=status.HTTP_201_CREATED, summary="Enviar mensagem no canal",
+             openapi_extra=MUTATION_SECURITY)
+def create_channel_message(group_id: UUID, channel_id: UUID, payload: ChannelMessageCreate,
+                           user_id: UserId, service: Service) -> ChannelMessageResponse:
+    return service.create_channel_message(group_id, channel_id, user_id, payload)
+
+
+@router.patch("/{group_id}/channels/{channel_id}/messages/{message_id}",
+              response_model=ChannelMessageResponse, summary="Editar mensagem própria",
+              openapi_extra=MUTATION_SECURITY)
+def update_channel_message(group_id: UUID, channel_id: UUID, message_id: UUID,
+                           payload: ChannelMessageUpdate, user_id: UserId,
+                           service: Service) -> ChannelMessageResponse:
+    return service.update_channel_message(group_id, channel_id, message_id, user_id, payload)
+
+
+@router.delete("/{group_id}/channels/{channel_id}/messages/{message_id}",
+               response_model=ChannelMessageResponse, summary="Remover mensagem própria",
+               openapi_extra=MUTATION_SECURITY)
+def delete_channel_message(group_id: UUID, channel_id: UUID, message_id: UUID,
+                           user_id: UserId, service: Service) -> ChannelMessageResponse:
+    return service.delete_channel_message(group_id, channel_id, message_id, user_id)
 

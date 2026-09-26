@@ -20,12 +20,22 @@ const sessionResponse = {
 };
 
 function SessionConsumer() {
-  const { user } = useAuthSession();
-  return <p>Sessão de {user.email}</p>;
+  const { logout, user } = useAuthSession();
+  return (
+    <>
+      <p>Sessão de {user.email}</p>
+      <button onClick={() => void logout()} type="button">
+        Sair
+      </button>
+    </>
+  );
 }
 
 describe("AuthSessionProvider", () => {
-  beforeEach(() => replace.mockReset());
+  beforeEach(() => {
+    replace.mockReset();
+    window.history.replaceState({}, "", "/");
+  });
   afterEach(() => vi.restoreAllMocks());
 
   it("mantém a área interna bloqueada até restaurar o usuário público", async () => {
@@ -42,7 +52,7 @@ describe("AuthSessionProvider", () => {
       </AuthSessionProvider>,
     );
 
-    expect(screen.getByText("Verificando sua sessão…")).toBeDefined();
+    expect(screen.getByRole("status", { name: "Abrindo seu espaço" })).toBeDefined();
     expect(screen.queryByText(/Sessão de/)).toBeNull();
     resolveRequest(sessionResponse);
 
@@ -58,6 +68,22 @@ describe("AuthSessionProvider", () => {
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
     expect(screen.queryByText("Área interna")).toBeNull();
+  });
+
+  it("preserva o convite ao redirecionar uma sessão ausente para o login", async () => {
+    window.history.replaceState({}, "", "/convites/token-seguro?origem=link");
+    vi.spyOn(authService, "me").mockRejectedValueOnce(
+      new ApiError(401, "Unauthorized", {}),
+    );
+
+    render(<AuthSessionProvider><p>Convite protegido</p></AuthSessionProvider>);
+
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith(
+        "/login?next=%2Fconvites%2Ftoken-seguro%3Forigem%3Dlink",
+      ),
+    );
+    expect(screen.queryByText("Convite protegido")).toBeNull();
   });
 
   it("oferece nova tentativa após uma falha recuperável", async () => {
@@ -76,4 +102,22 @@ describe("AuthSessionProvider", () => {
     expect(await screen.findByText("Sessão de lucas@example.com")).toBeDefined();
     expect(me).toHaveBeenCalledTimes(2);
   });
+  it("encerra a sessão e retorna ao login", async () => {
+    vi.spyOn(authService, "me").mockResolvedValueOnce(sessionResponse);
+    const logout = vi
+      .spyOn(authService, "logout")
+      .mockResolvedValueOnce({ status: 204, data: undefined });
+
+    render(
+      <AuthSessionProvider>
+        <SessionConsumer />
+      </AuthSessionProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Sair" }));
+
+    await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
+  });
+
 });

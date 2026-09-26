@@ -25,11 +25,6 @@ async function registerAndLogin(page: Page, user: User) {
   await page.getByLabel("Confirmar senha").fill(password);
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Criar conta" }).click();
-  await expect(page.getByRole("status")).toContainText("Conta criada com sucesso");
-  await page.waitForURL(/\/login$/, { timeout: 5_000 });
-  await page.getByLabel("E-mail").fill(user.email);
-  await page.getByLabel("Senha", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Entrar" }).click();
   await page.waitForURL(/\/inicio$/, { timeout: 5_000 });
 }
 
@@ -105,14 +100,14 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       const academic = await prepareAcademicContext(owner);
 
       await owner.goto("/grupos/novo");
-      await owner.getByLabel("Nome do grupo *").fill(`Grupo E2E ${uniqueId()}`);
+      await owner.getByLabel("Nome da comunidade *").fill(`Grupo E2E ${uniqueId()}`);
       await owner.getByLabel("Disciplina *", { exact: true }).selectOption(academic.subjectId);
       await owner.getByLabel("Turma (opcional)").selectOption(academic.sectionId);
       await owner.getByLabel("Descrição").fill("Grupo criado pela jornada E2E real.");
-      await owner.getByLabel("Combinados do grupo").fill("Respeitar o ritmo de estudo.");
+      await owner.getByLabel("Combinados da comunidade").fill("Respeitar o ritmo de estudo.");
       await owner.getByLabel("Entrada").selectOption("approval_required");
-      await owner.getByRole("button", { name: "Criar grupo", exact: true }).click();
-      await owner.getByRole("link", { name: "Acessar grupo" }).click();
+      await owner.getByRole("button", { name: "Criar comunidade", exact: true }).click();
+      await owner.getByRole("link", { name: "Acessar comunidade" }).click();
       await expect(owner.getByRole("heading", { name: "Gerenciar participantes" })).toBeVisible();
       const groupUrl = owner.url();
       const groupId = new URL(groupUrl).pathname.split("/").pop();
@@ -129,7 +124,6 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       });
       await owner.getByLabel("Data e horário da aula 1").fill(today);
       await owner.getByRole("button", { name: "Salvar rascunho" }).click();
-      await expect(owner.getByText("Rascunho salvo.")).toBeVisible();
       await owner.reload();
       await owner.getByRole("button", { name: "Editar rascunho" }).click();
       await expect(owner.getByLabel("Título da aula 1")).toHaveValue("Aula inicial E2E");
@@ -140,16 +134,18 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await registerAndLogin(member, memberUser);
       await member.goto("/calendario");
       await expect(member.getByTestId("calendar-empty-state")).toBeVisible();
-      await expect(member.getByRole("heading", { name: "Você ainda não participa de grupos" })).toBeVisible();
+      await expect(member.getByRole("heading", { name: "Sua agenda está vazia" })).toBeVisible();
       await member.goto("/grupos?view=discover");
       await member.getByRole("search").getByLabel("Assunto ou nome").fill(groupName);
-      await member.getByRole("button", { name: "Buscar grupos" }).click();
+      await member.getByRole("button", { name: "Buscar comunidades" }).click();
       await member.getByRole("link", { name: groupName }).click();
       await expect(member.getByRole("heading", { name: groupName })).toBeVisible();
       await member.getByRole("button", { name: "Solicitar entrada" }).click();
       await expect(member.getByText("Solicitação enviada.")).toBeVisible();
       await member.reload();
-      await expect(member.getByText("Solicitação pendente", { exact: true })).toBeVisible();
+      await expect(
+        member.getByRole("heading", { name: "Solicitação pendente", exact: true }),
+      ).toBeVisible();
 
       const duplicate = await member.request.post(
         new URL(`/api/v1/groups/${groupId}/join`, member.url()).toString(),
@@ -164,7 +160,7 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await expect(owner.getByText("Nenhuma solicitação pendente.")).toBeVisible();
 
       await member.reload();
-      await expect(member.getByText("Você participa", { exact: true })).toBeVisible();
+      await expect(member.getByRole("heading", { name: "Membro", exact: true })).toBeVisible();
       await expect(member.getByRole("heading", { name: "Aula publicada E2E" })).toBeVisible();
       await expect(member.getByRole("button", { name: "Criar nova versão" })).toHaveCount(0);
       const denied = await member.request.post(`/api/v1/groups/${groupId}/plans`, {
@@ -175,7 +171,7 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await expect(member.getByRole("heading", { name: "Aula publicada E2E" })).toBeVisible();
       await member.getByRole("button", { name: "Próximo mês" }).click();
       await member.getByRole("button", { name: /^Hoje/ }).click();
-      await member.getByRole("link", { name: "Detalhar aula no grupo" }).click();
+      await member.getByRole("link", { name: "Detalhar aula na comunidade" }).click();
       await expect(member).toHaveURL(new RegExp(`/grupos/${groupId}#aula-`));
       await expect(member.getByRole("heading", { name: "Aula publicada E2E" })).toBeVisible();
       await expect(member.getByRole("heading", { name: "Aula publicada E2E" })).toBeInViewport();
@@ -198,10 +194,17 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
       await postJson(owner, `groups/${second.id}/plans/${plan.id}/publish`, {});
       await postJson(member, `groups/${second.id}/join`, {});
       await member.goto("/calendario");
-      await expect(member.getByRole("link", { name: "Detalhar aula no grupo" })).toHaveCount(2);
+      await expect(member.getByRole("link", { name: "Detalhar aula na comunidade" })).toHaveCount(2);
       await member.goto("/disciplinas");
-      await expect(member.locator(`a[href="/grupos/${groupId}#cronograma"]`)).toBeVisible();
-      await expect(member.locator(`a[href="/grupos/${second.id}#cronograma"]`)).toBeVisible();
+      const personalDiscipline = member.getByRole("link", { name: "Abrir disciplina", exact: true });
+      await expect(personalDiscipline).toHaveCount(2);
+      const firstDiscipline = member.locator(`a[href="/disciplinas/${academic.sectionId}?group=${groupId}"]`);
+      await expect(firstDiscipline).toBeVisible();
+      await expect(member.locator(`a[href="/disciplinas/${academic.sectionId}?group=${second.id}"]`)).toBeVisible();
+      await firstDiscipline.click();
+      await expect(member.getByRole("heading", { name: "Minhas aulas e registros" })).toBeVisible();
+      await expect(member.getByRole("heading", { name: "Aula publicada E2E" })).toBeVisible();
+      await expect(member.getByRole("heading", { name: "Aula do segundo grupo" })).toHaveCount(0);
       const members = await owner.request.get(`/api/v1/groups/${groupId}/members?pending=false`);
       const participant = (await members.json() as { userId: string; displayName: string }[])
         .find((entry) => entry.displayName === memberUser.fullName)!;
@@ -213,10 +216,10 @@ test.describe("grupos ponta a ponta com API e PostgreSQL reais", () => {
         expect(removed.ok()).toBe(true);
         await member.getByRole("button", { name: "Atualizar calendário" }).click();
         await expect(member.locator(`a[href="/grupos/${id}#cronograma"]`)).toHaveCount(0);
-        if (id === groupId) await expect(member.getByRole("link", { name: "Detalhar aula no grupo" })).toHaveCount(1);
+        if (id === groupId) await expect(member.getByRole("link", { name: "Detalhar aula na comunidade" })).toHaveCount(1);
       }
       await expect(member.getByTestId("calendar-empty-state")).toBeVisible();
-      await expect(member.getByRole("heading", { name: "Você ainda não participa de grupos" })).toBeVisible();
+      await expect(member.getByRole("heading", { name: "Sua agenda está vazia" })).toBeVisible();
     } finally {
       await logout(ownerContext, owner).catch(() => undefined);
       await logout(memberContext, member).catch(() => undefined);

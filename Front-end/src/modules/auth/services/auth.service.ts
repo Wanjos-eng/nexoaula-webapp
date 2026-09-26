@@ -72,4 +72,9 @@ export const authService = {
   async me(signal?: AbortSignal): Promise<ApiResponse<PublicUser>> {
     return apiClient.get("/v1/auth/me", { signal });
   },
+
+  /** Encerra a sessão HttpOnly no backend. */
+  async logout(): Promise<ApiResponse<void>> {
+    return apiClient.post("/v1/auth/logout", { body: {} });
+  },
 };

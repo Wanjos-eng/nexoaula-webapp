@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import exists, func, or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, aliased, sessionmaker
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.modules.academic.models import AcademicTerm, ClassSection, Subject, Teacher, ClassSectionTeacher
@@ -15,7 +15,9 @@ from app.modules.community.models import (
     AttendanceAdjustmentOutcome,
     AttendanceStatus,
     Channel,
+    ChannelMessage,
     ChannelStatus,
+    GroupInvitation,
     GroupJoinRequest,
     GroupMember,
     GroupStatus,
@@ -60,7 +62,7 @@ from app.modules.community.schemas import (
     ScheduledLessonUpdate,
     TeachingPlanCreate,
 )
-from app.modules.users.infrastructure.models import UserProfile
+from app.modules.users.infrastructure.models import User, UserProfile
 
 
 @dataclass(frozen=True)
@@ -69,6 +71,23 @@ class GroupDiscoveryRecord:
     subject_name: str
     subject_code: str | None
     period: str | None
+
+
+@dataclass(frozen=True)
+class GroupInvitationRecord:
+    invitation: GroupInvitation
+    group_name: str
+    invited_email: str
+    invited_display_name: str
+
+
+@dataclass(frozen=True)
+class ChannelMessageRecord:
+    message: ChannelMessage
+    author_name: str
+    reply_author_name: str | None
+    reply_content: str | None
+    reply_deleted_at: datetime | None
 
 
 class CommunityRepository(Protocol):
@@ -93,6 +112,23 @@ class CommunityRepository(Protocol):
     def resolve_join_request(self, request: GroupJoinRequest, status: JoinRequestStatus,
                              resolver_id: UUID, note: str | None) -> GroupJoinRequest: ...
     def remove_member(self, member: GroupMember, remover_id: UUID) -> GroupMember: ...
+    def leave_member(self, member: GroupMember) -> GroupMember: ...
+    def find_user_by_email(self, email: str) -> User | None: ...
+    def expire_invitations(self, group_id: UUID,
+                           invited_user_id: UUID | None = None) -> None: ...
+    def cancel_pending_invitations(self, group_id: UUID,
+                                   invited_user_id: UUID) -> None: ...
+    def create_group_invitation(self, group_id: UUID, invited_user_id: UUID,
+                                created_by: UUID, token_hash: str,
+                                expires_at: datetime) -> GroupInvitation: ...
+    def list_group_invitations(self, group_id: UUID) -> list[GroupInvitationRecord]: ...
+    def find_invitation_by_id(self, invitation_id: UUID,
+                              lock: bool = False) -> GroupInvitation | None: ...
+    def find_invitation_by_token_hash(self, token_hash: str,
+                                      lock: bool = False) -> GroupInvitation | None: ...
+    def invitation_record(self, invitation: GroupInvitation) -> GroupInvitationRecord: ...
+    def accept_invitation(self, invitation: GroupInvitation) -> GroupInvitation: ...
+    def cancel_invitation(self, invitation: GroupInvitation) -> GroupInvitation: ...
     def check_discipline_exists(self, discipline_id: UUID) -> bool: ...
     def check_offering_belongs_to_discipline(self, offering_id: UUID,
                                              discipline_id: UUID) -> bool: ...
@@ -156,10 +192,29 @@ class CommunityRepository(Protocol):
     def channel_topic_name(self, channel: Channel) -> str | None: ...
     def list_channels(self, group_id: UUID) -> list[Channel]: ...
     def create_channel(self, group_id: UUID, created_by: UUID, data: ChannelCreate) -> Channel: ...
-    def find_channel_by_id(self, channel_id: UUID) -> Channel | None: ...
+    def find_channel_by_id(self, channel_id: UUID, lock: bool = False) -> Channel | None: ...
     def update_channel(self, channel: Channel, data: ChannelUpdate) -> Channel: ...
     def archive_channel(self, channel: Channel) -> Channel: ...
 
+    def list_channel_messages(
+        self, channel_id: UUID, offset: int, limit: int
+    ) -> list[ChannelMessageRecord]: ...
+    def create_channel_message(
+        self, channel_id: UUID, author_id: UUID, content: str,
+        reply_to_message_id: UUID | None,
+    ) -> ChannelMessage: ...
+    def find_channel_message_by_id(
+        self, message_id: UUID, lock: bool = False
+    ) -> ChannelMessage | None: ...
+    def find_channel_message_record(
+        self, message_id: UUID
+    ) -> ChannelMessageRecord | None: ...
+    def update_channel_message(
+        self, message: ChannelMessage, content: str
+    ) -> ChannelMessage: ...
+    def soft_delete_channel_message(
+        self, message: ChannelMessage
+    ) -> ChannelMessage: ...
 
 
 class CommunityUnitOfWork(Protocol):
@@ -619,6 +674,7 @@ class SqlAlchemyCommunityRepository:
             member = GroupMember(group_id=group_id, user_id=user_id,
                                    role=MembershipRole.MEMBER.value)
             self._session.add(member)
+        member.role = MembershipRole.MEMBER.value
         member.status = MembershipStatus.ACTIVE.value
         member.joined_at = now
         member.ended_at = None
@@ -649,6 +705,143 @@ class SqlAlchemyCommunityRepository:
         member.removed_by = remover_id
         self._session.flush()
         return member
+
+    def leave_member(self, member: GroupMember) -> GroupMember:
+        member.status = MembershipStatus.LEFT.value
+        member.ended_at = datetime.now(UTC)
+        member.removed_by = None
+        self._session.flush()
+        return member
+
+    def find_user_by_email(self, email: str) -> User | None:
+        stmt = select(User).where(
+            func.lower(User.email) == email.strip().lower(),
+            User.is_active.is_(True),
+            User.deleted_at.is_(None),
+        )
+        return self._session.scalar(stmt)
+
+    def expire_invitations(
+        self, group_id: UUID, invited_user_id: UUID | None = None
+    ) -> None:
+        stmt = select(GroupInvitation).where(
+            GroupInvitation.group_id == group_id,
+            GroupInvitation.status == "pending",
+            GroupInvitation.expires_at <= datetime.now(UTC),
+        )
+        if invited_user_id is not None:
+            stmt = stmt.where(GroupInvitation.invited_user_id == invited_user_id)
+        for invitation in self._session.scalars(stmt.with_for_update()):
+            invitation.status = "expired"
+        self._session.flush()
+
+    def cancel_pending_invitations(
+        self, group_id: UUID, invited_user_id: UUID
+    ) -> None:
+        invitations = list(
+            self._session.scalars(
+                select(GroupInvitation)
+                .where(
+                    GroupInvitation.group_id == group_id,
+                    GroupInvitation.invited_user_id == invited_user_id,
+                    GroupInvitation.status == "pending",
+                )
+                .with_for_update()
+            )
+        )
+        now = datetime.now(UTC)
+        for invitation in invitations:
+            invitation.status = "cancelled"
+            invitation.cancelled_at = now
+            invitation.accepted_at = None
+        self._session.flush()
+
+    def create_group_invitation(
+        self,
+        group_id: UUID,
+        invited_user_id: UUID,
+        created_by: UUID,
+        token_hash: str,
+        expires_at: datetime,
+    ) -> GroupInvitation:
+        invitation = GroupInvitation(
+            id=uuid4(),
+            group_id=group_id,
+            invited_user_id=invited_user_id,
+            created_by=created_by,
+            token_hash=token_hash,
+            status="pending",
+            expires_at=expires_at,
+            created_at=datetime.now(UTC),
+        )
+        self._session.add(invitation)
+        try:
+            self._session.flush()
+        except IntegrityError as exc:
+            constraint = getattr(getattr(exc.orig, "diag", None), "constraint_name", None)
+            if constraint == "uq_group_invitations_pending_user":
+                raise CommunityError(
+                    "Já existe um convite pendente para esta pessoa.", 409
+                ) from None
+            raise
+        return invitation
+
+    def invitation_record(self, invitation: GroupInvitation) -> GroupInvitationRecord:
+        row = self._session.execute(
+            select(StudyGroup.name, User.email, UserProfile.display_name)
+            .select_from(StudyGroup)
+            .join(User, User.id == invitation.invited_user_id)
+            .outerjoin(UserProfile, UserProfile.user_id == User.id)
+            .where(StudyGroup.id == invitation.group_id)
+        ).one()
+        group_name, email, display_name = row
+        return GroupInvitationRecord(
+            invitation=invitation,
+            group_name=group_name,
+            invited_email=email,
+            invited_display_name=display_name or email.split("@", 1)[0],
+        )
+
+    def list_group_invitations(self, group_id: UUID) -> list[GroupInvitationRecord]:
+        invitations = list(
+            self._session.scalars(
+                select(GroupInvitation)
+                .where(GroupInvitation.group_id == group_id)
+                .order_by(GroupInvitation.created_at.desc(), GroupInvitation.id.desc())
+                .limit(100)
+            )
+        )
+        return [self.invitation_record(invitation) for invitation in invitations]
+
+    def find_invitation_by_id(
+        self, invitation_id: UUID, lock: bool = False
+    ) -> GroupInvitation | None:
+        stmt = select(GroupInvitation).where(GroupInvitation.id == invitation_id)
+        if lock:
+            stmt = stmt.with_for_update()
+        return self._session.scalar(stmt)
+
+    def find_invitation_by_token_hash(
+        self, token_hash: str, lock: bool = False
+    ) -> GroupInvitation | None:
+        stmt = select(GroupInvitation).where(GroupInvitation.token_hash == token_hash)
+        if lock:
+            stmt = stmt.with_for_update()
+        return self._session.scalar(stmt)
+
+    def accept_invitation(self, invitation: GroupInvitation) -> GroupInvitation:
+        invitation.status = "accepted"
+        invitation.accepted_at = datetime.now(UTC)
+        invitation.cancelled_at = None
+        self._session.flush()
+        return invitation
+
+    def cancel_invitation(self, invitation: GroupInvitation) -> GroupInvitation:
+        invitation.status = "cancelled"
+        invitation.cancelled_at = datetime.now(UTC)
+        invitation.accepted_at = None
+        self._session.flush()
+        return invitation
 
     def check_discipline_exists(self, discipline_id: UUID) -> bool:
         return self._session.get(Subject, discipline_id) is not None
@@ -1251,8 +1444,11 @@ class SqlAlchemyCommunityRepository:
         self._flush_channel()
         return channel
 
-    def find_channel_by_id(self, channel_id: UUID) -> Channel | None:
-        return self._session.scalar(select(Channel).where(Channel.id == channel_id).with_for_update())
+    def find_channel_by_id(self, channel_id: UUID, lock: bool = False) -> Channel | None:
+        stmt = select(Channel).where(Channel.id == channel_id)
+        if lock:
+            stmt = stmt.with_for_update()
+        return self._session.scalar(stmt)
 
     def update_channel(self, channel: Channel, data: ChannelUpdate) -> Channel:
         if channel.status == ChannelStatus.ARCHIVED:
@@ -1292,6 +1488,144 @@ class SqlAlchemyCommunityRepository:
             .outerjoin(Topic, Topic.id == SubjectTopic.topic_id)
             .where(GroupTopic.id == channel.group_topic_id)
         )
+
+    def list_channel_messages(
+        self, channel_id: UUID, offset: int, limit: int
+    ) -> list[ChannelMessageRecord]:
+        author_profile = aliased(UserProfile)
+        reply_message = aliased(ChannelMessage)
+        reply_profile = aliased(UserProfile)
+        stmt = (
+            select(
+                ChannelMessage,
+                author_profile.display_name,
+                reply_profile.display_name,
+                reply_message.content,
+                reply_message.deleted_at,
+            )
+            .outerjoin(
+                author_profile,
+                author_profile.user_id == ChannelMessage.author_id,
+            )
+            .outerjoin(
+                reply_message,
+                reply_message.id == ChannelMessage.reply_to_message_id,
+            )
+            .outerjoin(
+                reply_profile,
+                reply_profile.user_id == reply_message.author_id,
+            )
+            .where(ChannelMessage.channel_id == channel_id)
+            .order_by(ChannelMessage.created_at.desc(), ChannelMessage.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        return [
+            ChannelMessageRecord(
+                message=message,
+                author_name=author_name or "Estudante",
+                reply_author_name=(
+                    reply_author_name or "Estudante"
+                    if message.reply_to_message_id is not None
+                    else None
+                ),
+                reply_content=reply_content,
+                reply_deleted_at=reply_deleted_at,
+            )
+            for (
+                message,
+                author_name,
+                reply_author_name,
+                reply_content,
+                reply_deleted_at,
+            ) in self._session.execute(stmt)
+        ]
+
+    def create_channel_message(
+        self,
+        channel_id: UUID,
+        author_id: UUID,
+        content: str,
+        reply_to_message_id: UUID | None,
+    ) -> ChannelMessage:
+        message = ChannelMessage(
+            id=uuid4(),
+            channel_id=channel_id,
+            author_id=author_id,
+            reply_to_message_id=reply_to_message_id,
+            content=content,
+            created_at=datetime.now(UTC),
+        )
+        self._session.add(message)
+        self._session.flush()
+        return message
+
+    def find_channel_message_by_id(
+        self, message_id: UUID, lock: bool = False
+    ) -> ChannelMessage | None:
+        stmt = select(ChannelMessage).where(ChannelMessage.id == message_id)
+        if lock:
+            stmt = stmt.with_for_update()
+        return self._session.scalar(stmt)
+
+    def find_channel_message_record(
+        self, message_id: UUID
+    ) -> ChannelMessageRecord | None:
+        author_profile = aliased(UserProfile)
+        reply_message = aliased(ChannelMessage)
+        reply_profile = aliased(UserProfile)
+        stmt = (
+            select(
+                ChannelMessage,
+                author_profile.display_name,
+                reply_profile.display_name,
+                reply_message.content,
+                reply_message.deleted_at,
+            )
+            .outerjoin(
+                author_profile,
+                author_profile.user_id == ChannelMessage.author_id,
+            )
+            .outerjoin(
+                reply_message,
+                reply_message.id == ChannelMessage.reply_to_message_id,
+            )
+            .outerjoin(
+                reply_profile,
+                reply_profile.user_id == reply_message.author_id,
+            )
+            .where(ChannelMessage.id == message_id)
+        )
+        row = self._session.execute(stmt).one_or_none()
+        if row is None:
+            return None
+        message, author_name, reply_author_name, reply_content, reply_deleted_at = row
+        return ChannelMessageRecord(
+            message=message,
+            author_name=author_name or "Estudante",
+            reply_author_name=(
+                reply_author_name or "Estudante"
+                if message.reply_to_message_id is not None
+                else None
+            ),
+            reply_content=reply_content,
+            reply_deleted_at=reply_deleted_at,
+        )
+
+    def update_channel_message(
+        self, message: ChannelMessage, content: str
+    ) -> ChannelMessage:
+        message.content = content
+        message.edited_at = datetime.now(UTC)
+        self._session.flush()
+        return message
+
+    def soft_delete_channel_message(
+        self, message: ChannelMessage
+    ) -> ChannelMessage:
+        message.deleted_at = datetime.now(UTC)
+        self._session.flush()
+        return message
 
     def _flush_channel(self) -> None:
         try:

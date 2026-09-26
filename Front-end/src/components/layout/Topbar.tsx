@@ -1,12 +1,10 @@
 "use client";
 
-import { Bell, List, MagnifyingGlass, UserPlus, X } from "@phosphor-icons/react";
-import type { FormEvent, RefObject } from "react";
-import { useState } from "react";
+import { CaretRight, List } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { RefObject } from "react";
 
-import { useAuthSession } from "@/modules/auth/components/AuthSessionProvider";
 import styles from "./AppShell.module.css";
 
 type TopbarProps = {
@@ -14,38 +12,73 @@ type TopbarProps = {
   onMenuOpen: () => void;
 };
 
-export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
-  const [feedback, setFeedback] = useState("");
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const { user } = useAuthSession();
-  const pathname = usePathname();
-  const isHome = pathname === "/inicio";
-  const isStandalonePage = pathname.startsWith("/grupos") || pathname === "/calendario" || pathname === "/disciplinas" || pathname.startsWith("/disciplinas/") || pathname === "/perfil" || pathname === "/progresso" || pathname === "/grupos/novo" || pathname.startsWith("/grupos/comunidade") || pathname.startsWith("/sessoes") || pathname.startsWith("/tutor");
-  const showUtilityActions = !isStandalonePage;
-  const canCreateGroup = pathname === "/inicio";
-  const pageContext = isHome
-    ? { title: `Olá, ${user.fullName?.split(" ")[0] || "estudante"}`, subtitle: "Acompanhe suas disciplinas e próximos encontros" }
-      : pathname.startsWith("/grupos")
-        ? { title: "Área de grupos", subtitle: "Comunidade acadêmica e colaboração" }
-        : pathname.startsWith("/sessoes")
-          ? { title: "Sessões de Tutoria", subtitle: "Encontre e simule inscrições em sessões" }
-          : pathname.startsWith("/tutor")
-            ? { title: "Painel do Tutor", subtitle: "Gerencie seu perfil e sessões simuladas" }
-            : { title: "Área acadêmica", subtitle: "Organize sua rotina de estudos" };
+type Crumb = {
+  href?: string;
+  label: string;
+};
 
-
-  function handleSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const query = new FormData(event.currentTarget).get("search");
-    setFeedback(
-      query
-        ? `Busca simulada por “${String(query)}”.`
-        : "Digite um termo para buscar no protótipo.",
-    );
+function breadcrumbs(pathname: string): Crumb[] {
+  if (pathname === "/chat") return [{ label: "Chat das comunidades" }];
+  if (pathname.startsWith("/convites/")) {
+    return [
+      { href: "/grupos", label: "Comunidades" },
+      { label: "Convite" },
+    ];
   }
+  if (pathname === "/frequencia") return [{ label: "Minha Frequência" }];
+  if (pathname === "/inicio") return [{ label: "Início" }];
+  if (pathname === "/disciplinas") return [{ label: "Minhas Disciplinas" }];
+  if (pathname.startsWith("/disciplinas/")) {
+    return [
+      { href: "/disciplinas", label: "Minhas Disciplinas" },
+      { label: "Disciplina" },
+    ];
+  }
+  if (pathname === "/grupos") return [{ label: "Comunidades" }];
+  if (pathname === "/grupos/novo") {
+    return [
+      { href: "/grupos", label: "Comunidades" },
+      { label: "Nova comunidade" },
+    ];
+  }
+  if (pathname.startsWith("/grupos/")) {
+    return [
+      { href: "/grupos", label: "Comunidades" },
+      { label: "Comunidade" },
+    ];
+  }
+  if (pathname === "/calendario") return [{ label: "Calendário" }];
+  if (pathname === "/sessoes") return [{ label: "Tutorias" }];
+  if (pathname === "/sessoes/minhas") {
+    return [
+      { href: "/sessoes", label: "Tutorias" },
+      { label: "Minhas tutorias" },
+    ];
+  }
+  if (pathname.startsWith("/sessoes/")) {
+    return [
+      { href: "/sessoes", label: "Tutorias" },
+      { label: "Detalhes" },
+    ];
+  }
+  if (pathname === "/tutor") return [{ label: "Área do Tutor" }];
+  if (pathname.startsWith("/tutor/")) {
+    return [
+      { href: "/tutor", label: "Área do Tutor" },
+      { label: "Nova tutoria" },
+    ];
+  }
+  if (pathname === "/progresso") return [{ label: "Meu Progresso" }];
+  if (pathname === "/perfil") return [{ label: "Meu Perfil" }];
+  return [{ label: "nexoAula" }];
+}
+
+export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
+  const pathname = usePathname();
+  const crumbs = breadcrumbs(pathname);
 
   return (
-    <header className={`${styles.topbar} ${isStandalonePage ? styles.topbarMinimal : ""} ${pathname.startsWith("/grupos/comunidade") ? styles.topbarCommunity : ""}`}>
+    <header className={styles.topbar}>
       <div className={styles.titleArea}>
         <button
           aria-controls="navegacao-principal"
@@ -55,64 +88,25 @@ export function Topbar({ menuButtonRef, onMenuOpen }: TopbarProps) {
           ref={menuButtonRef}
           type="button"
         >
-          <List aria-hidden size={24} />
+          <List aria-hidden size={22} />
         </button>
-        {!isStandalonePage ? <div>
-          <div className={styles.greetingLine}>
-            <h1>{pageContext.title}</h1>
-            {isHome ? <span>Dados simulados</span> : null}
-          </div>
-          <p>{pageContext.subtitle}</p>
-        </div> : null}
-      </div>
 
-      <div className={styles.topbarActions}>
-        {showUtilityActions && isSearchOpen ? (
-          <form className={styles.search} onSubmit={handleSearch} role="search">
-            <label className="sr-only" htmlFor="dashboard-search">
-              Buscar no nexoAula
-            </label>
-            <MagnifyingGlass aria-hidden size={20} />
-            <input
-              autoFocus
-              id="dashboard-search"
-              name="search"
-              placeholder="Buscar no nexoAula..."
-              type="search"
-            />
-            <button aria-label="Fechar busca" className={styles.searchClose} onClick={() => setIsSearchOpen(false)} type="button">
-              <X aria-hidden size={16} />
-            </button>
-          </form>
-        ) : showUtilityActions ? (
-          <button aria-expanded={isSearchOpen} aria-label="Abrir busca global" className={styles.searchTrigger} onClick={() => setIsSearchOpen(true)} type="button">
-            <MagnifyingGlass aria-hidden size={18} />
-            <span>Buscar</span>
-            <kbd>⌘ K</kbd>
-          </button>
-        ) : null}
-        {showUtilityActions ? <button
-          aria-label="Ver notificações"
-          className={styles.iconButton}
-          onClick={() => setFeedback("Você não tem novas notificações nesta demonstração.")}
-          type="button"
-        >
-          <Bell aria-hidden size={21} />
-        </button> : null}
-        {canCreateGroup ? (
-          <Link
-            aria-label="Criar grupo"
-            className={styles.createGroupButton}
-            href="/grupos/novo"
-          >
-            <UserPlus aria-hidden size={18} weight="bold" />
-            <span>Criar grupo</span>
-          </Link>
-        ) : null}
+        <nav aria-label="Contexto da página" className={styles.breadcrumbs}>
+          {crumbs.map((crumb, index) => (
+            <span
+              className={styles.breadcrumbItem}
+              key={`${crumb.label}-${index}`}
+            >
+              {index > 0 ? <CaretRight aria-hidden size={14} /> : null}
+              {crumb.href ? (
+                <Link href={crumb.href}>{crumb.label}</Link>
+              ) : (
+                <strong>{crumb.label}</strong>
+              )}
+            </span>
+          ))}
+        </nav>
       </div>
-      <p aria-live="polite" className={styles.topbarFeedback} role="status">
-        {feedback}
-      </p>
     </header>
   );
 }

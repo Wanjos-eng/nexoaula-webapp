@@ -1,0 +1,419 @@
+.eyebrow {
+  color: var(--color-green);
+  font-size: var(--font-size-caption);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.invitationCard {
+  display: grid;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  scroll-margin-top: var(--layout-anchor-offset);
+}
+
+.cardHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3);
+}
+
+.cardHeader > div:nth-child(2) {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.cardHeader h2 {
+  color: var(--color-text);
+  font-size: var(--font-size-card-title);
+}
+
+.cardHeader p:last-child {
+  max-width: 700px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.55;
+}
+
+.headerIcon,
+.acceptIcon,
+.acceptIconSuccess,
+.acceptIconDanger {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+}
+
+.headerIcon,
+.acceptIcon {
+  color: var(--color-green);
+  background: var(--color-success-soft);
+}
+
+.acceptIconSuccess {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.acceptIconDanger {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.counter {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-caption);
+  font-weight: 800;
+}
+
+.inviteForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.inviteForm label {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+  font-weight: 700;
+}
+
+.inviteForm input,
+.linkRow input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 var(--space-3);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--font-size-small);
+  outline: none;
+}
+
+.inviteForm input:focus,
+.linkRow input:focus {
+  border-color: var(--color-green);
+  box-shadow: 0 0 0 3px rgb(2 122 66 / 10%);
+}
+
+.generatedLink {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  color: var(--color-text);
+  background: linear-gradient(135deg, var(--color-success-soft), var(--color-surface));
+  border: 1px solid rgb(2 122 66 / 18%);
+  border-radius: var(--radius-md);
+}
+
+.generatedLink > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-green);
+}
+
+.generatedLink > div:first-child > div {
+  display: grid;
+  gap: 2px;
+}
+
+.generatedLink strong {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+}
+
+.generatedLink span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.linkRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+}
+
+.success {
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-success);
+  background: var(--color-success-soft);
+  border: 1px solid rgb(2 122 66 / 18%);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+}
+
+.inviteList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.listHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+}
+
+.listHeading strong {
+  font-size: var(--font-size-small);
+}
+
+.listHeading span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.inviteRow {
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.inviteRow:last-child {
+  border-bottom: 0;
+}
+
+.inviteIdentity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.inviteIdentity > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.inviteIdentity strong,
+.inviteIdentity span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inviteIdentity strong {
+  color: var(--color-text);
+  font-size: var(--font-size-small);
+}
+
+.inviteIdentity span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  color: var(--color-green);
+  background: var(--color-success-soft);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.inviteMeta {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+}
+
+.inviteMeta small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.pending {
+  color: var(--color-info);
+  background: var(--color-info-soft);
+}
+
+.accepted {
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.cancelled,
+.expired {
+  color: var(--color-text-muted);
+  background: var(--color-surface-subtle);
+}
+
+.emptyState {
+  min-height: 100px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+}
+
+.invitePage {
+  min-height: calc(100vh - var(--layout-anchor-offset));
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+}
+
+.acceptCard {
+  width: min(100%, 600px);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: clamp(var(--space-5), 5vw, var(--space-7));
+  text-align: center;
+}
+
+.acceptCard h1 {
+  color: var(--color-text);
+  font-size: clamp(1.55rem, 4vw, 2rem);
+  letter-spacing: -0.03em;
+}
+
+.acceptDescription {
+  max-width: 480px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  line-height: 1.65;
+}
+
+.inviteDeadline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-muted);
+  background: var(--color-background);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-caption);
+}
+
+.acceptActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+
+.primaryLink,
+.secondaryLink,
+.inlineLink {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-small);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.primaryLink {
+  color: white;
+  background: var(--color-green);
+}
+
+.secondaryLink,
+.inlineLink {
+  color: var(--color-green);
+  background: var(--color-success-soft);
+}
+
+.errorText {
+  color: var(--color-danger);
+  font-size: var(--font-size-small);
+}
+
+@media (max-width: 700px) {
+  .cardHeader,
+  .inviteRow {
+    grid-template-columns: 1fr;
+  }
+
+  .headerIcon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .counter {
+    width: fit-content;
+  }
+
+  .inviteForm,
+  .linkRow {
+    grid-template-columns: 1fr;
+  }
+
+  .inviteForm button,
+  .linkRow button {
+    width: 100%;
+  }
+
+  .inviteMeta {
+    justify-items: start;
+  }
+
+  .inviteRow > button {
+    width: 100%;
+  }
+
+  .invitePage {
+    padding: var(--space-4);
+  }
+
+  .acceptActions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .acceptActions > *,
+  .primaryLink,
+  .secondaryLink {
+    width: 100%;
+  }
+}

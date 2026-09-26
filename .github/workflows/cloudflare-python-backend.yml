@@ -1,0 +1,53 @@
+name: Validate Cloudflare Python backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Back-end/apps/api/**'
+      - '.github/workflows/cloudflare-python-backend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Back-end/apps/api
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Install Python 3.13
+        run: uv python install 3.13
+
+      - name: Resolve Python Worker dependencies
+        run: uv sync --python 3.13
+
+      - name: Bundle Worker without deploying
+        run: |
+          mv requirements.txt requirements.docker.txt
+          cp wrangler.cloudflare.jsonc wrangler.jsonc
+          uv run --python 3.13 pywrangler deploy --dry-run --outdir ../../../cloudflare-python-dist
+
+      - name: Inspect bundle
+        run: |
+          test -d ../../../cloudflare-python-dist
+          find ../../../cloudflare-python-dist -maxdepth 3 -type f | sort | head -200
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexoaula-cloudflare-python-backend
+          path: cloudflare-python-dist/
+          if-no-files-found: error
+          retention-days: 7

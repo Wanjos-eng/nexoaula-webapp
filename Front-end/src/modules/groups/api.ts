@@ -49,6 +49,33 @@ export type Participant = {
   status: string;
   role: string | null;
 };
+export type MembershipResult = {
+  groupId: string;
+  userId: string;
+  status: "active" | "pending" | "rejected" | "removed" | "cancelled" | "left";
+  requestedAt?: string | null;
+  joinedAt?: string | null;
+  resolvedAt?: string | null;
+};
+
+export type GroupInvitation = {
+  id: string;
+  groupId: string;
+  groupName: string;
+  invitedUserId: string;
+  invitedEmail: string;
+  invitedDisplayName: string;
+  status: "pending" | "accepted" | "cancelled" | "expired";
+  expiresAt: string;
+  createdAt: string;
+  acceptedAt: string | null;
+  cancelledAt: string | null;
+};
+
+export type CreatedGroupInvitation = GroupInvitation & {
+  token: string;
+};
+
 export const PAGE_SIZE = 12;
 export const entryLabels = {
   open: "Entrada livre",
@@ -137,4 +164,73 @@ export async function updateChannel(groupId: string, channelId: string, payload:
 
 export async function archiveChannel(groupId: string, channelId: string, signal?: AbortSignal): Promise<Channel> {
   return (await apiClient.post<Channel>(`/v1/groups/${groupId}/channels/${channelId}/archive`, { body: {}, signal })).data;
+}
+
+
+export async function leaveGroup(groupId: string): Promise<MembershipResult> {
+  return (
+    await apiClient.post<MembershipResult>(`/v1/groups/${groupId}/leave`, {
+      body: {},
+    })
+  ).data;
+}
+
+export async function cancelJoinRequest(
+  groupId: string,
+): Promise<MembershipResult> {
+  return (
+    await apiClient.del<MembershipResult>(
+      `/v1/groups/${groupId}/join-request`,
+      { body: {} },
+    )
+  ).data;
+}
+
+export async function listGroupInvitations(
+  groupId: string,
+  signal?: AbortSignal,
+): Promise<GroupInvitation[]> {
+  return read<GroupInvitation[]>(`groups/${groupId}/invitations`, signal);
+}
+
+export async function createGroupInvitation(
+  groupId: string,
+  email: string,
+): Promise<CreatedGroupInvitation> {
+  return (
+    await apiClient.post<CreatedGroupInvitation>(
+      `/v1/groups/${groupId}/invitations`,
+      { body: { email } },
+    )
+  ).data;
+}
+
+export async function cancelGroupInvitation(
+  groupId: string,
+  invitationId: string,
+): Promise<GroupInvitation> {
+  return (
+    await apiClient.del<GroupInvitation>(
+      `/v1/groups/${groupId}/invitations/${invitationId}`,
+      { body: {} },
+    )
+  ).data;
+}
+
+export async function getGroupInvitation(
+  token: string,
+  signal?: AbortSignal,
+): Promise<GroupInvitation> {
+  return read<GroupInvitation>(`groups/invites/${encodeURIComponent(token)}`, signal);
+}
+
+export async function acceptGroupInvitation(
+  token: string,
+): Promise<MembershipResult> {
+  return (
+    await apiClient.post<MembershipResult>(
+      `/v1/groups/invites/${encodeURIComponent(token)}/accept`,
+      { body: {} },
+    )
+  ).data;
 }

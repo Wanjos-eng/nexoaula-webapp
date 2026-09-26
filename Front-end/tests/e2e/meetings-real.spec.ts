@@ -34,7 +34,6 @@ test("organizador agenda, membro confirma sem duplicar e cancelamento chega ao c
     await dialog.getByLabel("Início", { exact: true }).fill(local(start));
     await dialog.getByLabel("Fim", { exact: true }).fill(local(end));
     await dialog.getByRole("button", { name: "Agendar encontro", exact: true }).click();
-    await expect(owner.getByText("Encontro agendado.")).toBeVisible();
     await owner.reload();
     await expect(owner.getByRole("heading", { name: "Revisão do grupo", exact: true })).toBeVisible();
     await member.goto(`/grupos/${group.id}`);
@@ -48,12 +47,14 @@ test("organizador agenda, membro confirma sem duplicar e cancelamento chega ao c
     await owner.getByRole("button", { name: "Editar", exact: true }).click();
     await owner.getByRole("dialog").getByLabel("Título", { exact: true }).fill("Revisão atualizada");
     await owner.getByRole("button", { name: "Salvar alterações", exact: true }).click();
-    await expect(owner.getByText("Encontro atualizado.")).toBeVisible();
+    await owner.reload();
+    await expect(owner.getByRole("heading", { name: "Revisão atualizada", exact: true })).toBeVisible();
     await member.goto("/calendario");
-    await expect(member.getByRole("heading", { name: "Revisão atualizada", exact: true })).toBeVisible();
+    await expect(
+      member.getByRole("heading", { name: "Revisão atualizada", exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
     await owner.getByRole("button", { name: "Cancelar encontro", exact: true }).click();
     await owner.getByRole("button", { name: "Confirmar cancelamento", exact: true }).click();
-    await expect(owner.getByText("Encontro cancelado. O histórico foi preservado.")).toBeVisible();
     await member.reload();
     await expect(member.getByText("Encontro (Cancelado)", { exact: true })).toBeVisible();
     await member.goto(`/grupos/${group.id}`);

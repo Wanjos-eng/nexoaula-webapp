@@ -1,6 +1,15 @@
 "use client";
-import { useCallback, useRef, useState, type FormEvent } from "react";
+
+import { CheckCircle, UsersThree } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useCallback, useRef, useState, type FormEvent } from "react";
+
+import { BackButton } from "@/components/ui/BackButton";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { apiClient } from "@/lib/api";
 import {
   catalog,
@@ -10,9 +19,9 @@ import {
   type Group,
   type GroupInput,
 } from "./api";
+import { Failure } from "./AsyncState";
 import { useRemote } from "./useRemote";
-import { Failure, Loading } from "./AsyncState";
-import s from "./AcademicCommunity.module.css";
+import styles from "./CommunityForm.module.css";
 
 const empty: GroupInput = {
   name: "",
@@ -23,6 +32,7 @@ const empty: GroupInput = {
   visibility: "public",
   joinPolicy: "open",
 };
+
 export function GroupForm({
   group,
   onSaved,
@@ -36,31 +46,64 @@ export function GroupForm({
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [error, setError] = useState<unknown>();
+
   const fetcher = useCallback(async (signal: AbortSignal) => {
-    const [subjects, sections, terms, topics, subjectTopics, groupTopics] = await Promise.all([
+    const [
+      subjects,
+      sections,
+      terms,
+      topics,
+      subjectTopics,
+      groupTopics,
+    ] = await Promise.all([
       catalog("subjects", signal),
       catalog("class-sections", signal),
       catalog("academic-terms", signal),
       catalog("topics", signal),
       catalog("subject-topics", signal),
-      group ? read<{ subjectTopicId: string | null }[]>(`groups/${group.id}/topics`, signal) : Promise.resolve([]),
+      group
+        ? read<{ subjectTopicId: string | null }[]>(
+            `groups/${group.id}/topics`,
+            signal,
+          )
+        : Promise.resolve([]),
     ]);
-    return { subjects, sections, terms, topics, subjectTopics, groupTopics };
+
+    return {
+      subjects,
+      sections,
+      terms,
+      topics,
+      subjectTopics,
+      groupTopics,
+    };
   }, [group]);
-  const remote = useRemote("group-catalog", fetcher);
-  function change<K extends keyof GroupInput>(field: K, value: GroupInput[K]) {
-    setDraft((d) => ({ ...d, [field]: value }));
+
+  const remote = useRemote(
+    group ? `community-form-${group.id}` : "community-form-new",
+    fetcher,
+  );
+
+  function change<K extends keyof GroupInput>(
+    field: K,
+    value: GroupInput[K],
+  ) {
+    setDraft((current) => ({ ...current, [field]: value }));
   }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (lock.current) return;
+
     if (draft.name.trim().length < 3) {
       setError(new Error("name"));
       return;
     }
+
     lock.current = true;
     setBusy(true);
     setError(undefined);
+
     const {
       name,
       description,
@@ -70,14 +113,18 @@ export function GroupForm({
       disciplineId,
       offeringId,
     } = draft;
+
     const editable = {
       name: name.trim(),
       description: description?.trim() || null,
       rules: rules?.trim() || null,
       visibility,
       joinPolicy,
-      ...(!group || selectedTopics !== undefined ? { subjectTopicIds: selectedTopics ?? [] } : {}),
+      ...(!group || selectedTopics !== undefined
+        ? { subjectTopicIds: selectedTopics ?? [] }
+        : {}),
     };
+
     try {
       const response = group
         ? await apiClient.patch<Group>(`/v1/groups/${group.id}`, {
@@ -86,239 +133,376 @@ export function GroupForm({
         : await apiClient.post<Group>("/v1/groups", {
             body: { ...editable, disciplineId, offeringId },
           });
+
       setCreated(response.data);
       onSaved?.(response.data);
-    } catch (e) {
-      setError(e);
+    } catch (cause) {
+      setError(cause);
     } finally {
       lock.current = false;
       setBusy(false);
     }
   }
-  if (created && !group)
+
+  if (created && !group) {
     return (
-      <section className={s.panel}>
-        <span className={s.badge}>Grupo criado</span>
-        <h2>{created.name}</h2>
-        <p role="status">
-          Tudo pronto! Seu grupo foi salvo e você já é o organizador.
-        </p>
-        <Link href={`/grupos/${created.id}`} className={s.primary}>
-          Acessar grupo
+      <Card className={styles.successCard}>
+        <CheckCircle aria-hidden size={42} weight="fill" />
+        <div>
+          <Badge variant="success">Comunidade criada</Badge>
+          <h2>{created.name}</h2>
+          <p role="status">
+            Tudo pronto. Você já é o organizador e pode começar a estruturar os estudos.
+          </p>
+        </div>
+        <Link className={styles.primaryLink} href={`/grupos/${created.id}`}>
+          Acessar comunidade
         </Link>
-      </section>
+      </Card>
     );
-  if (remote.loading) return <Loading />;
-  if (remote.error)
-    return <Failure error={remote.error} retry={remote.reload} />;
-  const data = remote.data!;
-  return (
-    <form
-      className={s.panel}
-      onSubmit={submit}
-      aria-label={group ? "Configurar grupo" : "Criar grupo de estudo"}
-    >
-      <div>
-        <h2>{group ? "Configurações do grupo" : "Um objetivo em comum"}</h2>
-        <p>
-          Defina a disciplina, o propósito e como as pessoas podem participar.
-        </p>
+  }
+
+  if (remote.loading) {
+    return (
+      <div className={styles.loading} role="status" aria-label="Carregando formulário">
+        <span className="sr-only">Carregando formulário da comunidade...</span>
+        <Skeleton variant="card" />
+        <Skeleton variant="row" />
       </div>
-      <fieldset disabled={busy} style={{ border: 0, display: "grid", gap: 20 }}>
-        <label className={s.field}>
-          Nome do grupo *
-          <input
-            required
-            minLength={3}
-            maxLength={100}
-            value={draft.name}
-            onChange={(e) => change("name", e.target.value)}
-            placeholder="Ex.: Cálculo — estudos e exercícios"
-          />
-        </label>
+    );
+  }
+
+  if (remote.error) {
+    return (
+      <Card className={styles.errorCard}>
+        <Failure error={remote.error} retry={remote.reload} />
+      </Card>
+    );
+  }
+
+  const data = remote.data!;
+  const currentTopicIds =
+    selectedTopics ??
+    data.groupTopics.flatMap((item) =>
+      item.subjectTopicId ? [item.subjectTopicId] : [],
+    );
+  const availableTopics = data.subjectTopics.filter(
+    (topic) => topic.subjectId === draft.disciplineId,
+  );
+
+  return (
+    <Card className={styles.formCard}>
+      <form
+        aria-label={group ? "Configurar comunidade" : "Criar comunidade"}
+        className={styles.form}
+        onSubmit={submit}
+      >
+        <section className={styles.formSection}>
+          <div className={styles.sectionHeading}>
+            <div className={styles.sectionIcon}>
+              <UsersThree aria-hidden size={20} />
+            </div>
+            <div>
+              <h2>
+                {group ? "Configurações da comunidade" : "Um objetivo em comum"}
+              </h2>
+              <p>
+                Defina o propósito, o contexto acadêmico e como as pessoas podem participar.
+              </p>
+            </div>
+          </div>
+
+          <label className={styles.field}>
+            <span>Nome da comunidade *</span>
+            <input
+              disabled={busy}
+              maxLength={100}
+              minLength={3}
+              onChange={(event) => change("name", event.target.value)}
+              placeholder="Ex.: Cálculo — estudos e exercícios"
+              required
+              value={draft.name}
+            />
+          </label>
+        </section>
+
         {!group ? (
-          <div className={s.fields}>
-            <label className={s.field}>
-              Disciplina *
+          <section className={styles.formSection}>
+            <div className={styles.sectionCopy}>
+              <h2>Contexto acadêmico</h2>
+              <p>Vincule a comunidade à disciplina e, se fizer sentido, a uma turma específica.</p>
+            </div>
+
+            <div className={styles.twoColumns}>
+              <label className={styles.field}>
+                <span>Disciplina *</span>
+                <select
+                  aria-label="Disciplina *"
+                  disabled={busy}
+                  onChange={(event) => {
+                    setSelectedTopics([]);
+                    setDraft({
+                      ...draft,
+                      disciplineId: event.target.value,
+                      offeringId: null,
+                    });
+                  }}
+                  required
+                  value={draft.disciplineId}
+                >
+                  <option value="">Selecione uma disciplina</option>
+                  {data.subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className={styles.field}>
+                <span>Turma (opcional)</span>
+                <select
+                  aria-label="Turma (opcional)"
+                  disabled={busy || !draft.disciplineId}
+                  onChange={(event) =>
+                    change("offeringId", event.target.value || null)
+                  }
+                  value={draft.offeringId ?? ""}
+                >
+                  <option value="">Sem turma específica</option>
+                  {data.sections
+                    .filter(
+                      (section) => section.subjectId === draft.disciplineId,
+                    )
+                    .map((section) => (
+                      <option key={section.id} value={section.id}>
+                        {section.label} ·{" "}
+                        {
+                          data.terms.find(
+                            (term) => term.id === section.academicTermId,
+                          )?.label
+                        }
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
+
+            {!data.subjects.length ? (
+              <p className={styles.inlineState} role="status">
+                Nenhuma disciplina cadastrada. Solicite o cadastro à organização acadêmica antes de criar uma comunidade.
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
+        <section className={styles.formSection}>
+          <div className={styles.sectionCopy}>
+            <h2>Assuntos</h2>
+            <p>
+              Selecione os temas que ajudam outras pessoas a entender o foco da comunidade.
+            </p>
+          </div>
+
+          <fieldset
+            className={styles.topicFieldset}
+            disabled={busy || !draft.disciplineId}
+          >
+            <legend className="sr-only">Assuntos da comunidade</legend>
+
+            {availableTopics.length ? (
+              <div className={styles.topicGrid}>
+                {availableTopics.map((topic) => {
+                  const name =
+                    data.topics.find((item) => item.id === topic.topicId)?.name ??
+                    "Assunto";
+                  return (
+                    <label className={styles.topicOption} key={topic.id}>
+                      <input
+                        checked={currentTopicIds.includes(topic.id)}
+                        onChange={(event) =>
+                          setSelectedTopics(
+                            event.target.checked
+                              ? [...currentTopicIds, topic.id]
+                              : currentTopicIds.filter(
+                                  (id) => id !== topic.id,
+                                ),
+                          )
+                        }
+                        type="checkbox"
+                      />
+                      <span>{name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className={styles.inlineState} role="status">
+                {draft.disciplineId
+                  ? "Nenhum assunto cadastrado para esta disciplina."
+                  : "Selecione uma disciplina para ver os assuntos disponíveis."}
+              </p>
+            )}
+
+            {group ? (
+              <small>
+                Assuntos já usados em canais, aulas, encontros ou progresso precisam ser mantidos.
+              </small>
+            ) : null}
+          </fieldset>
+        </section>
+
+        <section className={styles.formSection}>
+          <div className={styles.sectionCopy}>
+            <h2>Apresentação</h2>
+            <p>Explique o propósito da comunidade e os combinados para convivência.</p>
+          </div>
+
+          <label className={styles.field}>
+            <span>Descrição</span>
+            <textarea
+              disabled={busy}
+              maxLength={500}
+              onChange={(event) => change("description", event.target.value)}
+              placeholder="O que vocês querem aprender juntos?"
+              value={draft.description ?? ""}
+            />
+            <small>{draft.description?.length ?? 0}/500 caracteres</small>
+          </label>
+
+          <label className={styles.field}>
+            <span>Combinados da comunidade</span>
+            <textarea
+              disabled={busy}
+              maxLength={2000}
+              onChange={(event) => change("rules", event.target.value)}
+              placeholder="Como organizar os estudos e manter uma boa convivência?"
+              value={draft.rules ?? ""}
+            />
+          </label>
+        </section>
+
+        <section className={styles.formSection}>
+          <div className={styles.sectionCopy}>
+            <h2>Descoberta e entrada</h2>
+            <p>Escolha quem pode encontrar a comunidade e como novos participantes entram.</p>
+          </div>
+
+          <div className={styles.twoColumns}>
+            <label className={styles.field}>
+              <span>Visibilidade</span>
               <select
-                aria-label="Disciplina *"
-                required
-                value={draft.disciplineId}
-                onChange={(e) => {
-                  setSelectedTopics([]);
-                  setDraft({ ...draft, disciplineId: e.target.value, offeringId: null });
-                }}
+                aria-label="Visibilidade"
+                disabled={busy}
+                onChange={(event) =>
+                  setDraft({
+                    ...draft,
+                    visibility: event.target
+                      .value as GroupInput["visibility"],
+                    ...(event.target.value === "private"
+                      ? { joinPolicy: "invite_only" }
+                      : {}),
+                  })
+                }
+                value={draft.visibility}
               >
-                <option value="">Selecione uma disciplina</option>
-                {data.subjects.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.name}
+                {Object.entries(visibilityLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>
+              <small>
+                {draft.visibility === "public"
+                  ? "Aparece na descoberta de comunidades."
+                  : draft.visibility === "unlisted"
+                    ? "Acessível pelo link, fora da descoberta."
+                    : "Visível apenas para participantes ativos."}
+              </small>
             </label>
-            <label className={s.field}>
-              Turma (opcional)
+
+            <label className={styles.field}>
+              <span>Entrada</span>
               <select
-                aria-label="Turma (opcional)"
-                value={draft.offeringId ?? ""}
-                disabled={!draft.disciplineId}
-                onChange={(e) => change("offeringId", e.target.value || null)}
+                aria-label="Entrada"
+                disabled={busy || draft.visibility === "private"}
+                onChange={(event) =>
+                  change(
+                    "joinPolicy",
+                    event.target.value as GroupInput["joinPolicy"],
+                  )
+                }
+                value={draft.joinPolicy}
               >
-                <option value="">Sem turma específica</option>
-                {data.sections
-                  .filter((i) => i.subjectId === draft.disciplineId)
-                  .map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.label} ·{" "}
-                      {data.terms.find((t) => t.id === i.academicTermId)?.label}
-                    </option>
-                  ))}
+                {Object.entries(entryLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
               </select>
+              <small>
+                {draft.joinPolicy === "invite_only"
+                  ? "Comunidades por convite exigem entrada aprovada externamente nesta versão."
+                  : "Organizadores acompanham os participantes dentro da comunidade."}
+              </small>
             </label>
           </div>
+        </section>
+
+        {error instanceof Error && error.message === "name" ? (
+          <div className={styles.validationError} role="alert">
+            O nome deve ter pelo menos 3 caracteres sem contar espaços.
+          </div>
+        ) : error ? (
+          <Failure error={error} />
         ) : null}
-        {!data.subjects.length && !group ? (
-          <p role="status">
-            Nenhuma disciplina cadastrada. Solicite o cadastro à organização
-            acadêmica antes de criar um grupo.
-          </p>
-        ) : null}
-        <fieldset className={s.field} disabled={!draft.disciplineId}>
-          <legend>Assuntos do grupo (opcional)</legend>
-          <p>Selecione os assuntos da disciplina. Assuntos já usados em canais, aulas, encontros ou progresso precisam ser mantidos.</p>
-          {data.subjectTopics.filter((topic) => topic.subjectId === draft.disciplineId).map((topic) => {
-            const ids = selectedTopics ?? data.groupTopics.flatMap((item) => item.subjectTopicId ? [item.subjectTopicId] : []);
-            return <label key={topic.id}>
-              <input type="checkbox" checked={ids.includes(topic.id)} onChange={(event) => setSelectedTopics(event.target.checked ? [...ids, topic.id] : ids.filter((id) => id !== topic.id))} />
-              {data.topics.find((item) => item.id === topic.topicId)?.name}
-            </label>;
-          })}
-          {!data.subjectTopics.some((topic) => topic.subjectId === draft.disciplineId) ? <p role="status">{draft.disciplineId ? "Nenhum assunto cadastrado para esta disciplina." : "Selecione uma disciplina para ver os assuntos."}</p> : null}
-        </fieldset>
-        <label className={s.field}>
-          Descrição
-          <textarea
-            maxLength={500}
-            value={draft.description ?? ""}
-            onChange={(e) => change("description", e.target.value)}
-            placeholder="O que vocês querem aprender juntos?"
-          />
-          <small>Até 500 caracteres.</small>
-        </label>
-        <div className={s.fields}>
-          <label className={s.field}>
-            Visibilidade
-            <select
-              aria-label="Visibilidade"
-              value={draft.visibility}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  visibility: e.target.value as GroupInput["visibility"],
-                  ...(e.target.value === "private"
-                    ? { joinPolicy: "invite_only" }
-                    : {}),
-                })
-              }
-            >
-              {Object.entries(visibilityLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <small>
-              {draft.visibility === "public"
-                ? "Aparece na descoberta de grupos."
-                : draft.visibility === "unlisted"
-                  ? "Acessível pelo link, fora da descoberta."
-                  : "Visível apenas para participantes ativos."}
-            </small>
-          </label>
-          <label className={s.field}>
-            Entrada
-            <select
-              aria-label="Entrada"
-              disabled={draft.visibility === "private"}
-              value={draft.joinPolicy}
-              onChange={(e) =>
-                change("joinPolicy", e.target.value as GroupInput["joinPolicy"])
-              }
-            >
-              {Object.entries(entryLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <small>
-              {draft.joinPolicy === "invite_only"
-                ? "O envio de convites ainda não está disponível."
-                : "Você poderá acompanhar os participantes no grupo."}
-            </small>
-          </label>
+
+        <div className={styles.actions}>
+          {!group ? (
+            <Link className={styles.cancelLink} href="/grupos">
+              Cancelar
+            </Link>
+          ) : null}
+          <Button
+            disabled={busy || (!group && !data.subjects.length)}
+            loading={busy}
+            type="submit"
+          >
+            {group ? "Salvar configurações" : "Criar comunidade"}
+          </Button>
         </div>
-        <label className={s.field}>
-          Combinados do grupo
-          <textarea
-            maxLength={2000}
-            value={draft.rules ?? ""}
-            onChange={(e) => change("rules", e.target.value)}
-            placeholder="Como organizar os estudos e manter uma boa convivência?"
-          />
-        </label>
-      </fieldset>
-      {error instanceof Error && error.message === "name" ? (
-        <div role="alert" className={s.error}>
-          O nome deve ter pelo menos 3 caracteres sem contar espaços.
-        </div>
-      ) : error ? (
-        <Failure error={error} />
-      ) : null}
-      <div className={s.actions}>
-        <button
-          className={s.primary}
-          disabled={busy || (!group && !data.subjects.length)}
-        >
-          {busy ? "Salvando…" : group ? "Salvar configurações" : "Criar grupo"}
-        </button>
-        {!group ? (
-          <Link className={s.secondary} href="/grupos">
-            Cancelar
-          </Link>
-        ) : null}
-      </div>
-    </form>
+      </form>
+    </Card>
   );
 }
+
 export function CreateGroupPage() {
   return (
-    <div className={s.page}>
-      <Link className={s.back} href="/grupos">
-        ← Voltar aos grupos
-      </Link>
-      <header className={s.header}>
-        <div>
-          <p className={s.eyebrow}>Aprender juntos</p>
-          <h1>Criar grupo de estudo</h1>
-          <p>Transforme um interesse em um espaço de troca e colaboração.</p>
-        </div>
-      </header>
-      <div className={s.columns}>
+    <div className={styles.page}>
+      <BackButton fallback="/grupos">Voltar para comunidades</BackButton>
+
+      <PageHeader
+        description="Reúna colegas em um espaço com propósito, contexto acadêmico e organização claros."
+        eyebrow="Comunidades"
+        title="Criar comunidade"
+      />
+
+      <div className={styles.layout}>
         <GroupForm />
-        <aside className={s.panel}>
-          <span className={s.badge}>Comece com clareza</span>
-          <h2>Um bom grupo tem propósito</h2>
+
+        <Card className={styles.helperCard}>
+          <Badge variant="success">Comece com clareza</Badge>
+          <h2>Uma boa comunidade tem propósito</h2>
           <p>
-            Escolha um nome fácil de encontrar, explique o foco dos estudos e
-            combine como receber novos colegas.
+            Escolha um nome fácil de encontrar, explique o foco dos estudos e defina como receber novos colegas.
           </p>
-          <p>Campos com * são obrigatórios. A turma é opcional.</p>
-          <Link className={s.secondary} href="/perfil">
-            Revisar meu perfil
-          </Link>
-        </aside>
+          <ul>
+            <li>Use uma descrição objetiva.</li>
+            <li>Selecione assuntos realmente relacionados ao grupo.</li>
+            <li>Escolha uma política de entrada coerente com o objetivo.</li>
+          </ul>
+          <Link href="/perfil">Revisar meu perfil</Link>
+        </Card>
       </div>
     </div>
   );

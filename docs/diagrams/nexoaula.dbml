@@ -774,6 +774,33 @@ Table group_join_requests {
   }
 }
 
+Table group_invitations {
+  id uuid [pk, default: `gen_random_uuid()`]
+  group_id uuid [not null]
+  invited_user_id uuid [not null]
+  created_by uuid [not null]
+  token_hash varchar(64) [not null, unique, note: 'SHA-256 do token de alta entropia; o token bruto nao e persistido.']
+  status varchar(16) [not null, default: 'pending']
+  expires_at timestamptz [not null]
+  created_at timestamptz [not null, default: `now()`]
+  accepted_at timestamptz
+  cancelled_at timestamptz
+
+  Note: 'Convite direcionado a uma conta NexoAula existente. Preserva historico e permite somente um convite pending por usuario/grupo. Estados aceitos: pending, accepted, cancelled e expired.'
+
+  indexes {
+    (group_id, invited_user_id, `CASE WHEN status = 'pending' THEN 1 END`) [unique, name: 'uq_group_invitations_pending_user']
+    (group_id, status) [name: 'ix_group_invitations_group_status']
+    (invited_user_id, status) [name: 'ix_group_invitations_invited_status']
+  }
+
+  checks {
+    `status IN ('pending','accepted','cancelled','expired')` [name: 'chk_group_invitations_status']
+    `(status = 'pending' AND accepted_at IS NULL AND cancelled_at IS NULL) OR (status = 'accepted' AND accepted_at IS NOT NULL AND cancelled_at IS NULL) OR (status = 'cancelled' AND accepted_at IS NULL AND cancelled_at IS NOT NULL) OR (status = 'expired' AND accepted_at IS NULL AND cancelled_at IS NULL)` [name: 'chk_group_invitations_lifecycle']
+    `invited_user_id <> created_by` [name: 'chk_group_invitations_distinct_users']
+  }
+}
+
 Table group_topics {
   id uuid [pk, default: `gen_random_uuid()`]
   group_id uuid [not null]
@@ -1185,6 +1212,9 @@ Ref: group_members.removed_by > users.id [delete: restrict]
 Ref: group_join_requests.group_id > study_groups.id [delete: cascade]
 Ref: group_join_requests.user_id > users.id [delete: restrict]
 Ref: group_join_requests.resolved_by > users.id [delete: restrict]
+Ref: group_invitations.group_id > study_groups.id [delete: cascade]
+Ref: group_invitations.invited_user_id > users.id [delete: restrict]
+Ref: group_invitations.created_by > users.id [delete: restrict]
 Ref: group_topics.(group_id, subject_id) > study_groups.(id, subject_id) [delete: cascade]
 Ref: group_topics.(subject_topic_id, subject_id) > subject_topics.(id, subject_id) [delete: restrict]
 Ref: channels.group_id > study_groups.id [delete: cascade]
@@ -1276,6 +1306,7 @@ TableGroup community [color: #D97706, note: 'Grupos, canais, mensagens e encontr
   study_groups
   group_members
   group_join_requests
+  group_invitations
   group_topics
   channels
   channel_messages

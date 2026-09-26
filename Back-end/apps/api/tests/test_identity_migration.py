@@ -27,6 +27,7 @@ def test_only_released_tables_exist(database_engine):
     assert tables == {
         "alembic_version",
         "channels",
+        "channel_messages",
         "tutor_profiles",
         "tutor_subjects",
         "tutor_sessions",
@@ -39,6 +40,7 @@ def test_only_released_tables_exist(database_engine):
         "subjects",
         "group_members",
         "group_join_requests",
+        "group_invitations",
         "class_sections",
         "teachers",
         "class_section_teachers",

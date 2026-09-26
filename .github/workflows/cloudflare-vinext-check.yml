@@ -1,0 +1,49 @@
+name: Cloudflare frontend checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Front-end/**'
+      - '.github/workflows/cloudflare-vinext-check.yml'
+  pull_request:
+    paths:
+      - 'Front-end/**'
+      - '.github/workflows/cloudflare-vinext-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  cloudflare:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Front-end
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: Front-end/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check vinext compatibility
+        run: npx vinext check
+
+      - name: Build Next.js
+        env:
+          API_BASE_URL: http://127.0.0.1:8000
+        run: npm run build
+
+      - name: Build Cloudflare Worker
+        env:
+          API_BASE_URL: http://127.0.0.1:8000
+        run: npm run build:vinext

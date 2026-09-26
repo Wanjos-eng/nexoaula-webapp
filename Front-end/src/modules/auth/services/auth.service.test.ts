@@ -63,4 +63,12 @@ describe("sessão autenticada", () => {
     await expect(authService.me(controller.signal)).resolves.toEqual(response);
     expect(get).toHaveBeenCalledWith("/v1/auth/me", { signal: controller.signal });
   });
+  it("encerra a sessão pelo endpoint real de logout", async () => {
+    const response204 = { status: 204, data: undefined };
+    const post = vi.spyOn(apiClient, "post").mockResolvedValue(response204);
+
+    await expect(authService.logout()).resolves.toEqual(response204);
+    expect(post).toHaveBeenCalledWith("/v1/auth/logout", { body: {} });
+  });
+
 });

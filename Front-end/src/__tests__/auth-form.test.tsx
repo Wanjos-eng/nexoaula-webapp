@@ -28,6 +28,7 @@ describe("LoginForm", () => {
     vi.useFakeTimers();
     push.mockReset();
     replace.mockReset();
+    window.history.replaceState({}, "", "/login");
     loginSpy = vi.spyOn(authService, "login");
   });
 
@@ -56,17 +57,7 @@ describe("LoginForm", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("exibe aviso informativo ao clicar em esqueci minha senha", () => {
-    render(<LoginForm />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Esqueci minha senha" }));
-
-    expect(
-      screen.getByText(/Recuperação de senha: a funcionalidade será integrada/i),
-    ).toBeDefined();
-  });
-
-  it("simula loading, sucesso e navega para /inicio com credenciais preenchidas, respeitando o atraso", async () => {
+  it("mostra carregamento no botão e entra sem mensagem intermediária", async () => {
     loginSpy.mockResolvedValueOnce(loginResponse);
 
     render(<LoginForm />);
@@ -80,15 +71,13 @@ describe("LoginForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    expect(screen.getByRole("button", { name: "Entrando..." })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Entrando…" })).toBeDefined();
 
     await act(async () => {
       await Promise.resolve();
     });
 
-    expect(
-      screen.getByText(/Autenticado com sucesso/i),
-    ).toBeDefined();
+    expect(screen.queryByRole("status")).toBeNull();
 
     expect(push).not.toHaveBeenCalled();
 
@@ -97,6 +86,33 @@ describe("LoginForm", () => {
     });
 
     expect(replace).toHaveBeenCalledWith("/inicio");
+  });
+
+  it("retorna somente para um convite local após autenticar", async () => {
+    loginSpy.mockResolvedValueOnce(loginResponse);
+    window.history.replaceState(
+      {},
+      "",
+      "/login?next=%2Fconvites%2Ftoken-seguro%3Forigem%3Dlink",
+    );
+
+    render(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "lucas@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), {
+      target: { value: "senha-segura" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(replace).toHaveBeenCalledWith(
+      "/convites/token-seguro?origem=link",
+    );
   });
 
   it("simula falha genérica e permite recuperação na segunda tentativa", async () => {
@@ -132,7 +148,7 @@ describe("LoginForm", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/Autenticado com sucesso/i)).toBeDefined();
+    expect(replace).toHaveBeenCalledWith("/inicio");
   });
 
   it("exibe mensagem genérica ao receber erro 401 de credenciais inválidas", async () => {
@@ -242,11 +258,12 @@ describe("RegisterForm", () => {
     push.mockReset();
     replace.mockReset();
     registerSpy = vi.spyOn(authService, "register");
+    vi.spyOn(authService, "login").mockResolvedValue({ status: 200, data: registerResponse.data });
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    registerSpy.mockRestore();
+    vi.restoreAllMocks();
   });
 
   it("exibe erros de campos obrigatórios ao submeter em branco", () => {
@@ -282,7 +299,7 @@ describe("RegisterForm", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("cria conta com sucesso e navega para /login, respeitando o atraso", async () => {
+  it("cria a conta e inicia a sessão automaticamente", async () => {
     registerSpy.mockResolvedValueOnce(registerResponse);
 
     render(<RegisterForm />);
@@ -303,16 +320,14 @@ describe("RegisterForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
 
-    expect(screen.getByRole("button", { name: "Criando conta..." })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Criando conta…" })).toBeDefined();
 
     await act(async () => {
       // Resolve promise
       await Promise.resolve();
     });
 
-    expect(
-      screen.getByText(/Conta criada com sucesso/i),
-    ).toBeDefined();
+    expect(replace).toHaveBeenCalledWith("/inicio");
 
     expect(push).not.toHaveBeenCalled();
 
@@ -320,7 +335,7 @@ describe("RegisterForm", () => {
       vi.advanceTimersByTime(1500);
     });
 
-    expect(push).toHaveBeenCalledWith("/login");
+    expect(replace).toHaveBeenCalledWith("/inicio");
   });
 
   it("mostra erro de e-mail em uso (409) e permite nova tentativa", async () => {
@@ -363,7 +378,7 @@ describe("RegisterForm", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/Conta criada com sucesso/i)).toBeDefined();
+    expect(replace).toHaveBeenCalledWith("/inicio");
   });
 
   it("mostra falha de conexão", async () => {

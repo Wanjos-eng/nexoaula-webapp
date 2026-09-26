@@ -34,7 +34,7 @@ PREVISTO é o plano e suas aulas planejadas. REALIZADO registra o resultado da a
 - Se a sucessora cancela/adia a aula, o registro antigo fica somente no histórico; não criar presença na aula cancelada nem antecipar presença na nova data.
 - `student_attendance_adjustments` guarda snapshot anterior, origem/destino, resultado e aviso individual ainda não visto. Resultado `invalidated` não equivale a presença válida. O fluxo é transacional e idempotente; não há envio de e-mail ou serviço de notificações implementado nesta revisão.
 
-As tabelas continuam em **45**: saiu `user_class_sections` e entrou o histórico/aviso individual `student_attendance_adjustments`.
+As tabelas passam a **46** com `group_invitations`, que materializa o convite direcionado e auditável de comunidade. O ajuste anterior já havia substituído `user_class_sections` por `student_attendance_adjustments` sem alterar a contagem.
 
 ## Avaliação do tutor e reinscrição
 
@@ -53,7 +53,7 @@ Garantias presentes no SQL exportado:
 - Contexto institucional e disciplina/turma por FKs compostas; contexto de planos/aulas por grupo.
 - Conteúdo de `group_topics` pertencente à disciplina do grupo; progresso aponta a um conteúdo existente naquele contexto.
 - Resposta a outra mensagem do mesmo canal, sem autorresposta; encontro aponta somente para canal do próprio grupo.
-- Unicidade por expressão CASE: plano publicado por grupo, no máximo um owner ativo, solicitação pending por aluno/grupo, inscrição não cancelada por aluno/encontro e transação completed por reserva.
+- Unicidade por expressão CASE: plano publicado por grupo, no máximo um owner ativo, solicitação pending por aluno/grupo, convite pending por destinatário/grupo, inscrição não cancelada por aluno/encontro e transação completed por reserva.
 - FKs simples SET NULL e compostas NO ACTION preservam vínculos opcionais de respostas/encontros sem anular o canal/grupo obrigatório. Exclusões foram testadas apenas em banco descartável.
 - `class_section_teachers.starts_on` obrigatório e `ends_on` opcional.
 
@@ -180,6 +180,23 @@ Owner e moderador ativos podem aprovar, recusar ou remover, respeitando capacida
 A remoção encerra a associação com data e responsável, sem apagar o histórico, e
 o proprietário não pode ser removido por esse fluxo.
 
+### Recorte adicional da issue #117
+
+A revision `0016_group_invitations` completa o ciclo de participação com saída
+voluntária, cancelamento do próprio pedido e convite direcionado a uma conta
+NexoAula existente. `group_invitations` preserva destinatário, autor, validade e
+estado; o token bruto é entregue somente na criação e o banco guarda apenas seu
+SHA-256. Um índice parcial impede dois convites pending simultâneos para o mesmo
+usuário/grupo.
+
+O aceite exige a conta destinatária autenticada, grupo ativo, capacidade disponível
+e convite pending não expirado. Convites aceitos, cancelados, expirados ou usados
+por outra conta não concedem acesso. Reentrada reativa o registro histórico de
+membership sempre com papel `member`, evitando restaurar privilégios antigos de
+moderador. Entrada por outro fluxo cancela convite pendente anterior para impedir
+reuso posterior. O proprietário continua bloqueado de sair até existir transferência
+explícita de propriedade.
+
 ### Validação do modelo lógico completo (DBML)
 
 Ferramentas isoladas em `tools/data-model`, com versões e lockfile próprios, sem dependências adicionadas ao frontend/backend. Execute da raiz:
@@ -192,7 +209,7 @@ node scripts/render-data-model.cjs --check
 
 No PowerShell, usar npm.cmd se a política bloquear npm.ps1. O script usa apenas PostgreSQL/WASM em memória, sem URL de conexão, dados reais ou persistência. Cada cenário sofre rollback.
 
-Resultado: **45 tabelas, 102 FKs, 57 CHECKs, 108 verificações aprovadas**, das quais **8 exercitam consultas de referência de autorização/visibilidade**. As outras 100 verificam estrutura e cenários de constraints/histórico. Há **8 sondagens** que demonstram obrigações não impostas pelo DBML sozinho. Elas não são escondidas nem contadas como bloqueios já implementados.
+Resultado: **46 tabelas, 105 FKs, 60 CHECKs, 111 verificações aprovadas**, das quais **8 exercitam consultas de referência de autorização/visibilidade**. As outras 103 verificam estrutura e cenários de constraints/histórico. Há **8 sondagens** que demonstram obrigações não impostas pelo DBML sozinho. Elas não são escondidas nem contadas como bloqueios já implementados.
 
 Parser DBML v2 10.1.1; PGlite 0.5.8 com PostgreSQL 18.3. Essa versão é da ferramenta de teste, não decisão de versão de produção. Não valida API real, múltiplas conexões, RLS, notificações automáticas ou renderização visual no dbdiagram.io.
 
@@ -213,7 +230,7 @@ materializa somente `tutor_profiles`, `tutor_subjects`, `tutor_sessions`,
 não negativos e comissão de 15%, arredondada ao centavo com metade para cima.
 Exemplo: 10 centavos gera comissão demonstrativa de 2 centavos.
 
-O DBML de 45 tabelas permanece o modelo lógico de roadmap. Para as duas sprints
+O DBML de 46 tabelas permanece o modelo lógico de roadmap. Para as duas sprints
 restantes, o banco físico tem estas especializações deliberadas:
 
 - `simulated=true` obrigatório em ofertas e recibos; moeda limitada a BRL.
