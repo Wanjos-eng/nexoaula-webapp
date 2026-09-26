@@ -9,7 +9,9 @@
  * apenas o rewrite server-side do Next.js.
  */
 
-const DEFAULT_API_BASE_URL = process.env.NODE_ENV === "production"\n  ? "https://nexoaula-api.nexoaula-wanjos.workers.dev"\n  : "http://localhost:8000";
+const DEFAULT_API_BASE_URL = process.env.NODE_ENV === "production"
+  ? "https://nexoaula-api.nexoaula-wanjos.workers.dev"
+  : "http://localhost:8000";
 
 /**
  * URL do backend para o rewrite do Next.js. Usa localhost:8000 por padrão.
