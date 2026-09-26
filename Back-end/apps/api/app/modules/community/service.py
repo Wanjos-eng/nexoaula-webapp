@@ -392,6 +392,7 @@ class CommunityService:
                 raise CommunityError("Este grupo só aceita participantes por convite.", 403)
             if policy == GroupJoinPolicy.OPEN.value:
                 self._ensure_capacity(uow.community, group)
+                uow.community.cancel_pending_invitations(group_id, user_id)
                 member = uow.community.activate_member(group_id, user_id)
                 uow.commit()
                 return self._member_response(member, MembershipResultStatus.ACTIVE)
@@ -611,6 +612,7 @@ class CommunityService:
                     request = uow.community.resolve_join_request(
                         request, JoinRequestStatus.APPROVED, organizer_id, data.note
                     )
+                    uow.community.cancel_pending_invitations(group_id, target_user_id)
                     member = uow.community.activate_member(group_id, target_user_id)
                     uow.commit()
                     return MembershipResponse(

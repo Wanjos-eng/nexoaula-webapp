@@ -116,6 +116,8 @@ class CommunityRepository(Protocol):
     def find_user_by_email(self, email: str) -> User | None: ...
     def expire_invitations(self, group_id: UUID,
                            invited_user_id: UUID | None = None) -> None: ...
+    def cancel_pending_invitations(self, group_id: UUID,
+                                   invited_user_id: UUID) -> None: ...
     def create_group_invitation(self, group_id: UUID, invited_user_id: UUID,
                                 created_by: UUID, token_hash: str,
                                 expires_at: datetime) -> GroupInvitation: ...
@@ -672,6 +674,7 @@ class SqlAlchemyCommunityRepository:
             member = GroupMember(group_id=group_id, user_id=user_id,
                                    role=MembershipRole.MEMBER.value)
             self._session.add(member)
+        member.role = MembershipRole.MEMBER.value
         member.status = MembershipStatus.ACTIVE.value
         member.joined_at = now
         member.ended_at = None
@@ -730,6 +733,27 @@ class SqlAlchemyCommunityRepository:
             stmt = stmt.where(GroupInvitation.invited_user_id == invited_user_id)
         for invitation in self._session.scalars(stmt.with_for_update()):
             invitation.status = "expired"
+        self._session.flush()
+
+    def cancel_pending_invitations(
+        self, group_id: UUID, invited_user_id: UUID
+    ) -> None:
+        invitations = list(
+            self._session.scalars(
+                select(GroupInvitation)
+                .where(
+                    GroupInvitation.group_id == group_id,
+                    GroupInvitation.invited_user_id == invited_user_id,
+                    GroupInvitation.status == "pending",
+                )
+                .with_for_update()
+            )
+        )
+        now = datetime.now(UTC)
+        for invitation in invitations:
+            invitation.status = "cancelled"
+            invitation.cancelled_at = now
+            invitation.accepted_at = None
         self._session.flush()
 
     def create_group_invitation(

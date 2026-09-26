@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { ApiError } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -20,6 +21,13 @@ import {
 } from "./api";
 import { useRemote } from "./useRemote";
 import styles from "./AccessLifecycle.module.css";
+
+function invitationError(error: unknown) {
+  if (error instanceof ApiError && error.status === 404) {
+    return "Este convite é inválido, expirou ou não pertence à sua conta.";
+  }
+  return errorMessage(error);
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -73,7 +81,7 @@ export function InviteAcceptance({ token }: { token: string }) {
           <p className={styles.eyebrow}>Convite de comunidade</p>
           <h1>Este convite não está disponível</h1>
           <p className={styles.acceptDescription}>
-            {errorMessage(remote.error)}
+            {invitationError(remote.error)}
           </p>
           <Link className={styles.inlineLink} href="/grupos">
             Ir para Comunidades

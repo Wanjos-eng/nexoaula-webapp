@@ -25,6 +25,13 @@ type AuthSession = {
 
 const AuthSessionContext = createContext<AuthSession | null>(null);
 
+function loginDestination() {
+  if (typeof window === "undefined") return "/login";
+  const current = `${window.location.pathname}${window.location.search}`;
+  if (!window.location.pathname.startsWith("/convites/")) return "/login";
+  return `/login?next=${encodeURIComponent(current)}`;
+}
+
 export function AuthSessionProvider({ children }: { children: ReactNode }) {
   const { replace } = useRouter();
   const abortRef = useRef<AbortController | null>(null);
@@ -45,7 +52,7 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
       if (controller.signal.aborted || error instanceof RequestAbortedError) return;
       setUser(null);
       if (error instanceof ApiError && error.status === 401) {
-        replace("/login");
+        replace(loginDestination());
         return;
       }
       setStatus("error");
@@ -77,7 +84,7 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
       if (controller.signal.aborted || error instanceof RequestAbortedError) return;
       setUser(null);
       if (error instanceof ApiError && error.status === 401) {
-        replace("/login");
+        replace(loginDestination());
         return;
       }
       setStatus("error");

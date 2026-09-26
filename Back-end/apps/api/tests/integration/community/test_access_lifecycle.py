@@ -260,3 +260,80 @@ async def test_invitation_requires_existing_non_member_without_pending_request(
     )
     assert pending.status_code == 409
     assert "Aprove a solicitação" in pending.json()["detail"]
+
+
+async def test_rejoining_after_leaving_drops_previous_moderator_privileges(
+    lifecycle_client,
+):
+    client, connection, ids = lifecycle_client
+    connection.execute(
+        text(
+            "UPDATE study_groups SET join_policy='open' WHERE id=:group"
+        ),
+        ids,
+    )
+    connection.execute(
+        text(
+            "INSERT INTO group_members(group_id,user_id,role) "
+            "VALUES (:group,:other_user,'moderator')"
+        ),
+        ids,
+    )
+
+    app.dependency_overrides[active_subject] = lambda: ids["other_user"]
+    left = await client.post(f"{PREFIX}/{ids['group']}/leave", json={})
+    assert left.status_code == 200, left.text
+
+    joined = await client.post(f"{PREFIX}/{ids['group']}/join", json={})
+    assert joined.status_code == 201, joined.text
+    assert joined.json()["status"] == "active"
+
+    participation = await client.get(f"{PREFIX}/{ids['group']}/participation")
+    assert participation.status_code == 200
+    assert participation.json()["role"] == "member"
+    assert participation.json()["canManage"] is False
+
+    role = connection.scalar(
+        text(
+            "SELECT role::text FROM group_members "
+            "WHERE group_id=:group AND user_id=:other_user"
+        ),
+        ids,
+    )
+    assert role == "member"
+
+
+async def test_direct_join_invalidates_old_pending_invitation(lifecycle_client):
+    client, connection, ids = lifecycle_client
+    invited_email = f"{ids['other_user']}@example.test"
+
+    created = await client.post(
+        f"{PREFIX}/{ids['group']}/invitations",
+        json={"email": invited_email},
+    )
+    assert created.status_code == 201, created.text
+    invitation = created.json()
+
+    connection.execute(
+        text("UPDATE study_groups SET join_policy='open' WHERE id=:group"),
+        ids,
+    )
+    app.dependency_overrides[active_subject] = lambda: ids["other_user"]
+
+    joined = await client.post(f"{PREFIX}/{ids['group']}/join", json={})
+    assert joined.status_code == 201, joined.text
+
+    state = connection.scalar(
+        text("SELECT status FROM group_invitations WHERE id=:id"),
+        {"id": UUID(invitation["id"])},
+    )
+    assert state == "cancelled"
+
+    left = await client.post(f"{PREFIX}/{ids['group']}/leave", json={})
+    assert left.status_code == 200
+
+    stale = await client.post(
+        f"{PREFIX}/invites/{invitation['token']}/accept",
+        json={},
+    )
+    assert stale.status_code == 409

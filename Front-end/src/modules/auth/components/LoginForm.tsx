@@ -65,7 +65,12 @@ export function LoginForm() {
       await authService.login({ email, password }, controller.signal);
       if (!isMountedRef.current) return;
 
-      router.replace("/inicio");
+      const requested = new URLSearchParams(window.location.search).get("next");
+      const destination =
+        requested?.startsWith("/") && !requested.startsWith("//")
+          ? requested
+          : "/inicio";
+      router.replace(destination);
     } catch (error) {
       if (!isMountedRef.current || error instanceof RequestAbortedError) return;
       setIsLoading(false);
